@@ -3,6 +3,7 @@
 #include "timer.h"
 #include "framebuffer.h"
 #include "console.h"
+#include "gfx.h"
 
 #define GPFSEL1 0x20200004
 #define GPSET0  0x2020001C
@@ -56,14 +57,10 @@ void heartbeat_loop()
 
 }
 
-
-void video_test()
+void initialize_framebuffer()
 {
     uart_write_str("Initializing video..");
     usleep(1000000);
-
-#if 1
-
     fb_release();
 
     unsigned char* p_fb=0;
@@ -94,33 +91,73 @@ void video_test()
         cout("fb_get_phisical_buffer_size error");cout_endl();
     }
     cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
+
+
+#if 0
+    v_w=300;
+    v_h=400;
+    fb_set_virtual_buffer_size( &v_w, &v_h );
     if( fb_get_virtual_buffer_size( &v_w, &v_h ) != FB_SUCCESS )
     {
         cout("fb_get_virtual_buffer_size error");cout_endl();
     }
     cout("virtual fb size: "); cout_d(v_w); cout("x"); cout_d(v_h); cout_endl();
+#endif
 
     usleep(10000);
+    gfx_set_env( p_fb, v_w, v_h, pitch, fbsize ); 
+    gfx_set_bg( 0 );
+    gfx_set_fg( 11 );
+    gfx_clear();
+}
 
-    
-    unsigned int n_frames = 0;
-    unsigned int RR=0;
+void video_test()
+{
+    //gfx_fill_rect( 100, 100, 8, 8);
+    //
+    unsigned char ch='A';
+    unsigned int row=0;
+    unsigned int col=0;
+    unsigned int term_cols, term_rows;
+    gfx_get_term_size( &term_rows, &term_cols );
+
+    unsigned int t0 = time_microsec();
+    for( row=0; row<1000000; ++row )
+    {
+        gfx_putc(0,col,ch);
+    }
+    t0 = time_microsec()-t0;
+    cout("T: ");cout_d(t0);cout_endl();
+    return;
+
+
     while(1)
     {
-        unsigned int row;
-
-        for( row=0; row<v_h;++row)
+        gfx_putc(row,col,ch);
+        col = col+1;
+        if( col >= term_cols )
         {
-            unsigned char* pVid =  p_fb + pitch*row ;
-            const unsigned char* pVidEnd = pVid + v_w;
-            const unsigned char val = RR % 256;
-            while(pVid<pVidEnd)
+
+            col=0;
+            row++;
+            if( row > term_rows )
             {
-                *pVid++=val;
+                row=0;
+                gfx_clear();
             }
-        } 
-        RR = (RR+1) % 16;
-        ++n_frames;
+
+        }
+        ++ch;
+        gfx_set_fg( ch );
+        usleep(1000);
+    }
+
+#if 0
+    while(1)
+    {
+        gfx_set_bg( RR );
+        gfx_clear();
+        RR = (RR+1)%16;
         usleep(1000000);
     }
 #endif
@@ -134,5 +171,6 @@ void entry_point()
     uart_init();
     heartbeat_init();
     //heartbeat_loop();
+    initialize_framebuffer();
     video_test();
 }

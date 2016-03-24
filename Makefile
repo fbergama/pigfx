@@ -3,7 +3,7 @@ ARMGNU ?= arm-none-eabi
 COPS = -Wall -O0 -g -nostdlib -nostartfiles -ffreestanding 
 
 ## Important!!! asm.o must be the first object to be linked!
-OBJS = asm.o pigfx.o uart.o utils.o timer.o framebuffer.o postman.o console.o
+OBJS = asm.o pigfx.o uart.o utils.o timer.o framebuffer.o postman.o console.o gfx.o binary_assets.o
 
 all: pigfx.elf pigfx.hex pigfx.img 
 
@@ -28,7 +28,7 @@ kernel: pigfx.img
 
 pigfx.elf : $(OBJS)
 	$(ARMGNU)-ld $(OBJS) -T memmap -o $@
-#	$(ARMGNU)-objdump --disassemble-zeroes -D pigfx.elf > pigfx.dump
+	$(ARMGNU)-objdump --disassemble-zeroes -D pigfx.elf > pigfx.dump
 
 
 .PHONY clean :

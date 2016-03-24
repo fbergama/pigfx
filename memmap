@@ -1,0 +1,14 @@
+
+MEMORY
+{
+    ram : ORIGIN = 0x8000, LENGTH = 4M
+}
+
+SECTIONS
+{
+    .text : { *(.text*) } > ram
+    .rodata ALIGN(4096) : { *(.rodata*) } > ram
+    .data ALIGN(4096): { *(.data*) } > ram
+    .bss ALIGN(4096): { *(.bss*) } > ram
+}
+

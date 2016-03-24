@@ -101,21 +101,24 @@ void gfx_putc( unsigned int row, unsigned int col, unsigned char c )
     if( row >= ctx.term_h )
         return;
 
-    unsigned char* p_glyph = FNT + c*64;
-    unsigned char* pf = PFB(col*8, row*8);
+    const unsigned int FG = ctx.fg<<24 | ctx.fg<<16 | ctx.fg<<8 | ctx.fg;
+    const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    const unsigned int stride = (ctx.Pitch>>2) - 2;
 
-    unsigned int h=8;
+    register unsigned int* p_glyph = (unsigned int*)( FNT + c*64 );
+    register unsigned int* pf = (unsigned int*)PFB(col*8, row*8);
+    register unsigned char h=8;
+
     while(h--)
     {
-        unsigned int w=8;
-
-        while( w-- )
+        //unsigned int w=2;
+        //while( w-- ) // Loop unrolled for 8x8 fonts
         {
-            unsigned char gv = *p_glyph;
-            *pf =  (gv & ctx.fg) | ( ~gv & ctx.bg );
-            ++pf;
-            ++p_glyph;
+            register unsigned int gv = *p_glyph++;
+            *pf++ =  (gv & FG) | ( ~gv & BG );
+            gv = *p_glyph++;
+            *pf++ =  (gv & FG) | ( ~gv & BG );
         }
-        pf += ctx.Pitch-8;
+        pf += stride;
     }
 }

@@ -121,6 +121,7 @@ void video_test()
     unsigned int term_cols, term_rows;
     gfx_get_term_size( &term_rows, &term_cols );
 
+#if 0
     unsigned int t0 = time_microsec();
     for( row=0; row<1000000; ++row )
     {
@@ -129,7 +130,7 @@ void video_test()
     t0 = time_microsec()-t0;
     cout("T: ");cout_d(t0);cout_endl();
     return;
-
+#endif
 
     while(1)
     {
@@ -149,7 +150,7 @@ void video_test()
         }
         ++ch;
         gfx_set_fg( ch );
-        usleep(1000);
+        usleep(10000);
     }
 
 #if 0

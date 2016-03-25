@@ -14,14 +14,28 @@ extern void gfx_get_term_size( unsigned int* rows, unsigned int* cols );
  */
 extern void gfx_clear();
 
+
 /*! 
  * Fills a rectangle with the foreground color 
  */
 extern void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height );
 
+
 /*! 
  * Renders the character "c" at location (x,y)
  */
 extern void gfx_putc( unsigned int row, unsigned int col, unsigned char c );
+
+
+/*! 
+ * Scrolls the entire framebuffer down (adding background color at the bottom)
+ */
+extern void gfx_scroll_down( unsigned int npixels );
+
+
+/*! 
+ * Scrolls the entire framebuffer up (adding background color at the top)
+ */
+extern void gfx_scroll_up( unsigned int npixels );
 
 #endif

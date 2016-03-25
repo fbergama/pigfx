@@ -138,20 +138,35 @@ void video_test()
         col = col+1;
         if( col >= term_cols )
         {
-
+            usleep(50000);
+            col=0;
+            gfx_scroll_up(8);
+        }
+        ++ch;
+        gfx_set_fg( ch );
+    }
+#if 0
+    while(1)
+    {
+        gfx_putc(row,col,ch);
+        col = col+1;
+        if( col >= term_cols )
+        {
+            usleep(50000);
             col=0;
             row++;
-            if( row > term_rows )
+            if( row >= term_rows )
             {
-                row=0;
-                gfx_clear();
+                row=term_rows-1;
+                gfx_scroll_down(8);
+                //gfx_clear();
             }
 
         }
         ++ch;
         gfx_set_fg( ch );
-        usleep(10000);
     }
+#endif
 
 #if 0
     while(1)

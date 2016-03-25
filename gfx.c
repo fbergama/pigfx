@@ -69,6 +69,38 @@ void gfx_clear()
 }
 
 
+void gfx_scroll_down( unsigned int npixels )
+{
+    unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.Pitch*npixels);
+    unsigned int* pf_dst = (unsigned int*)ctx.pfb;
+    const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb + ctx.size );
+
+    while( pf_src < pfb_end )
+        *pf_dst++ = *pf_src++;
+
+    // Fill with bg at the bottom
+    const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    while( pf_dst < pfb_end )
+        *pf_dst++ = BG;
+}
+
+
+void gfx_scroll_up( unsigned int npixels )
+{
+    unsigned int* pf_dst = (unsigned int*)( ctx.pfb + ctx.size ) -1;
+    unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.size - ctx.Pitch*npixels) -1;
+    const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb );
+
+    while( pf_src >= pfb_end )
+        *pf_dst-- = *pf_src--;
+    
+    // Fill with bg at the top
+    const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    while( pf_dst >= pfb_end )
+        *pf_dst-- = BG;
+}
+
+
 void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
     if( x >= ctx.W || y >= ctx.H )

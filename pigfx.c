@@ -104,10 +104,8 @@ void initialize_framebuffer()
     cout("virtual fb size: "); cout_d(v_w); cout("x"); cout_d(v_h); cout_endl();
 #endif
 
-    usleep(10000);
+    usleep(1000);
     gfx_set_env( p_fb, v_w, v_h, pitch, fbsize ); 
-    gfx_set_bg( 0 );
-    gfx_set_fg( 11 );
     gfx_clear();
 }
 
@@ -138,12 +136,12 @@ void video_test()
         col = col+1;
         if( col >= term_cols )
         {
-            usleep(50000);
+            usleep(500000);
             col=0;
             gfx_scroll_up(8);
         }
         ++ch;
-        gfx_set_fg( ch );
+        //gfx_set_fg( ch );
     }
 #if 0
     while(1)
@@ -181,6 +179,27 @@ void video_test()
 }
 
 
+void term_main_loop()
+{
+    unsigned char buff[16];
+    while(1)
+    {
+        unsigned char* pb = buff;
+        while( uart_poll() && (pb-buff)<14 )
+        {
+            unsigned int ch = uart_read_byte();
+            //cout_h( ch ); cout_endl();
+            if( ch>0 )
+            {
+                *pb++ = (unsigned char)ch;
+            }
+        }
+        *pb=0;
+        gfx_term_putstring( buff );
+        usleep(100000);
+    }
+}
+
 
 void entry_point()
 {
@@ -188,5 +207,6 @@ void entry_point()
     heartbeat_init();
     //heartbeat_loop();
     initialize_framebuffer();
-    video_test();
+    //video_test();
+    term_main_loop();
 }

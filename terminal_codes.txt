@@ -1,0 +1,23 @@
+
+
+<ESC>[?25l          Cursor invisible
+<ESC>[?25h          Cursor visible
+<ESC>[H             Move to 0-0
+<ESC>[s             Save the cursor position 
+<ESC>[u             Move cursor to previously saved position 
+
+<ESC>[<Row>;<Col>H  Move to <Row>,<Col>
+<ESC>[0K            Clear from cursor to the end of the line
+<ESC>[1K            Clear from the beginning of the current line to the cursor 
+<ESC>[2K            Clear the whole line 
+<ESC>[2J            Clear the screen and move the cursor to 0-0 
+<ESC>[<n>A          Move the cursor up <n> lines
+<ESC>[<n>B          Move the cursor down <n> lines
+<ESC>[<n>C          Move the cursor forward <n> characters
+<ESC>[<n>D          Move the cursor backward <n> characters
+
+<ESC>[0m            Reset color attributes (white on black) 
+<ESC>[38;5;<n>m     Set foreground color to <n> (0-255) 
+<ESC>[48;5;<n>m     Set background color to <n> (0-255) 
+
+

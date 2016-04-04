@@ -6,6 +6,7 @@ COPS = -Wall -O0 -g -nostdlib -nostartfiles -ffreestanding
 OBJS = asm.o pigfx.o uart.o utils.o timer.o framebuffer.o postman.o console.o gfx.o binary_assets.o
 
 all: pigfx.elf pigfx.hex pigfx.img 
+	ctags .
 
 run: pigfx.elf
 	./launch_qemu.bash
@@ -37,3 +38,4 @@ pigfx.elf : $(OBJS)
 	rm -f *.elf
 	rm -f *.img
 	rm -f *.dump
+	rm -f tags

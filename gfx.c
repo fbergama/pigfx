@@ -6,7 +6,26 @@ static unsigned char* FNT = &G_FONT_GLYPHS;
 
 
 #define MIN( v1, v2 ) ( v1 < v2 ? v1 : v2 )
+#define MAX( v1, v2 ) ( v1 >= v2 ? v1 : v2 )
 #define PFB( X, Y ) ( ctx.pfb + Y*ctx.Pitch + X )
+
+typedef struct SCN_STATE
+{
+    //state_fun* next;
+    void (*next)( char ch, struct SCN_STATE *state );
+    void (*after_read_digit)( char ch, struct SCN_STATE *state );
+
+    unsigned int cmd_params[10];
+    unsigned int cmd_params_size;
+    char private_mode_char;
+} scn_state;
+
+/* state forward declarations */
+typedef void state_fun( char ch, scn_state *state );
+void state_fun_normaltext( char ch, scn_state *state );
+void state_fun_read_digit( char ch, scn_state *state );
+
+
 
 typedef struct {
     unsigned int W;
@@ -15,16 +34,30 @@ typedef struct {
     unsigned int size;
     unsigned char* pfb;
 
-    unsigned int term_w;
-    unsigned int term_h;
+    struct 
+    {
+        unsigned int WIDTH;
+        unsigned int HEIGHT;
+        unsigned int cursor_row;
+        unsigned int cursor_col;
+        unsigned int saved_cursor[2];
+        char cursor_visible;
+
+        scn_state state;
+    } term;
 
     GFX_COL bg;
     GFX_COL fg;
+
+    unsigned int cursor_buffer[16];
 
 } FRAMEBUFFER_CTX;
 
 
 static FRAMEBUFFER_CTX ctx;
+
+
+void gfx_term_render_cursor();
 
 
 
@@ -36,8 +69,15 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     ctx.Pitch = pitch;
     ctx.size = size;
 
-    ctx.term_w = ctx.W / 8;
-    ctx.term_h = ctx.H / 8;
+    ctx.term.WIDTH = ctx.W / 8;
+    ctx.term.HEIGHT= ctx.H / 8;
+    ctx.term.cursor_row = ctx.term.cursor_col = 0;
+    ctx.term.cursor_visible = 1;
+    ctx.term.state.next = state_fun_normaltext;
+
+    ctx.bg = 0;
+    ctx.fg = 15;
+    gfx_term_render_cursor();
 }
 
 
@@ -53,10 +93,17 @@ void gfx_set_fg( GFX_COL col )
 }
 
 
+void gfx_swap_fg_bg()
+{
+    GFX_COL aux = ctx.fg;
+    ctx.fg = ctx.bg;
+    ctx.bg = aux;
+}
+
 void gfx_get_term_size( unsigned int* rows, unsigned int* cols )
 {
-    *rows = ctx.term_h;
-    *cols = ctx.term_w;
+    *rows = ctx.term.HEIGHT;
+    *cols = ctx.term.WIDTH;
 }
 
 
@@ -125,12 +172,20 @@ void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned
     }
 }
 
+void gfx_clear_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
+{
+    GFX_COL curr_fg = ctx.fg;
+    ctx.fg = ctx.bg;
+    gfx_fill_rect(x,y,width,height);
+    ctx.fg = curr_fg;
+}
+
 void gfx_putc( unsigned int row, unsigned int col, unsigned char c )
 {
-    if( col >= ctx.term_w )
+    if( col >= ctx.term.WIDTH )
         return;
 
-    if( row >= ctx.term_h )
+    if( row >= ctx.term.HEIGHT )
         return;
 
     const unsigned int FG = ctx.fg<<24 | ctx.fg<<16 | ctx.fg<<8 | ctx.fg;
@@ -153,4 +208,412 @@ void gfx_putc( unsigned int row, unsigned int col, unsigned char c )
         }
         pf += stride;
     }
+}
+
+
+
+
+/*
+ * Terminal functions
+ *
+ */
+
+void gfx_restore_cursor_content()
+{
+    // Restore framebuffer content that was overwritten by the cursor
+    unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
+    unsigned int* pfb = (unsigned int*)PFB( ctx.term.cursor_col*8, ctx.term.cursor_row*8 );
+    const unsigned int stride = (ctx.Pitch>>2) - 2;
+    unsigned int h=8;
+    while(h--)
+    {
+        *pfb++ = *pb++;
+        *pfb++ = *pb++;
+        pfb+=stride;
+    }
+    //cout("cursor restored");cout_d(ctx.term.cursor_row);cout("-");cout_d(ctx.term.cursor_col);cout_endl();
+}
+
+void gfx_term_render_cursor()
+{
+    // Save framebuffer content that is going to be replaced by the cursor
+    unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
+    unsigned int* pfb = (unsigned int*)PFB( ctx.term.cursor_col*8, ctx.term.cursor_row*8 );
+    const unsigned int stride = (ctx.Pitch>>2) - 2;
+    unsigned int h=8;
+    while(h--)
+    {
+        *pb++ = *pfb++;
+        *pb++ = *pfb++;
+        pfb+=stride;
+    }
+    //cout("cursor saved");cout_d(ctx.term.cursor_row);cout("-");cout_d(ctx.term.cursor_col);cout_endl();
+    
+    // render cursor
+    pfb = (unsigned int*)PFB( ctx.term.cursor_col*8, ctx.term.cursor_row*8 );
+    h=8;
+    while(h--)
+    {
+        *pfb = ~*pfb;
+        pfb++;
+        *pfb = ~*pfb;
+        pfb++;
+        pfb+=stride;
+    }
+}
+
+
+void gfx_term_putstring( unsigned char* str )
+{
+    while( *str )
+    {
+        switch( *str )
+        {
+            case 0xD:
+                /* newline */
+                gfx_restore_cursor_content();
+                ++ctx.term.cursor_row;
+                ctx.term.cursor_col = 0;
+                gfx_term_render_cursor();
+                break;
+
+            case 0x09: /* tab */
+                gfx_restore_cursor_content();
+                ctx.term.cursor_col += 1;
+                ctx.term.cursor_col =  MIN( ctx.term.cursor_col + 8 - ctx.term.cursor_col%8, ctx.term.WIDTH-1 );
+                gfx_term_render_cursor();
+                break;
+
+
+            case 0x7F:
+                /* backspace */
+                if( ctx.term.cursor_col>0 )
+                {
+                    gfx_clear_rect( ctx.term.cursor_col*8, ctx.term.cursor_row*8, 8, 8 );
+                    --ctx.term.cursor_col;
+                }
+                gfx_term_render_cursor();
+                break;
+
+
+            default:
+                /*
+                gfx_putc( ctx.term.cursor_row, ctx.term.cursor_col, *str );
+                ++ctx.term.cursor_col;
+                gfx_term_render_cursor();
+                */
+                ctx.term.state.next( *str, &(ctx.term.state) );
+                break;
+        }
+
+        if( ctx.term.cursor_col >= ctx.term.WIDTH )
+        {
+            gfx_restore_cursor_content();
+            ++ctx.term.cursor_row;
+            ctx.term.cursor_col = 0;
+            gfx_term_render_cursor();
+        }
+
+        if( ctx.term.cursor_row >= ctx.term.HEIGHT )
+        {
+            gfx_restore_cursor_content();
+            --ctx.term.cursor_row;
+            gfx_scroll_down(8);
+            gfx_term_render_cursor();
+        }
+
+        ++str;
+    }
+}
+
+
+
+void gfx_term_set_cursor_visibility( unsigned char visible )
+{
+    ctx.term.cursor_visible = visible;
+}
+
+void gfx_term_move_cursor( unsigned int row, unsigned int col )
+{
+    gfx_restore_cursor_content();
+    ctx.term.cursor_row = MIN( ctx.term.HEIGHT-1, row );
+    ctx.term.cursor_col = MIN( ctx.term.WIDTH-1, col );
+
+    gfx_term_render_cursor();
+}
+
+void gfx_term_move_cursor_d( int delta_row, int delta_col )
+{
+    if( (int)ctx.term.cursor_col+delta_col < 0 )
+        delta_col = 0;
+
+    if( (int)ctx.term.cursor_row+delta_row < 0 )
+        delta_row = 0;
+    gfx_term_move_cursor( ctx.term.cursor_row+delta_row, ctx.term.cursor_col+delta_col );
+}
+
+void gfx_term_save_cursor()
+{
+    ctx.term.saved_cursor[0] = ctx.term.cursor_row;
+    ctx.term.saved_cursor[1] = ctx.term.cursor_col;
+}
+
+void gfx_term_restore_cursor()
+{
+    gfx_restore_cursor_content();
+    ctx.term.cursor_row = ctx.term.saved_cursor[0];
+    ctx.term.cursor_col = ctx.term.saved_cursor[1];
+    gfx_term_render_cursor();
+}
+
+void gfx_term_clear_till_end()
+{
+    gfx_swap_fg_bg();
+    gfx_fill_rect( (ctx.term.cursor_col+1) * 8, ctx.term.cursor_row*8, ctx.W, 8 );
+    gfx_swap_fg_bg();
+}
+
+void gfx_term_clear_till_cursor()
+{
+    gfx_swap_fg_bg();
+    gfx_fill_rect( 0, ctx.term.cursor_row*8, ctx.term.cursor_col*8, 8 );
+    gfx_swap_fg_bg();
+}
+
+void gfx_term_clear_line()
+{
+    gfx_swap_fg_bg();
+    gfx_fill_rect( 0, ctx.term.cursor_row*8, ctx.W, 8 );
+    gfx_swap_fg_bg();
+    gfx_term_render_cursor();
+}
+
+void gfx_term_clear_screen()
+{
+    gfx_clear();
+    gfx_term_render_cursor();
+}
+
+
+/*
+ *  Term ansii codes scanner
+ *
+ */
+#define TERM_ESCAPE_CHAR (0x1B)
+
+
+/*
+ * State implementations
+ */
+
+void state_fun_final_letter( char ch, scn_state *state )
+{
+    switch( ch )
+    {
+        case 'l':
+            if( state->private_mode_char == '?' && 
+                state->cmd_params_size == 1 &&
+                state->cmd_params[0] == 25 )
+            {
+                gfx_term_set_cursor_visibility(0);
+            }
+            goto back_to_normal;
+            break;
+
+        case 'h':
+            if( state->private_mode_char == '?' && 
+                state->cmd_params_size == 1 &&
+                state->cmd_params[0] == 25 )
+            {
+                gfx_term_set_cursor_visibility(1);
+            }
+            goto back_to_normal;
+            break;
+
+        case 'K':
+            if( state->cmd_params_size== 1 )
+            {
+                switch(state->cmd_params[0] )
+                {
+                    case 0:
+                        gfx_term_clear_till_end();
+                        goto back_to_normal;
+                    case 1:
+                        gfx_term_clear_till_cursor();
+                        goto back_to_normal;
+                    case 2:
+                        gfx_term_clear_line();
+                        goto back_to_normal;
+                    default:
+                        goto back_to_normal;
+                }
+            }
+            goto back_to_normal;
+            break;
+        
+        case 'J':
+            if( state->cmd_params_size==1 && state->cmd_params[0] ==2 )
+            {
+                gfx_term_clear_screen();
+                gfx_term_move_cursor(0,0);
+            }
+            goto back_to_normal;
+            break;
+
+        case 'A':
+            //if( state->cmd_params_size == 1 )
+                gfx_term_move_cursor_d( -state->cmd_params[0], 0 );
+
+            goto back_to_normal;
+            break;
+
+        case 'B':
+            //if( state->cmd_params_size == 1 )
+                gfx_term_move_cursor_d( state->cmd_params[0], 0 );
+
+            goto back_to_normal;
+            break;
+
+        case 'C':
+            //if( state->cmd_params_size == 1 )
+                gfx_term_move_cursor_d( 0, state->cmd_params[0] );
+
+            goto back_to_normal;
+            break;
+
+        case 'D':
+            //if( state->cmd_params_size == 1 )
+                gfx_term_move_cursor_d( 0, -state->cmd_params[0] );
+
+            goto back_to_normal;
+            break;
+
+        case 'm':
+            if( state->cmd_params_size == 1 && state->cmd_params[0]==0 )
+            {
+                gfx_set_bg(0);
+                gfx_set_fg(15);
+                goto back_to_normal;
+            }
+            if( state->cmd_params_size == 3 &&
+                state->cmd_params[0]==38    &&
+                state->cmd_params[1]==5 )
+            {
+                gfx_set_fg( state->cmd_params[2] );
+                goto back_to_normal;
+            }
+            if( state->cmd_params_size == 3 &&
+                state->cmd_params[0]==48    &&
+                state->cmd_params[1]==5 )
+            {
+                gfx_set_bg( state->cmd_params[2] );
+                goto back_to_normal;
+            }
+            goto back_to_normal;
+            break;
+
+        case 'H':
+            if( state->cmd_params_size == 2 )
+            {
+                gfx_term_move_cursor( state->cmd_params[0], state->cmd_params[1]);
+            }
+            else
+                gfx_term_move_cursor(0,0);
+            goto back_to_normal;
+            break;
+
+        case 's':
+            gfx_term_save_cursor();
+            goto back_to_normal;
+            break;
+
+        case 'u':
+            gfx_term_restore_cursor();
+            goto back_to_normal;
+            break;
+
+        default:
+            goto back_to_normal;
+    }
+
+back_to_normal:
+    // go back to normal text
+    state->cmd_params_size = 0;
+    state->next = state_fun_normaltext;
+}
+
+void state_fun_read_digit( char ch, scn_state *state )
+{
+    if( ch>='0' && ch <= '9' )
+    {
+        // parse digit
+        state->cmd_params[ state->cmd_params_size - 1] = state->cmd_params[ state->cmd_params_size - 1]*10 + (ch-'0');
+        state->next = state_fun_read_digit; // stay on this state
+        return;
+    }
+    
+    if( ch == ';' )
+    {
+        // Another param will follow
+        state->cmd_params_size++;
+        state->cmd_params[ state->cmd_params_size-1 ] = 0;
+        state->next = state_fun_read_digit; // stay on this state
+        return;
+    }
+
+    // not a digit, call the final state
+    state_fun_final_letter( ch, state );
+}
+
+void state_fun_selectescape( char ch, scn_state *state )
+{
+    if( ch>='0' && ch<='9' )
+    {
+        // start of a digit
+        state->cmd_params_size = 1;
+        state->cmd_params[ 0 ] = ch-'0';
+        state->next = state_fun_read_digit;
+        return;
+    } 
+    else
+    {
+        if( ch=='?' )
+        {
+            state->private_mode_char = ch;
+
+            // A digit will follow
+            state->cmd_params_size = 0;
+            state->next = state_fun_read_digit;
+            return;
+        }
+    } 
+
+    // Already at the final letter
+    state_fun_final_letter( ch, state );
+
+}
+
+void state_fun_waitsquarebracket( char ch, scn_state *state )
+{
+    if( ch=='[' )
+    {
+        state->cmd_params[0]=1;
+        state->next = state_fun_selectescape;
+        return;
+    }
+
+    state->next = state_fun_normaltext;
+}
+
+void state_fun_normaltext( char ch, scn_state *state )
+{
+    if( ch==TERM_ESCAPE_CHAR )
+    {
+        state->next = state_fun_waitsquarebracket;
+        return;
+    }
+
+    gfx_putc( ctx.term.cursor_row, ctx.term.cursor_col, ch );
+    ++ctx.term.cursor_col;
+    gfx_term_render_cursor();
 }

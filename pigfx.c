@@ -9,6 +9,7 @@
 #define GPSET0  0x2020001C
 #define GPCLR0  0x20200028
 
+unsigned int led_status;
 
 void heartbeat_init()
 {
@@ -17,12 +18,13 @@ void heartbeat_init()
     ra&=~(7<<18);
     ra|=1<<18;
     W32(GPFSEL1,ra);
+
+    led_status=0;
 }
 
 void heartbeat_loop()
 {
     unsigned int last_time = 0;
-    unsigned int led_status = 0;
     unsigned int curr_time;
 
     while(1)
@@ -41,7 +43,7 @@ void heartbeat_loop()
         curr_time = time_microsec();
         if( curr_time-last_time > 500000 )
         {
-            uart_write_str("B");
+            uart_write_str("AAA");
             if( led_status )
             {
                 W32(GPCLR0,1<<16);
@@ -59,8 +61,8 @@ void heartbeat_loop()
 
 void initialize_framebuffer()
 {
-    uart_write_str("Initializing video..");
-    usleep(1000000);
+    //uart_write_str("Initializing video..");
+    usleep(500000);
     fb_release();
 
     unsigned char* p_fb=0;
@@ -79,32 +81,19 @@ void initialize_framebuffer()
              &fbsize, 
              &pitch );
 
-    //fb_set_grayscale_palette();
     fb_set_xterm_palette();
 
-    cout("fb addr: ");cout_h((unsigned int)p_fb);cout_endl();
-    cout("fb size: ");cout_d((unsigned int)fbsize);cout(" bytes");cout_endl();
-    cout("  pitch: ");cout_d((unsigned int)pitch);cout_endl();
+    //cout("fb addr: ");cout_h((unsigned int)p_fb);cout_endl();
+    //cout("fb size: ");cout_d((unsigned int)fbsize);cout(" bytes");cout_endl();
+    //cout("  pitch: ");cout_d((unsigned int)pitch);cout_endl();
 
     if( fb_get_phisical_buffer_size( &p_w, &p_h ) != FB_SUCCESS )
     {
         cout("fb_get_phisical_buffer_size error");cout_endl();
     }
-    cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
+    //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
 
-
-#if 0
-    v_w=300;
-    v_h=400;
-    fb_set_virtual_buffer_size( &v_w, &v_h );
-    if( fb_get_virtual_buffer_size( &v_w, &v_h ) != FB_SUCCESS )
-    {
-        cout("fb_get_virtual_buffer_size error");cout_endl();
-    }
-    cout("virtual fb size: "); cout_d(v_w); cout("x"); cout_d(v_h); cout_endl();
-#endif
-
-    usleep(1000);
+    usleep(500000);
     gfx_set_env( p_fb, v_w, v_h, pitch, fbsize ); 
     gfx_clear();
 }
@@ -181,7 +170,15 @@ void video_test()
 
 void term_main_loop()
 {
-    unsigned char buff[16];
+    unsigned char buff[16] = {0x1B,'[','2','J',0};
+    gfx_term_putstring( buff );
+    gfx_term_putstring( (unsigned char*)"\x1B[30;35HPIGFX Ready!" );
+
+    while( !uart_poll() )
+        usleep(100000 );
+
+    gfx_term_putstring( buff );
+
     while(1)
     {
         unsigned char* pb = buff;
@@ -196,6 +193,17 @@ void term_main_loop()
         }
         *pb=0;
         gfx_term_putstring( buff );
+
+        if( led_status )
+        {
+            W32(GPCLR0,1<<16);
+            led_status = 0;
+        } else
+        {
+            W32(GPSET0,1<<16);
+            led_status = 1;
+        }
+
         usleep(100000);
     }
 }

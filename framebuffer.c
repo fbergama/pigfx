@@ -1,3 +1,4 @@
+
 #include "framebuffer.h"
 #include "postman.h"
 #include "console.H"
@@ -61,6 +62,14 @@ static const unsigned int xterm_colors[256] = {
 
 
 
+/*
+ * Framebuffer initialization is a modifided version 
+ * of the code originally written by brianwiddas.
+ *
+ * See:
+ * https://github.com/brianwiddas/pi-baremetal.git
+ *
+ */
 FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w, unsigned int vrt_h,
                         unsigned int bpp, void** pp_fb, unsigned int* pfbsize, unsigned int* pPitch )
 {
@@ -101,7 +110,9 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
     unsigned int display_w = mailbuffer[5];
     unsigned int display_h = mailbuffer[6];
 
+#ifdef FRAMEBUFFER_DEBUG
     cout("Display size: ");cout_d(display_w);cout("x");cout_d(display_h);cout_endl();
+#endif
 
     /* Set up screen */
     unsigned int c = 1;
@@ -153,9 +164,9 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
             break;
 
         /* Skip to next tag
-         *       * Advance count by 1 (tag) + 2 (buffer size/value size)
-         *               *                          + specified buffer size
-         *                      */
+         * Advance count by 1 (tag) + 2 (buffer size/value size)
+         *                          + specified buffer size
+         */
         count += 3+(mailbuffer[count+1]>>2);
 
         if(count>c)
@@ -177,8 +188,11 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
      *   * screenbase needs to be the screen address in virtual memory
      *       */
     *pp_fb = (void*)mem_p2v(physical_screenbase);
+
+#ifdef FRAMEBUFFER_DEBUG
     cout("Screen addr: ");cout_h((unsigned int)*pp_fb); cout_endl();
     cout("Screen size: ");cout_d(*pfbsize); cout_endl();
+#endif
 
     /* Get the framebuffer pitch (bytes per line) */
     mailbuffer[0] = 7 * 4;      // Total size
@@ -204,7 +218,10 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
     if( *pPitch == 0 )
         return FB_INVALID_PITCH;
 
+#ifdef FRAMEBUFFER_DEBUG
     cout("pitch: "); cout_d(*pPitch); cout_endl();
+#endif
+
     return FB_SUCCESS;
 }
 
@@ -253,7 +270,7 @@ FB_RETURN_TYPE fb_set_grayscale_palette()
     pBuffData[off++] = 0;           // Request 
     pBuffData[off++] = 0x0004800B;  // Tag: blank
     pBuffData[off++] = 4;           // response buffer size in bytes
-    pBuffData[off++] = 1032;           // request size
+    pBuffData[off++] = 1032;        // request size
     pBuffData[off++] = 0;           // first palette index
     pBuffData[off++] = 256;         // num entries 
 

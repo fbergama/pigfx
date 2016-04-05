@@ -2,6 +2,7 @@
 #define _FRAMEBUFFER_H_
 
 
+//#define FRAMEBUFFER_DEBUG
 
 
 typedef enum {
@@ -13,6 +14,7 @@ FB_FRAMEBUFFER_SETUP_FAIL = 0x4,
 FB_INVALID_TAG_DATA       = 0x5,
 FB_INVALID_PITCH          = 0x6
 } FB_RETURN_TYPE;
+
 
 
 extern FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w, unsigned int vrt_h,

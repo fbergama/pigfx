@@ -111,8 +111,8 @@ void gfx_clear()
 {
     unsigned char* pf = ctx.pfb;
     unsigned char* pfb_end = pf + ctx.size;
-    while(pf++ < pfb_end)
-        *pf = ctx.bg;
+    while(pf < pfb_end)
+        *pf++ = ctx.bg;
 }
 
 

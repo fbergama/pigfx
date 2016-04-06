@@ -1,6 +1,8 @@
 # PiGFX 
 ## Raspberry Pi graphics card / ANSI terminal emulator
 
+<img src="doc/scr1.png" width="40%" /> <img src="doc/scr2.png" width="40%" />
+
 PiGFX is a bare metal code for the Raspberry Pi that implements a basic ANSI
 terminal emulator and some primitive graphics functions. It can be driven by
 pushing characters to the raspi UART with a basic support for ANSI escape codes
@@ -64,9 +66,7 @@ Pin   | Function
 10    | UART Rx0 (GPIO 15). Connect this pin to your device transmit pin.
 
 
-* Note * Please be aware that all Raspberry Pi models accept levels between 0
-  and +3.3V. Be sure to provide an appropriate level shifter to match your
-output.
+***Note: Please be aware that all Raspberry Pi models accept levels between 0 and +3.3V. Be sure to provide an appropriate level shifter to match your output***
 
 UART communication expects a baud rate of 115200 baud, 8 bit data, 1 bit
 stop and no parity.
@@ -79,27 +79,27 @@ behaviour
 
 Code                  | Command
 ---                   | ---
-| _ESC_[?25l          | Cursor invisible
-| _ESC_[?25h          | Cursor visible
-| _ESC_[H             | Move to 0-0
-| _ESC_[s             | Save the cursor position 
-| _ESC_[u             | Move cursor to previously saved position 
-| _ESC_[_Row_;_Col_H  | Move to _Row_,_Col_
-| _ESC_[0K            | Clear from cursor to the end of the line
-| _ESC_[1K            | Clear from the beginning of the current line to the cursor 
-| _ESC_[2K            | Clear the whole line 
-| _ESC_[2J            | Clear the screen and move the cursor to 0-0 
-| _ESC_[_n_A          | Move the cursor up _n_ lines
-| _ESC_[_n_B          | Move the cursor down _n_ lines
-| _ESC_[_n_C          | Move the cursor forward _n_ characters
-| _ESC_[_n_D          | Move the cursor backward _n_ characters
-| _ESC_[0m            | Reset color attributes (white on black) 
-| _ESC_[38;5;_n_m     | Set foreground color to _n_ (0-255) 
-| _ESC_[48;5;_n_m     | Set background color to _n_ (0-255) 
+| \ESC[?25l          | Cursor invisible
+| \ESC[?25h          | Cursor visible
+| \ESC[H             | Move to 0-0
+| \ESC[s             | Save the cursor position 
+| \ESC[u             | Move cursor to previously saved position 
+| \ESC[-Row-;-Col-H    | Move to -Row-,-Col-
+| \ESC[0K            | Clear from cursor to the end of the line
+| \ESC[1K            | Clear from the beginning of the current line to the cursor 
+| \ESC[2K            | Clear the whole line 
+| \ESC[2J            | Clear the screen and move the cursor to 0-0 
+| \ESC[-n-A          | Move the cursor up -n- lines
+| \ESC[-n-B          | Move the cursor down -n- lines
+| \ESC[-n-C          | Move the cursor forward -n- characters
+| \ESC[-n-D          | Move the cursor backward -n- characters
+| \ESC[0m            | Reset color attributes (white on black) 
+| \ESC[38;5;-n-m     | Set foreground color to -n- (0-255) 
+| \ESC[48;5;-n-m     | Set background color to -n- (0-255) 
 
 
-Where ```_ESC_``` is the binary character ```0x1B``` and ```_n_```,
-```_Row_```, ```_Col_``` is any sequence of numeric characters like ```123```.
+Where ```\ESC``` is the binary character ```0x1B``` and ```-n-```,
+```-Row-```, ```-Col-``` is any sequence of numeric characters like ```123```.
 
 See [Here](https://en.wikipedia.org/wiki/File:Xterm_256color_chart.svg) for a
 reference of the provided xterm color palette.

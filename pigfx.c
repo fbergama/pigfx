@@ -125,12 +125,12 @@ void video_test()
         col = col+1;
         if( col >= term_cols )
         {
-            usleep(500000);
+            usleep(100000);
             col=0;
             gfx_scroll_up(8);
         }
         ++ch;
-        //gfx_set_fg( ch );
+        gfx_set_fg( ch );
     }
 #if 0
     while(1)
@@ -179,6 +179,7 @@ void term_main_loop()
 
     gfx_term_putstring( buff );
 
+    unsigned int t0 = time_microsec();
     while(1)
     {
         unsigned char* pb = buff;
@@ -191,20 +192,24 @@ void term_main_loop()
                 *pb++ = (unsigned char)ch;
             }
         }
+
         *pb=0;
         gfx_term_putstring( buff );
 
-        if( led_status )
+        if( time_microsec()-t0 > 500000 )
         {
-            W32(GPCLR0,1<<16);
-            led_status = 0;
-        } else
-        {
-            W32(GPSET0,1<<16);
-            led_status = 1;
+            if( led_status )
+            {
+                W32(GPCLR0,1<<16);
+                led_status = 0;
+            } else
+            {
+                W32(GPSET0,1<<16);
+                led_status = 1;
+            }
+            t0 = time_microsec();
         }
 
-        usleep(100000);
     }
 }
 

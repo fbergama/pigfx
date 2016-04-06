@@ -12,7 +12,7 @@ run: pigfx.elf
 	./launch_qemu.bash
 
 kernel: pigfx.img
-	cp pigfx.img kernel.img
+	cp pigfx.img bin/kernel.img
 
 %.o : %.c 
 	$(ARMGNU)-gcc $(COPS) -c $< -o $@

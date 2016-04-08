@@ -27,7 +27,7 @@ expect that more functionalities will be added from time to time.
 Here is a preliminary TODO list of what I plan to add in the future:
 
 - Add some graphics primitives like lines/circles/rectangles etc. (I know, this
-  is mentioned in the title but not implemented yet)
+  is mentioned in the title but not fully implemented yet)
 - Add support for USB or Ps2 keyboard
 - Let the resolution being configurable without recompiling
 - Implement double buffering
@@ -103,6 +103,15 @@ Code                  | Command
 
 Where ```\ESC``` is the binary character ```0x1B``` and ```-n-```,
 ```-Row-```, ```-Col-``` is any sequence of numeric characters like ```123```.
+
+Additionally, PiGFX implements the following custom codes:
+
+
+Code                                    | Command
+---                                     | ---
+| \ESC[?#-x0-;-y0-;-x1-;-y1-l           | Draw a line from x0;y0 to x1;y1
+
+
 
 See [Here](https://en.wikipedia.org/wiki/File:Xterm_256color_chart.svg) for a
 reference of the provided xterm color palette.

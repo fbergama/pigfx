@@ -5,9 +5,22 @@ extern unsigned char G_FONT_GLYPHS;
 static unsigned char* FNT = &G_FONT_GLYPHS;
 
 
-#define MIN( v1, v2 ) ( v1 < v2 ? v1 : v2 )
-#define MAX( v1, v2 ) ( v1 >= v2 ? v1 : v2 )
+#define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
+#define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2)) 
 #define PFB( X, Y ) ( ctx.pfb + Y*ctx.Pitch + X )
+
+inline void __swap__( int* a, int* b )
+{
+    int aux = *a;
+    *a = *b;
+    *b = aux;
+}
+
+inline int __abs__( int a )
+{
+    return a<0?-a:a;
+}
+
 
 typedef struct SCN_STATE
 {
@@ -179,6 +192,65 @@ void gfx_clear_rect( unsigned int x, unsigned int y, unsigned int width, unsigne
     gfx_fill_rect(x,y,width,height);
     ctx.fg = curr_fg;
 }
+
+void gfx_line( int x0, int y0, int x1, int y1 )
+{
+    x0 = MAX( MIN(x0, (int)ctx.W), 0 );
+    y0 = MAX( MIN(y0, (int)ctx.H), 0 );
+    x1 = MAX( MIN(x1, (int)ctx.W), 0 );
+    y1 = MAX( MIN(y1, (int)ctx.H), 0 );
+
+    unsigned char qrdt = __abs__(y1 - y0) > __abs__(x1 - x0);
+
+    if( qrdt ) {
+        __swap__(&x0, &y0);
+        __swap__(&x1, &y1);
+    }
+    if( x0 > x1 ) {
+        __swap__(&x0, &x1);
+        __swap__(&y0, &y1);
+    }
+
+    const int deltax = x1 - x0;
+    const int deltay = __abs__(y1 - y0);
+    register int error = deltax >> 1;
+    register unsigned char* pfb;
+    unsigned int nr = x1-x0;
+
+    if( qrdt )
+    {
+        const int ystep = y0<y1 ? 1 : -1;
+        pfb = PFB(y0,x0);
+        while(nr--)
+        {
+            *pfb = ctx.fg;
+            error = error - deltay;
+            if( error < 0 ) 
+            {
+                pfb += ystep;
+                error += deltax;
+            }
+            pfb += ctx.Pitch;
+        }
+    }
+    else
+    {
+        const int ystep = y0<y1 ? ctx.Pitch : -ctx.Pitch;
+        pfb = PFB(x0,y0); 
+        while(nr--)
+        {
+            *pfb = ctx.fg;
+            error = error - deltay;
+            if( error < 0 ) 
+            {
+                pfb += ystep;
+                error += deltax;
+            }
+            pfb++;
+        }
+    }
+}
+
 
 void gfx_putc( unsigned int row, unsigned int col, unsigned char c )
 {
@@ -408,6 +480,23 @@ void gfx_term_clear_screen()
 
 void state_fun_final_letter( char ch, scn_state *state )
 {
+    if( state->private_mode_char == '#' )
+    {
+        // Non-standard ANSI Codes
+        switch( ch )
+        {
+            case 'l':
+                /* render line */
+                if( state->cmd_params_size == 4 )
+                {
+                    gfx_line( state->cmd_params[0], state->cmd_params[1], state->cmd_params[2], state->cmd_params[3] );
+                }
+            goto back_to_normal;
+            break;
+        }
+
+    }
+
     switch( ch )
     {
         case 'l':
@@ -577,12 +666,13 @@ void state_fun_selectescape( char ch, scn_state *state )
     } 
     else
     {
-        if( ch=='?' )
+        if( ch=='?' || ch=='#' )
         {
             state->private_mode_char = ch;
 
             // A digit will follow
-            state->cmd_params_size = 0;
+            state->cmd_params_size = 1;
+            state->cmd_params[ 0 ] = 0;
             state->next = state_fun_read_digit;
             return;
         }
@@ -598,6 +688,7 @@ void state_fun_waitsquarebracket( char ch, scn_state *state )
     if( ch=='[' )
     {
         state->cmd_params[0]=1;
+        state->private_mode_char=0; /* reset private mode char */
         state->next = state_fun_selectescape;
         return;
     }

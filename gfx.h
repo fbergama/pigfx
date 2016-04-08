@@ -21,6 +21,10 @@ extern void gfx_clear();
  */
 extern void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height );
 
+/*! 
+ * Renders a line from x0-y0 to x1-y1 
+ */
+extern void gfx_line( int x0, int y0, int x1, int y1 );
 
 /*! 
  * Fills a rectangle with the background color 

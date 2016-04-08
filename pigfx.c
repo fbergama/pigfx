@@ -168,6 +168,59 @@ void video_test()
 }
 
 
+void video_line_test()
+{
+    int x=-10; 
+    int y=-10;
+    int vx=1;
+    int vy=0;
+
+    gfx_set_fg( 15 );
+
+    while(1)
+    {
+        // Render line
+        gfx_line( 320, 240, x, y );
+
+        usleep( 1000 );
+
+        // Clear line
+        gfx_swap_fg_bg();
+        gfx_line( 320, 240, x, y );
+        gfx_swap_fg_bg();
+
+        x = x+vx;
+        y = y+vy;
+        
+        if( x>700 )
+        {
+            x--;
+            vx--;
+            vy++;
+        }
+        if( y>500 )
+        {
+            y--;
+            vx--;
+            vy--;
+        }
+        if( x<-10 )
+        {
+            x++;
+            vx++;
+            vy--;
+        }
+        if( y<-10 )
+        {
+            y++;
+            vx++;
+            vy++;
+        }
+
+    }
+}
+
+
 void term_main_loop()
 {
     unsigned char buff[16] = {0x1B,'[','2','J',0};
@@ -221,5 +274,6 @@ void entry_point()
     //heartbeat_loop();
     initialize_framebuffer();
     //video_test();
+    //video_line_test();
     term_main_loop();
 }

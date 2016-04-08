@@ -107,9 +107,10 @@ Where ```\ESC``` is the binary character ```0x1B``` and ```-n-```,
 Additionally, PiGFX implements the following custom codes:
 
 
-Code                                    | Command
----                                     | ---
-| \ESC[?#-x0-;-y0-;-x1-;-y1-l           | Draw a line from x0;y0 to x1;y1
+Code                              | Command
+---                               | ---
+| \ESC[?#-x0-;-y0-;-x1-;-y1-l     | Draw a line from -x0-;-y0- to -x1-;-y1-
+| \ESC[?#-x0-;-y0-;-x1-;-y1-r     | Fill a rectangle with top-left corner at -x0-;-y0- and bottom-right at -x1-;-y1-
 
 
 

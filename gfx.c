@@ -493,6 +493,14 @@ void state_fun_final_letter( char ch, scn_state *state )
                 }
             goto back_to_normal;
             break;
+            case 'r':
+                /* render a filled rectangle */
+                if( state->cmd_params_size == 4 )
+                {
+                    gfx_fill_rect( state->cmd_params[0], state->cmd_params[1], state->cmd_params[2], state->cmd_params[3] );
+                }
+            goto back_to_normal;
+            break;
         }
 
     }

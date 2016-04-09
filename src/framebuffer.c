@@ -107,10 +107,11 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
     if(mailbuffer[1] != 0x80000000)
         return FB_GET_DISPLAY_SIZE_FAIL;
 
-    unsigned int display_w = mailbuffer[5];
-    unsigned int display_h = mailbuffer[6];
 
 #ifdef FRAMEBUFFER_DEBUG
+zsh:1: command not found: xclip
+    unsigned int display_w = mailbuffer[5];
+    unsigned int display_h = mailbuffer[6];
     cout("Display size: ");cout_d(display_w);cout("x");cout_d(display_h);cout_endl();
 #endif
 

@@ -100,8 +100,6 @@ void initialize_framebuffer()
 
 void video_test()
 {
-    //gfx_fill_rect( 100, 100, 8, 8);
-    //
     unsigned char ch='A';
     unsigned int row=0;
     unsigned int col=0;
@@ -118,7 +116,7 @@ void video_test()
     cout("T: ");cout_d(t0);cout_endl();
     return;
 #endif
-
+#if 0
     while(1)
     {
         gfx_putc(row,col,ch);
@@ -132,7 +130,8 @@ void video_test()
         ++ch;
         gfx_set_fg( ch );
     }
-#if 0
+#endif
+#if 1
     while(1)
     {
         gfx_putc(row,col,ch);

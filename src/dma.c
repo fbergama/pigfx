@@ -68,6 +68,13 @@ void dma_execute_queue()
 }
 
 
+int dma_running()
+{
+    unsigned int channel = 0;
+    return *( (volatile unsigned int*)DMA_BASE + (channel << 6) + DMA_CS_OFFSET  ) &  0x1;
+}
+
+
 void dma_memcpy_32( unsigned int* src, unsigned int *dst, unsigned int size )
 {
     dma_enqueue_operation( src, dst, size, 0, DMA_TI_SRC_INC | DMA_TI_DEST_INC ); 

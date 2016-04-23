@@ -14,5 +14,6 @@ void dma_init();
 int dma_enqueue_operation( unsigned int* src, unsigned int *dst, unsigned int len, unsigned int stride, unsigned int TRANSFER_INFO );   
 void dma_execute_queue();
 void dma_memcpy_32( unsigned int* src, unsigned int *dst, unsigned int size );
+int dma_running();
 
 #endif

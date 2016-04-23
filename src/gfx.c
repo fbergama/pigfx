@@ -416,6 +416,8 @@ void gfx_term_putstring( unsigned char* str )
 {
     while( *str )
     {
+        while( dma_running() ); // Busy wait for DMA
+
         switch( *str )
         {
             case 0xD:
@@ -437,10 +439,11 @@ void gfx_term_putstring( unsigned char* str )
                 /* backspace */
                 if( ctx.term.cursor_col>0 )
                 {
-                    gfx_clear_rect( ctx.term.cursor_col*8, ctx.term.cursor_row*8, 8, 8 );
+                    gfx_restore_cursor_content();
                     --ctx.term.cursor_col;
+                    gfx_clear_rect( ctx.term.cursor_col*8, ctx.term.cursor_row*8, 8, 8 );
+                    gfx_term_render_cursor();
                 }
-                gfx_term_render_cursor();
                 break;
 
 

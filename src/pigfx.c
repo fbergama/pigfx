@@ -220,33 +220,50 @@ void video_line_test()
 }
 
 
+#define UART_BUFF_SIZE 3
 void term_main_loop()
 {
-    unsigned char buff[16] = {0x1B,'[','2','J',0};
-    gfx_term_putstring( buff );
+    unsigned char buff[UART_BUFF_SIZE];
+
+    gfx_term_putstring( (unsigned char*)"\x1B[2J" );
     gfx_term_putstring( (unsigned char*)"\x1B[30;35HPIGFX Ready!" );
 
     while( !uart_poll() )
         usleep(100000 );
 
-    gfx_term_putstring( buff );
+    gfx_term_putstring( (unsigned char*)"\x1B[2J" );
 
     unsigned int t0 = time_microsec();
+    unsigned int istart = 0;
+    unsigned int iend = 0;
+    unsigned char strb[2] = {0,0};
+
     while(1)
     {
-        unsigned char* pb = buff;
-        while( uart_poll() && (pb-buff)<14 )
+        while( uart_poll() )
         {
-            unsigned int ch = uart_read_byte();
-            //cout_h( ch ); cout_endl();
-            if( ch>0 )
+            buff[ iend++ ] = uart_read_byte();
+            
+            if( iend >= UART_BUFF_SIZE )
+                iend = 0;
+
+            if( iend == istart )
             {
-                *pb++ = (unsigned char)ch;
+                ++istart;
+                if( istart >= UART_BUFF_SIZE )
+                    istart = 0;
             }
         }
 
-        *pb=0;
-        gfx_term_putstring( buff );
+        if( istart != iend )
+        {
+            strb[0] = buff[istart++];
+            if( istart >= UART_BUFF_SIZE )
+                istart = 0;
+
+            gfx_term_putstring( strb );
+        }
+
 
         if( time_microsec()-t0 > 500000 )
         {

@@ -22,6 +22,10 @@ run: pigfx.elf
 kernel: pigfx.img
 	cp pigfx.img bin/kernel.img
 
+dump: pigfx.elf
+	@$(ARMGNU)-objdump --disassemble-zeroes -D pigfx.elf > pigfx.dump
+	@echo "OBJDUMP $<"
+
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c 
 	@$(ARMGNU)-gcc $(CFLAGS) -c $< -o $@
 	@echo "CC $<"
@@ -41,7 +45,6 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.s
 pigfx.elf : $(OBJS)
 	@$(ARMGNU)-ld $(OBJS) -T memmap -o $@
 	@echo "LD $@"
-#$(ARMGNU)-objdump --disassemble-zeroes -D pigfx.elf > pigfx.dump
 
 
 .PHONY clean :

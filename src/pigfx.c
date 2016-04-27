@@ -4,6 +4,7 @@
 #include "framebuffer.h"
 #include "console.h"
 #include "gfx.h"
+#include "dma.h"
 
 #define GPFSEL1 0x20200004
 #define GPSET0  0x2020001C
@@ -144,8 +145,16 @@ void video_test()
             if( row >= term_rows )
             {
                 row=term_rows-1;
-                gfx_scroll_down(8);
-                //gfx_clear();
+                int i;
+                for(i=0;i<10;++i)
+                {
+                    usleep(500000);
+                    gfx_scroll_down(8);
+                    gfx_set_bg( i );
+                }
+                usleep(1000000);
+                gfx_clear();
+                return;
             }
 
         }
@@ -255,7 +264,7 @@ void term_main_loop()
             }
         }
 
-        if( istart != iend )
+        if( !DMA_CHAN0_BUSY && istart != iend )
         {
             strb[0] = buff[istart++];
             if( istart >= UART_BUFF_SIZE )

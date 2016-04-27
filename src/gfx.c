@@ -1,6 +1,7 @@
 #include "gfx.h"
 #include "console.h"
 #include "dma.h"
+#include "utils.h"
 
 extern unsigned char G_FONT_GLYPHS;
 static unsigned char* FNT = &G_FONT_GLYPHS;
@@ -69,6 +70,7 @@ typedef struct {
 
 
 static FRAMEBUFFER_CTX ctx;
+unsigned int __attribute__((aligned(0x100))) mem_buff_dma[16];
 
 
 void gfx_term_render_cursor();
@@ -126,9 +128,13 @@ void gfx_get_term_size( unsigned int* rows, unsigned int* cols )
 void gfx_clear()
 {
 #ifdef GFX_USE_DMA
-    static unsigned int BG = 0;
-    BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
-    dma_enqueue_operation( &BG, 
+    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    *(BG+1) = *BG;
+    *(BG+2) = *BG;
+    *(BG+3) = *BG;
+
+    dma_enqueue_operation( BG, 
             (unsigned int *)( ctx.pfb ), 
             ctx.size,
             0,
@@ -146,17 +152,21 @@ void gfx_clear()
 
 void gfx_scroll_down_dma( unsigned int npixels )
 {
-    static unsigned int BG = 0;
-    BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    *(BG+1) = *BG;
+    *(BG+2) = *BG;
+    *(BG+3) = *BG;
     unsigned int line_height = ctx.Pitch * npixels;
 
+    
     dma_enqueue_operation( (unsigned int *)( ctx.pfb + line_height ), 
                            (unsigned int *)( ctx.pfb ), 
                            (ctx.size - line_height),
                            0,
                            DMA_TI_SRC_INC | DMA_TI_DEST_INC );
 
-    dma_enqueue_operation( &BG, 
+    dma_enqueue_operation( BG, 
                            (unsigned int *)( ctx.pfb + ctx.size -line_height ), 
                            line_height,
                            0,
@@ -170,6 +180,7 @@ void gfx_scroll_down( unsigned int npixels )
     gfx_scroll_down_dma( npixels );
     dma_execute_queue();
 #else
+    return;
     unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.Pitch*npixels);
     unsigned int* pf_dst = (unsigned int*)ctx.pfb;
     const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb + ctx.size );
@@ -204,10 +215,13 @@ void gfx_scroll_up( unsigned int npixels )
 
 void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
-    static unsigned int FG = 0;
-    FG = ctx.fg<<24 | ctx.fg<<16 | ctx.fg<<8 | ctx.fg;
+    unsigned int* FG = (unsigned int*)mem_2uncached( mem_buff_dma )+4;
+    *FG = ctx.fg<<24 | ctx.fg<<16 | ctx.fg<<8 | ctx.fg;
+    *(FG+1) = *FG;
+    *(FG+2) = *FG;
+    *(FG+3) = *FG;
 
-    dma_enqueue_operation( &FG, 
+    dma_enqueue_operation( FG, 
                            (unsigned int *)( PFB(x,y) ), 
                            ((height & 0xFFFF )<<16) | (width & 0xFFFF ),
                            ((ctx.Pitch-width) & 0xFFFF)<<16, /* bits 31:16 destination stride, 15:0 source stride */
@@ -397,8 +411,7 @@ void gfx_term_render_cursor()
 void gfx_term_render_cursor_newline_dma()
 {
     // Fill cursor buffer with the current background and framebuffer with fg
-    static unsigned int BG = 0;
-    BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     
     unsigned int nwords = 16;
     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
@@ -416,7 +429,7 @@ void gfx_term_putstring( unsigned char* str )
 {
     while( *str )
     {
-        while( dma_running() ); // Busy wait for DMA
+        while( DMA_CHAN0_BUSY ); // Busy wait for DMA
 
         switch( *str )
         {

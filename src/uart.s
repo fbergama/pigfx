@@ -45,9 +45,9 @@ uart_init:
     mov r0, #0x0
     str r0, [r3, #0x30]
 
-    ;@ Disable UART0 interrupts:
+    ;@ Clear UART0 interrupts:
     ;@ clear UART0_ICR = UART0_BASE + 0x44;
-    mov r0, #0x0
+    mov r0, #0xFFFFFFFF
     str r0, [r3, #0x44]
 
     ;@ Set BAUD rate by setting the:

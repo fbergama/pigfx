@@ -1,6 +1,8 @@
 #ifndef _PIGFX_UTILS_H_
 #define _PIGFX_UTILS_H_
 
+extern void enable_irq();
+extern void disable_irq();
 
 extern void busywait( unsigned int cycles );
 extern void W32( unsigned int addr, unsigned int data );

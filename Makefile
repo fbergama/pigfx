@@ -22,6 +22,9 @@ run: pigfx.elf
 kernel: pigfx.img
 	cp pigfx.img bin/kernel.img
 
+debug: pigfx.elf
+	cd JTAG && ./run_gdb.sh
+
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c 
 	@$(ARMGNU)-gcc $(CFLAGS) -c $< -o $@
 	@echo "CC $<"

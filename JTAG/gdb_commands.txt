@@ -1,0 +1,8 @@
+file ../pigfx.elf
+target remote 127.0.0.1:3333
+layout split
+layout regs
+monitor halt
+load
+list
+

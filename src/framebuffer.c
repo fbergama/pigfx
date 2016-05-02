@@ -1,7 +1,7 @@
 
 #include "framebuffer.h"
 #include "postman.h"
-#include "console.H"
+#include "console.h"
 #include "utils.h"
 
 

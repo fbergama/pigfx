@@ -77,6 +77,10 @@ void heartbeat_init()
     ra|=1<<18;
     W32(GPFSEL1,ra);
 
+    // Enable JTAG pins
+    W32( 0x20200000, 0x04a020 );
+    W32( 0x20200008, 0x65b6c0 );
+
     led_status=0;
 }
 

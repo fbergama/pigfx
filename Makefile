@@ -4,7 +4,7 @@ CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreesta
 
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pigfx.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o binary_assets.o
+OOB = asm.o pigfx.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o dma.o binary_assets.o
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -21,6 +21,10 @@ run: pigfx.elf
 
 kernel: pigfx.img
 	cp pigfx.img bin/kernel.img
+
+dump: pigfx.elf
+	@$(ARMGNU)-objdump --disassemble-zeroes -D pigfx.elf > pigfx.dump
+	@echo "OBJDUMP $<"
 
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c 
 	@$(ARMGNU)-gcc $(CFLAGS) -c $< -o $@
@@ -41,7 +45,6 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.s
 pigfx.elf : $(OBJS)
 	@$(ARMGNU)-ld $(OBJS) -T memmap -o $@
 	@echo "LD $@"
-	$(ARMGNU)-objdump --disassemble-zeroes -D pigfx.elf > pigfx.dump
 
 
 .PHONY clean :

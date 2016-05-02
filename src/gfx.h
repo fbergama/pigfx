@@ -1,6 +1,7 @@
 #ifndef _GFX_H_
 #define _GFX_H_
 
+#define GFX_USE_DMA
 
 typedef unsigned char GFX_COL;
 

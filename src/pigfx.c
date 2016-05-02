@@ -5,6 +5,7 @@
 #include "console.h"
 #include "gfx.h"
 #include "irq.h"
+#include "dma.h"
 
 #define GPFSEL1 0x20200004
 #define GPSET0  0x2020001C
@@ -159,8 +160,6 @@ void initialize_framebuffer()
 
 void video_test()
 {
-    //gfx_fill_rect( 100, 100, 8, 8);
-    //
     unsigned char ch='A';
     unsigned int row=0;
     unsigned int col=0;
@@ -177,7 +176,7 @@ void video_test()
     cout("T: ");cout_d(t0);cout_endl();
     return;
 #endif
-
+#if 0
     while(1)
     {
         gfx_putc(row,col,ch);
@@ -191,7 +190,8 @@ void video_test()
         ++ch;
         gfx_set_fg( ch );
     }
-#if 0
+#endif
+#if 1
     while(1)
     {
         gfx_putc(row,col,ch);
@@ -204,8 +204,16 @@ void video_test()
             if( row >= term_rows )
             {
                 row=term_rows-1;
-                gfx_scroll_down(8);
-                //gfx_clear();
+                int i;
+                for(i=0;i<10;++i)
+                {
+                    usleep(500000);
+                    gfx_scroll_down(8);
+                    gfx_set_bg( i );
+                }
+                usleep(1000000);
+                gfx_clear();
+                return;
             }
 
         }
@@ -295,29 +303,7 @@ void term_main_loop()
 
     while(1)
     {
-#if 0
-        int i;
-        unsigned char bbuff[20];
-        volatile unsigned int* UART0_RIS = (volatile unsigned int*)0x2020103C;
-        volatile unsigned int* UART0_MIS = (volatile unsigned int*)0x20201040;
-        for( i=0; i<20; ++i )
-            bbuff[i] = 0;
-
-        gfx_term_putstring("RIS: ");
-        word2hexstr(*UART0_RIS , (char*)bbuff );
-        gfx_term_putstring( bbuff );
-        gfx_term_putstring(" MIS: ");
-        word2hexstr(*UART0_MIS , (char*)bbuff );
-        gfx_term_putstring( bbuff );
-        gfx_term_putstring(" PENDING: ");
-        word2hexstr(pIRQController->IRQ_basic_pending , (char*)bbuff );
-        gfx_term_putstring( bbuff );
-        gfx_term_putstring( "\n" );
-
-        usleep(500000);
-#endif
-
-        if( /* !DMA_CHAN0_BUSY &&*/ uart_buffer_start != uart_buffer_end )
+        if( !DMA_CHAN0_BUSY && uart_buffer_start != uart_buffer_end )
         {
             strb[0] = *uart_buffer_start++;
             if( uart_buffer_start >= uart_buffer_limit )
@@ -327,7 +313,6 @@ void term_main_loop()
         }
 
         uart_fill_queue();
-
 
         if( time_microsec()-t0 > 500000 )
         {
@@ -344,6 +329,7 @@ void term_main_loop()
         }
 
     }
+
 }
 
 
@@ -351,8 +337,11 @@ void entry_point()
 {
     uart_init();
     heartbeat_init();
+    
     //heartbeat_loop();
+    
     initialize_framebuffer();
+
     //video_test();
     //video_line_test();
 

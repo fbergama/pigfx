@@ -1,5 +1,7 @@
 #include "gfx.h"
 #include "console.h"
+#include "dma.h"
+#include "utils.h"
 
 extern unsigned char G_FONT_GLYPHS;
 static unsigned char* FNT = &G_FONT_GLYPHS;
@@ -68,6 +70,7 @@ typedef struct {
 
 
 static FRAMEBUFFER_CTX ctx;
+unsigned int __attribute__((aligned(0x100))) mem_buff_dma[16];
 
 
 void gfx_term_render_cursor();
@@ -76,6 +79,8 @@ void gfx_term_render_cursor();
 
 void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, unsigned int pitch, unsigned int size )
 {
+    dma_init();
+
     ctx.pfb = p_framebuffer;
     ctx.W = width;
     ctx.H = height;
@@ -122,15 +127,60 @@ void gfx_get_term_size( unsigned int* rows, unsigned int* cols )
 
 void gfx_clear()
 {
+#ifdef GFX_USE_DMA
+    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    *(BG+1) = *BG;
+    *(BG+2) = *BG;
+    *(BG+3) = *BG;
+
+    dma_enqueue_operation( BG, 
+            (unsigned int *)( ctx.pfb ), 
+            ctx.size,
+            0,
+            DMA_TI_DEST_INC );
+
+    dma_execute_queue();
+#else
     unsigned char* pf = ctx.pfb;
     unsigned char* pfb_end = pf + ctx.size;
     while(pf < pfb_end)
         *pf++ = ctx.bg;
+#endif
+}
+
+
+void gfx_scroll_down_dma( unsigned int npixels )
+{
+    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    *(BG+1) = *BG;
+    *(BG+2) = *BG;
+    *(BG+3) = *BG;
+    unsigned int line_height = ctx.Pitch * npixels;
+
+    
+    dma_enqueue_operation( (unsigned int *)( ctx.pfb + line_height ), 
+                           (unsigned int *)( ctx.pfb ), 
+                           (ctx.size - line_height),
+                           0,
+                           DMA_TI_SRC_INC | DMA_TI_DEST_INC );
+
+    dma_enqueue_operation( BG, 
+                           (unsigned int *)( ctx.pfb + ctx.size -line_height ), 
+                           line_height,
+                           0,
+                           DMA_TI_DEST_INC );
 }
 
 
 void gfx_scroll_down( unsigned int npixels )
 {
+#ifdef GFX_USE_DMA
+    gfx_scroll_down_dma( npixels );
+    dma_execute_queue();
+#else
+    return;
     unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.Pitch*npixels);
     unsigned int* pf_dst = (unsigned int*)ctx.pfb;
     const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb + ctx.size );
@@ -142,6 +192,8 @@ void gfx_scroll_down( unsigned int npixels )
     const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     while( pf_dst < pfb_end )
         *pf_dst++ = BG;
+
+#endif
 }
 
 
@@ -161,8 +213,28 @@ void gfx_scroll_up( unsigned int npixels )
 }
 
 
+void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
+{
+    unsigned int* FG = (unsigned int*)mem_2uncached( mem_buff_dma )+4;
+    *FG = ctx.fg<<24 | ctx.fg<<16 | ctx.fg<<8 | ctx.fg;
+    *(FG+1) = *FG;
+    *(FG+2) = *FG;
+    *(FG+3) = *FG;
+
+    dma_enqueue_operation( FG, 
+                           (unsigned int *)( PFB(x,y) ), 
+                           ((height & 0xFFFF )<<16) | (width & 0xFFFF ),
+                           ((ctx.Pitch-width) & 0xFFFF)<<16, /* bits 31:16 destination stride, 15:0 source stride */
+                           DMA_TI_DEST_INC | DMA_TI_2DMODE );
+}
+
+
 void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
+#ifdef GFX_USE_DMA
+    gfx_fill_rect_dma( x, y, width, height );
+    dma_execute_queue();
+#else
     if( x >= ctx.W || y >= ctx.H )
         return;
 
@@ -183,7 +255,9 @@ void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned
 
         ++y;
     }
+#endif
 }
+
 
 void gfx_clear_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
@@ -192,6 +266,7 @@ void gfx_clear_rect( unsigned int x, unsigned int y, unsigned int width, unsigne
     gfx_fill_rect(x,y,width,height);
     ctx.fg = curr_fg;
 }
+
 
 void gfx_line( int x0, int y0, int x1, int y1 )
 {
@@ -264,8 +339,8 @@ void gfx_putc( unsigned int row, unsigned int col, unsigned char c )
     const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     const unsigned int stride = (ctx.Pitch>>2) - 2;
 
-    register unsigned int* p_glyph = (unsigned int*)( FNT + c*64 );
-    register unsigned int* pf = (unsigned int*)PFB(col*8, row*8);
+    register unsigned int* p_glyph = (unsigned int*)( FNT + ((unsigned int)c<<6) );
+    register unsigned int* pf = (unsigned int*)PFB((col<<3), (row<<3));
     register unsigned char h=8;
 
     while(h--)
@@ -281,7 +356,6 @@ void gfx_putc( unsigned int row, unsigned int col, unsigned char c )
         pf += stride;
     }
 }
-
 
 
 
@@ -306,32 +380,48 @@ void gfx_restore_cursor_content()
     //cout("cursor restored");cout_d(ctx.term.cursor_row);cout("-");cout_d(ctx.term.cursor_col);cout_endl();
 }
 
+
 void gfx_term_render_cursor()
 {
-    // Save framebuffer content that is going to be replaced by the cursor
+    // Save framebuffer content that is going to be replaced by the cursor and update
+    // the new content
+    //
     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
     unsigned int* pfb = (unsigned int*)PFB( ctx.term.cursor_col*8, ctx.term.cursor_row*8 );
     const unsigned int stride = (ctx.Pitch>>2) - 2;
     unsigned int h=8;
-    while(h--)
-    {
-        *pb++ = *pfb++;
-        *pb++ = *pfb++;
-        pfb+=stride;
-    }
-    //cout("cursor saved");cout_d(ctx.term.cursor_row);cout("-");cout_d(ctx.term.cursor_col);cout_endl();
+
+    if( ctx.term.cursor_visible )
+        while(h--)
+        {
+            *pb++ = *pfb; *pfb = ~*pfb; pfb++;
+            *pb++ = *pfb; *pfb = ~*pfb; pfb++;
+            pfb+=stride;
+        }
+    else
+        while(h--)
+        {
+            *pb++ = *pfb++; 
+            *pb++ = *pfb++;
+            pfb+=stride;
+        }
+}
+
+
+void gfx_term_render_cursor_newline_dma()
+{
+    // Fill cursor buffer with the current background and framebuffer with fg
+    unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     
-    // render cursor
-    pfb = (unsigned int*)PFB( ctx.term.cursor_col*8, ctx.term.cursor_row*8 );
-    h=8;
-    while(h--)
+    unsigned int nwords = 16;
+    unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
+    while( nwords-- )
     {
-        *pfb = ~*pfb;
-        pfb++;
-        *pfb = ~*pfb;
-        pfb++;
-        pfb+=stride;
+        *pb++ = BG;
     }
+
+    if( ctx.term.cursor_visible )
+        gfx_fill_rect_dma( ctx.term.cursor_col*8, ctx.term.cursor_row*8, 8, 8 );
 }
 
 
@@ -339,10 +429,17 @@ void gfx_term_putstring( unsigned char* str )
 {
     while( *str )
     {
+        while( DMA_CHAN0_BUSY ); // Busy wait for DMA
+
         switch( *str )
         {
-            case 0xD:
-                /* newline */
+            case '\n':
+                gfx_restore_cursor_content();
+                ctx.term.cursor_col = 0;
+                gfx_term_render_cursor();
+                break;
+
+            case '\r':
                 gfx_restore_cursor_content();
                 ++ctx.term.cursor_row;
                 ctx.term.cursor_col = 0;
@@ -356,24 +453,19 @@ void gfx_term_putstring( unsigned char* str )
                 gfx_term_render_cursor();
                 break;
 
-
             case 0x7F:
                 /* backspace */
                 if( ctx.term.cursor_col>0 )
                 {
-                    gfx_clear_rect( ctx.term.cursor_col*8, ctx.term.cursor_row*8, 8, 8 );
+                    gfx_restore_cursor_content();
                     --ctx.term.cursor_col;
+                    gfx_clear_rect( ctx.term.cursor_col*8, ctx.term.cursor_row*8, 8, 8 );
+                    gfx_term_render_cursor();
                 }
-                gfx_term_render_cursor();
                 break;
 
 
             default:
-                /*
-                gfx_putc( ctx.term.cursor_row, ctx.term.cursor_col, *str );
-                ++ctx.term.cursor_col;
-                gfx_term_render_cursor();
-                */
                 ctx.term.state.next( *str, &(ctx.term.state) );
                 break;
         }
@@ -390,8 +482,10 @@ void gfx_term_putstring( unsigned char* str )
         {
             gfx_restore_cursor_content();
             --ctx.term.cursor_row;
-            gfx_scroll_down(8);
-            gfx_term_render_cursor();
+
+            gfx_scroll_down_dma(8);
+            gfx_term_render_cursor_newline_dma();
+            dma_execute_queue();
         }
 
         ++str;
@@ -399,11 +493,11 @@ void gfx_term_putstring( unsigned char* str )
 }
 
 
-
 void gfx_term_set_cursor_visibility( unsigned char visible )
 {
     ctx.term.cursor_visible = visible;
 }
+
 
 void gfx_term_move_cursor( unsigned int row, unsigned int col )
 {
@@ -413,6 +507,7 @@ void gfx_term_move_cursor( unsigned int row, unsigned int col )
 
     gfx_term_render_cursor();
 }
+
 
 void gfx_term_move_cursor_d( int delta_row, int delta_col )
 {
@@ -424,11 +519,13 @@ void gfx_term_move_cursor_d( int delta_row, int delta_col )
     gfx_term_move_cursor( ctx.term.cursor_row+delta_row, ctx.term.cursor_col+delta_col );
 }
 
+
 void gfx_term_save_cursor()
 {
     ctx.term.saved_cursor[0] = ctx.term.cursor_row;
     ctx.term.saved_cursor[1] = ctx.term.cursor_col;
 }
+
 
 void gfx_term_restore_cursor()
 {
@@ -438,12 +535,14 @@ void gfx_term_restore_cursor()
     gfx_term_render_cursor();
 }
 
+
 void gfx_term_clear_till_end()
 {
     gfx_swap_fg_bg();
     gfx_fill_rect( (ctx.term.cursor_col+1) * 8, ctx.term.cursor_row*8, ctx.W, 8 );
     gfx_swap_fg_bg();
 }
+
 
 void gfx_term_clear_till_cursor()
 {
@@ -452,6 +551,7 @@ void gfx_term_clear_till_cursor()
     gfx_swap_fg_bg();
 }
 
+
 void gfx_term_clear_line()
 {
     gfx_swap_fg_bg();
@@ -459,6 +559,7 @@ void gfx_term_clear_line()
     gfx_swap_fg_bg();
     gfx_term_render_cursor();
 }
+
 
 void gfx_term_clear_screen()
 {
@@ -513,6 +614,7 @@ void state_fun_final_letter( char ch, scn_state *state )
                 state->cmd_params[0] == 25 )
             {
                 gfx_term_set_cursor_visibility(0);
+                gfx_restore_cursor_content();
             }
             goto back_to_normal;
             break;
@@ -523,6 +625,7 @@ void state_fun_final_letter( char ch, scn_state *state )
                 state->cmd_params[0] == 25 )
             {
                 gfx_term_set_cursor_visibility(1);
+                gfx_term_render_cursor();
             }
             goto back_to_normal;
             break;

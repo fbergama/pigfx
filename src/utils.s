@@ -1,4 +1,17 @@
 
+.global enable_irq
+enable_irq:
+    mrs r0,cpsr
+    bic r0,r0,#0x80
+    msr cpsr_c,r0
+    bx lr
+    ;@cpsie i
+    ;@mov pc, lr
+
+.global disable_irq
+disable_irq:
+        cpsid i
+        mov pc, lr
 
 ;@ Wait for at least r0 cycles
 .global busywait

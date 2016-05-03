@@ -1,6 +1,8 @@
 #ifndef _PIGFX_UTILS_H_
 #define _PIGFX_UTILS_H_
 
+extern void enable_irq();
+extern void disable_irq();
 
 extern void busywait( unsigned int cycles );
 extern void W32( unsigned int addr, unsigned int data );
@@ -59,10 +61,18 @@ inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
 
 
 
-//#define mem_p2v(X) (X-0x40000000)
-//#define mem_v2p(X) (X+0x40000000)
 #define mem_p2v(X) (X)
 #define mem_v2p(X) (X)
+//#define mem_2uncached(X) (X)
+//#define mem_2cached(X)   (X)
+
+//#define mem_p2v(X) ((((unsigned int)X)&0x0FFFFFFF)|0x40000000)
+//#define mem_v2p(X) ((((unsigned int)X)&0x0FFFFFFF))
+#define mem_2uncached(X) ((((unsigned int)X)&0x0FFFFFFF)|0x40000000)
+#define mem_2cached(X)   ((((unsigned int)X)&0x0FFFFFFF))
+
+
+
 
 
 #endif

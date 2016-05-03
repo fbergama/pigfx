@@ -4,12 +4,70 @@
 #include "framebuffer.h"
 #include "console.h"
 #include "gfx.h"
+#include "irq.h"
+#include "dma.h"
 
 #define GPFSEL1 0x20200004
 #define GPSET0  0x2020001C
 #define GPCLR0  0x20200028
 
 unsigned int led_status;
+volatile unsigned int* UART0_DR;
+volatile unsigned int* UART0_ITCR;
+volatile unsigned int* UART0_IMSC;
+volatile unsigned int* UART0_FR;
+
+#define UART_BUFFER_SIZE 100000
+volatile unsigned char uart_buffer[ UART_BUFFER_SIZE ];
+volatile unsigned char* uart_buffer_start;
+volatile unsigned char* uart_buffer_end;
+volatile unsigned char* uart_buffer_limit;
+
+
+inline void uart_fill_queue()
+{
+    while( !( *UART0_FR & 0x10)/*uart_poll()*/)
+    {
+        *uart_buffer_end++ = (unsigned char)( *UART0_DR & 0xFF /*uart_read_byte()*/);
+
+        if( uart_buffer_end >= uart_buffer_limit )
+           uart_buffer_end = uart_buffer; 
+
+        if( uart_buffer_end == uart_buffer_start )
+        {
+            uart_buffer_start++;
+            if( uart_buffer_start >= uart_buffer_limit )
+                uart_buffer_start = uart_buffer; 
+        }
+    }
+}
+
+void __attribute__((interrupt("IRQ"))) irq_handler_(void)
+{
+    uart_fill_queue();
+
+    /* Clear UART0 interrupts */
+    *UART0_ITCR = 0xFFFFFFFF;
+}
+
+
+void initialize_uart_irq()
+{
+    uart_buffer_start = uart_buffer_end = uart_buffer;
+    uart_buffer_limit = &( uart_buffer[ UART_BUFFER_SIZE ] );
+
+    UART0_DR   = (volatile unsigned int*)0x20201000;
+    UART0_IMSC = (volatile unsigned int*)0x20201038;
+    UART0_ITCR = (volatile unsigned int*)0x20201044;
+    UART0_FR   = (volatile unsigned int*)0x20201018;
+
+    *UART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
+    *UART0_ITCR = 0xFFFFFFFF; // Clear UART0 interrupts
+
+    pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
+    enable_irq();
+}
+
 
 void heartbeat_init()
 {
@@ -19,8 +77,13 @@ void heartbeat_init()
     ra|=1<<18;
     W32(GPFSEL1,ra);
 
+    // Enable JTAG pins
+    W32( 0x20200000, 0x04a020 );
+    W32( 0x20200008, 0x65b6c0 );
+
     led_status=0;
 }
+
 
 void heartbeat_loop()
 {
@@ -62,7 +125,7 @@ void heartbeat_loop()
 void initialize_framebuffer()
 {
     //uart_write_str("Initializing video..");
-    usleep(500000);
+    usleep(100000);
     fb_release();
 
     unsigned char* p_fb=0;
@@ -93,15 +156,14 @@ void initialize_framebuffer()
     }
     //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
 
-    usleep(500000);
+    usleep(100000);
     gfx_set_env( p_fb, v_w, v_h, pitch, fbsize ); 
     gfx_clear();
 }
 
+
 void video_test()
 {
-    //gfx_fill_rect( 100, 100, 8, 8);
-    //
     unsigned char ch='A';
     unsigned int row=0;
     unsigned int col=0;
@@ -118,7 +180,7 @@ void video_test()
     cout("T: ");cout_d(t0);cout_endl();
     return;
 #endif
-
+#if 0
     while(1)
     {
         gfx_putc(row,col,ch);
@@ -132,7 +194,8 @@ void video_test()
         ++ch;
         gfx_set_fg( ch );
     }
-#if 0
+#endif
+#if 1
     while(1)
     {
         gfx_putc(row,col,ch);
@@ -145,8 +208,16 @@ void video_test()
             if( row >= term_rows )
             {
                 row=term_rows-1;
-                gfx_scroll_down(8);
-                //gfx_clear();
+                int i;
+                for(i=0;i<10;++i)
+                {
+                    usleep(500000);
+                    gfx_scroll_down(8);
+                    gfx_set_bg( i );
+                }
+                usleep(1000000);
+                gfx_clear();
+                return;
             }
 
         }
@@ -223,31 +294,29 @@ void video_line_test()
 
 void term_main_loop()
 {
-    unsigned char buff[16] = {0x1B,'[','2','J',0};
-    gfx_term_putstring( buff );
+    gfx_term_putstring( (unsigned char*)"\x1B[2J" );
     gfx_term_putstring( (unsigned char*)"\x1B[30;35HPIGFX Ready!" );
 
-    while( !uart_poll() )
+    while( uart_buffer_start == uart_buffer_end )
         usleep(100000 );
 
-    gfx_term_putstring( buff );
+    gfx_term_putstring( (unsigned char*)"\x1B[2J" );
 
     unsigned int t0 = time_microsec();
+    unsigned char strb[2] = {0,0};
+
     while(1)
     {
-        unsigned char* pb = buff;
-        while( uart_poll() && (pb-buff)<14 )
+        if( !DMA_CHAN0_BUSY && uart_buffer_start != uart_buffer_end )
         {
-            unsigned int ch = uart_read_byte();
-            //cout_h( ch ); cout_endl();
-            if( ch>0 )
-            {
-                *pb++ = (unsigned char)ch;
-            }
+            strb[0] = *uart_buffer_start++;
+            if( uart_buffer_start >= uart_buffer_limit )
+                uart_buffer_start = uart_buffer;
+
+            gfx_term_putstring( strb );
         }
 
-        *pb=0;
-        gfx_term_putstring( buff );
+        uart_fill_queue();
 
         if( time_microsec()-t0 > 500000 )
         {
@@ -264,6 +333,7 @@ void term_main_loop()
         }
 
     }
+
 }
 
 
@@ -271,9 +341,14 @@ void entry_point()
 {
     uart_init();
     heartbeat_init();
+    
     //heartbeat_loop();
+    
     initialize_framebuffer();
+
     //video_test();
     //video_line_test();
+
+    initialize_uart_irq();
     term_main_loop();
 }

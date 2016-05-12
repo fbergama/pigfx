@@ -18,6 +18,21 @@ _reset_h:                        .word   _reset_
     _interrupt_h:                .word   irq_handler_ 
     _fast_interrupt_h:           .word   /*fast_interrupt_handler*/ hang
 
+
+;@ See linker script file
+.globl bss_start
+bss_start: .word __bss_start__
+
+.globl bss_end
+bss_end: .word __bss_end__
+
+.globl pheap_space
+pheap_space: .word _heap_start
+
+.globl heap_sz
+heap_sz: .word heap_size
+
+;@ Initial entry point
 _reset_:
     mov     r0, #0x8000
     mov     r1, #0x0000
@@ -42,6 +57,19 @@ _reset_:
     msr cpsr_c,r0
     mov sp,#0x8000000
 
+    ;@ Fill BSS with zeros
+    ldr   r3, bss_start 
+    ldr   r2, bss_end
+    mov   r0, #0
+1:
+    cmp   r2, r3
+    beq   2f
+    str   r0, [r3]
+    add   r3, r3, #1
+    b     1b
+
+2:
+    ;@ Jump to the entry point
     bl  entry_point
 
 .global hang

@@ -2,7 +2,7 @@
 #include "uart.h"
 #include "utils.h"
 
-void cout( char* str ) 
+void cout( const char* str ) 
 {
     uart_write_str(str);
 }
@@ -12,7 +12,7 @@ void cout_endl()
     cout("\n");
 }
 
-void cout_h(unsigned int v)
+void cout_h( unsigned int v )
 {
     char buff[15]={0};
     buff[0]='0';
@@ -21,7 +21,7 @@ void cout_h(unsigned int v)
     cout(buff);
 }
 
-void cout_d(unsigned int val)
+void cout_d( unsigned int val )
 {
     char buffer[32] = {0};
     unsigned int i = 0;

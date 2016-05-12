@@ -1,10 +1,10 @@
 
 ARMGNU ?= arm-none-eabi
-CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding 
+CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard
 
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pigfx.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o dma.o binary_assets.o
+OOB = asm.o pigfx.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o binary_assets.o
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -12,6 +12,8 @@ SRC_DIR = src
 
 OBJS=$(patsubst %.o,$(BUILD_DIR)/%.o,$(OOB))
 
+LIBGCC=$(shell $(ARMGNU)-gcc -print-libgcc-file-name)
+LIBUSPI=uspi/lib/libuspi.a
 
 all: pigfx.elf pigfx.hex kernel 
 	ctags src/
@@ -45,8 +47,8 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.s
 	@$(ARMGNU)-objcopy $< -O binary $@
 	@echo "OBJCOPY $< -> $@"
 
-pigfx.elf : $(OBJS)
-	@$(ARMGNU)-ld $(OBJS) -T memmap -o $@
+pigfx.elf : $(OBJS) 
+	$(ARMGNU)-ld $(OBJS) $(LIBGCC) $(LIBUSPI) -T memmap -o $@
 	@echo "LD $@"
 
 

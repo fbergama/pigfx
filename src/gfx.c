@@ -433,13 +433,13 @@ void gfx_term_putstring( unsigned char* str )
 
         switch( *str )
         {
-            case '\n':
+            case '\r':
                 gfx_restore_cursor_content();
                 ctx.term.cursor_col = 0;
                 gfx_term_render_cursor();
                 break;
 
-            case '\r':
+            case '\n':
                 gfx_restore_cursor_content();
                 ++ctx.term.cursor_row;
                 ctx.term.cursor_col = 0;

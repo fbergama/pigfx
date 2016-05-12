@@ -6,6 +6,9 @@
 #include "gfx.h"
 #include "irq.h"
 #include "dma.h"
+#include "nmalloc.h"
+#include "../uspi/include/uspi.h"
+
 
 #define GPFSEL1 0x20200004
 #define GPSET0  0x2020001C
@@ -23,8 +26,35 @@ volatile unsigned char* uart_buffer_start;
 volatile unsigned char* uart_buffer_end;
 volatile unsigned char* uart_buffer_limit;
 
+extern unsigned int pheap_space;
+extern unsigned int heap_sz;
 
-inline void uart_fill_queue()
+
+static void _keypress_handler(const char* str )
+{
+    cout( str );
+} 
+
+
+static void _timer_handler( __attribute__((unused)) unsigned hnd, 
+                            __attribute__((unused)) void* pParam, 
+                            __attribute__((unused)) void *pContext )
+{
+    if( led_status )
+    {
+        W32(GPCLR0,1<<16);
+        led_status = 0;
+    } else
+    {
+        W32(GPSET0,1<<16);
+        led_status = 1;
+    }
+
+    attach_timer_handler( 1, _timer_handler, 0, 0 );
+}
+
+
+void uart_fill_queue( __attribute__((unused)) void* data )
 {
     while( !( *UART0_FR & 0x10)/*uart_poll()*/)
     {
@@ -40,15 +70,11 @@ inline void uart_fill_queue()
                 uart_buffer_start = uart_buffer; 
         }
     }
-}
-
-void __attribute__((interrupt("IRQ"))) irq_handler_(void)
-{
-    uart_fill_queue();
 
     /* Clear UART0 interrupts */
     *UART0_ITCR = 0xFFFFFFFF;
 }
+
 
 
 void initialize_uart_irq()
@@ -66,6 +92,7 @@ void initialize_uart_irq()
 
     pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
     enable_irq();
+    irq_attach_handler( 57, uart_fill_queue, 0 );
 }
 
 
@@ -297,12 +324,13 @@ void term_main_loop()
     gfx_term_putstring( (unsigned char*)"\x1B[2J" );
     gfx_term_putstring( (unsigned char*)"\x1B[30;35HPIGFX Ready!" );
 
+    /*
     while( uart_buffer_start == uart_buffer_end )
         usleep(100000 );
+        */
 
     gfx_term_putstring( (unsigned char*)"\x1B[2J" );
 
-    unsigned int t0 = time_microsec();
     unsigned char strb[2] = {0,0};
 
     while(1)
@@ -316,22 +344,8 @@ void term_main_loop()
             gfx_term_putstring( strb );
         }
 
-        uart_fill_queue();
-
-        if( time_microsec()-t0 > 500000 )
-        {
-            if( led_status )
-            {
-                W32(GPCLR0,1<<16);
-                led_status = 0;
-            } else
-            {
-                W32(GPSET0,1<<16);
-                led_status = 1;
-            }
-            t0 = time_microsec();
-        }
-
+        uart_fill_queue(0);
+        timer_poll();
     }
 
 }
@@ -345,10 +359,41 @@ void entry_point()
     //heartbeat_loop();
     
     initialize_framebuffer();
+    initialize_uart_irq();
+
+    timers_init();
+    attach_timer_handler( 2, _timer_handler, 0, 0 );
 
     //video_test();
     //video_line_test();
 
-    initialize_uart_irq();
+//    initialize_uart_irq();
+
+#if 1
+//    usleep(1000000);
+//    while( uart_buffer_start == uart_buffer_end )
+//        usleep(100000 );
+
+    cout("Initializing malloc\n");
+    nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
+
+    cout("Initializing USB\n");
+    if( USPiInitialize() )
+    {
+        cout("Initialization ok, checking for keyboards...\n");
+        if ( USPiKeyboardAvailable () )
+        {
+            USPiKeyboardRegisterKeyPressedHandler( _keypress_handler );
+            cout("KEYBOARD found and handler enabled\n");
+        }
+        else
+        {
+            cout("KEYBOARD not available\n");
+        }
+    }
+    else cout("USPi Initialization failed.\n");
+#endif
+
+
     term_main_loop();
 }

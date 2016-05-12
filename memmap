@@ -1,14 +1,41 @@
 
 MEMORY
 {
-    ram : ORIGIN = 0x8000, LENGTH = 4M
+    ram : ORIGIN = 0x8000, LENGTH = 10M
 }
+
+heap_size = 1024*64;
 
 SECTIONS
 {
     .text : { *(.text*) } > ram
     .rodata ALIGN(4096) : { *(.rodata*) } > ram
     .data ALIGN(4096): { *(.data*) } > ram
-    .bss ALIGN(4096): { *(.bss*) } > ram
+
+    /* Uninitialized data section */
+    .bss ALIGN(4): {
+        __bss_start__ = .;
+        *(.bss*)
+    } > ram 
+    . = ALIGN(4);
+    __bss_end__ = .;
+    __bss_size__ = __bss_end__ - __bss_start__;
+
+    .heap ALIGN(4): {
+        _heap_start = .;
+        . = . + heap_size;
+        _heap_end = .;
+    } > ram 
+
+    /* Remove information from the standard libraries 
+       /DISCARD/ :
+       {
+       libc.a ( * )
+       libm.a ( * )
+       libgcc.a ( * )
+       }
+     */
+
+    .ARM.attributes 0 : { *(.ARM.attributes) }
 }
 

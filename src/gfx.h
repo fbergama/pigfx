@@ -1,7 +1,6 @@
 #ifndef _GFX_H_
 #define _GFX_H_
 
-#define GFX_USE_DMA
 
 typedef unsigned char GFX_COL;
 
@@ -55,7 +54,7 @@ extern void gfx_scroll_up( unsigned int npixels );
  *  Terminal
  *
  */
-extern void gfx_term_putstring( unsigned char* str );
+extern void gfx_term_putstring( const char* str );
 extern void gfx_term_set_cursor_visibility( unsigned char visible );
 extern void gfx_term_move_cursor( unsigned int row, unsigned int col );
 extern void gfx_term_move_cursor_d( int delta_row, int delta_col );

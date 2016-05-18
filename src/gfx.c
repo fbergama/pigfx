@@ -1,3 +1,4 @@
+#include "pigfx_config.h"
 #include "gfx.h"
 #include "console.h"
 #include "dma.h"
@@ -22,7 +23,6 @@ inline int __abs__( int a )
 {
     return a<0?-a:a;
 }
-
 
 typedef struct SCN_STATE
 {
@@ -127,7 +127,7 @@ void gfx_get_term_size( unsigned int* rows, unsigned int* cols )
 
 void gfx_clear()
 {
-#ifdef GFX_USE_DMA
+#if ENABLED(GFX_USE_DMA)
     unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
     *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     *(BG+1) = *BG;
@@ -176,11 +176,10 @@ void gfx_scroll_down_dma( unsigned int npixels )
 
 void gfx_scroll_down( unsigned int npixels )
 {
-#ifdef GFX_USE_DMA
+#if ENABLED(GFX_USE_DMA)
     gfx_scroll_down_dma( npixels );
     dma_execute_queue();
 #else
-    return;
     unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.Pitch*npixels);
     unsigned int* pf_dst = (unsigned int*)ctx.pfb;
     const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb + ctx.size );
@@ -231,7 +230,7 @@ void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsi
 
 void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
-#ifdef GFX_USE_DMA
+#if ENABLED(GFX_USE_DMA)
     gfx_fill_rect_dma( x, y, width, height );
     dma_execute_queue();
 #else
@@ -425,7 +424,7 @@ void gfx_term_render_cursor_newline_dma()
 }
 
 
-void gfx_term_putstring( unsigned char* str )
+void gfx_term_putstring( const char* str )
 {
     while( *str )
     {

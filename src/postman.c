@@ -1,3 +1,4 @@
+#include "pigfx_config.h"
 #include "postman.h"
 #include "utils.h"
 #include "timer.h"
@@ -13,7 +14,7 @@ static volatile unsigned int *MAILBOX0WRITE = (unsigned int *) mem_p2v(MAPPED_RE
 
 POSTMAN_RETURN_TYPE postman_recv( unsigned int channel, unsigned int* out_data )
 {
-#ifdef POSTMAN_DEBUG
+#if ENABLED(POSTMAN_DEBUG)
     char debug_buff[20] = {0};
     uart_write_str("Postman recv from channel ");
     word2hexstr( channel, debug_buff );
@@ -36,7 +37,7 @@ POSTMAN_RETURN_TYPE postman_recv( unsigned int channel, unsigned int* out_data )
         flushcache();
         while( *MAILBOX0STATUS & 0x40000000 ) //30th bit is zero when ready
         {
-#ifdef POSTMAN_DEBUG
+#if ENABLED(POSTMAN_DEBUG)
             uart_write_str("Mailbox empty, waiting...\n");
 #endif
             if( time_microsec() - start_time > MAILBOX_WAIT_TIMEOUT )
@@ -51,7 +52,7 @@ POSTMAN_RETURN_TYPE postman_recv( unsigned int channel, unsigned int* out_data )
         unsigned int msg = *MAILBOX0READ;
         dmb();
 
-#ifdef POSTMAN_DEBUG
+#if ENABLED(POSTMAN_DEBUG)
         uart_write_str("Received from channel ");
         word2hexstr( msg&0xf , debug_buff );
         uart_write_str( debug_buff );
@@ -80,7 +81,7 @@ POSTMAN_RETURN_TYPE postman_recv( unsigned int channel, unsigned int* out_data )
 
 POSTMAN_RETURN_TYPE postman_send( unsigned int channel, unsigned int data )
 {
-#ifdef POSTMAN_DEBUG
+#if ENABLED(POSTMAN_DEBUG)
     char debug_buff[20] = {0};
     uart_write_str("Postman send to channel ");
     word2hexstr( channel, debug_buff );
@@ -99,7 +100,7 @@ POSTMAN_RETURN_TYPE postman_send( unsigned int channel, unsigned int data )
     unsigned int start_time = time_microsec(); 
     while( *MAILBOX0STATUS & 0x80000000 ) //top bit is zero when ready
     {
-#ifdef POSTMAN_DEBUG
+#if ENABLED(POSTMAN_DEBUG)
         uart_write_str("Mailbox full, waiting...\n");
 #endif
         if( time_microsec() - start_time > MAILBOX_WAIT_TIMEOUT )
@@ -112,7 +113,7 @@ POSTMAN_RETURN_TYPE postman_send( unsigned int channel, unsigned int data )
     dmb();
     *MAILBOX0WRITE = data|channel; //lowest 4 bits for the mailbox, top 28 bits for the data
 
-#ifdef POSTMAN_DEBUG
+#if ENABLED(POSTMAN_DEBUG)
     uart_write_str("Message sent.\n");
 #endif
 

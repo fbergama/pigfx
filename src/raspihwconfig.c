@@ -1,7 +1,6 @@
 #include "raspihwconfig.h"
 #include "postman.h"
 #include "utils.h"
-#include "console.h"
 #include "timer.h"
 
 
@@ -52,7 +51,6 @@ RHW_RETURN_TYPE rhw_set_device_power( RHW_DEVICE dev, RHW_POWER_STATE state )
     unsigned int respmsg;
     unsigned int statebit = (state==RHW_POWER_ON?(1<<0):(0<<0)) | (1<<1);
 
-    cout("Empowering device "); cout_d( dev ); cout_endl();
     off=1;
     pBuffData[off++] = 0;           // Request 
     pBuffData[off++] = 0x00028001;  // Tag: set power state 
@@ -77,7 +75,6 @@ RHW_RETURN_TYPE rhw_set_device_power( RHW_DEVICE dev, RHW_POWER_STATE state )
             success = 1;
             break;
         }
-        cout("Recv fail, retrying...\n");
         usleep( 500000 );
     }
 
@@ -86,7 +83,6 @@ RHW_RETURN_TYPE rhw_set_device_power( RHW_DEVICE dev, RHW_POWER_STATE state )
 
     if( pBuffData[1]!=0x80000000 )
     {
-        cout("Response error");
         return RHW_ERROR;
     }
 

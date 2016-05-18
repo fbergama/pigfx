@@ -2,8 +2,6 @@
 #define _FRAMEBUFFER_H_
 
 
-//#define FRAMEBUFFER_DEBUG
-
 
 typedef enum {
 FB_SUCCESS                = 0x0,

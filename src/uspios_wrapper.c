@@ -56,11 +56,9 @@ void ConnectInterrupt (unsigned nIRQ, TInterruptHandler *pHandler, void *pParam)
 
 int SetPowerStateOn (unsigned nDeviceId)	// "set power state" to "on", wait until completed
 {
-    //ee_printf("* SetPowerStateOn * DeviceId: %d\n", nDeviceId);
     if( RHW_SUCCESS != rhw_set_device_power( (RHW_DEVICE)nDeviceId, RHW_POWER_ON ) )
     {
-        ee_printf("Unable to power on the USB device\n");
-        return 0; // quick hack
+        return 0; 
     }
     return 1;
 }

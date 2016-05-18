@@ -35,28 +35,37 @@ extern unsigned int pheap_space;
 extern unsigned int heap_sz;
 
 
+#if ENABLED(SKIP_BACKSPACE_ECHO)
+volatile unsigned int backspace_n_skip;
+volatile unsigned int last_backspace_t;
+#endif
 
 
 static void _keypress_handler(const char* str )
 {
-#if ENABLED(SEND_CR_LF)
     const char* c = str;
     char CR = 13;
 
     while( *c )
     {
+#if ENABLED(SEND_CR_LF)
         if( *c == 10 )
         {
             // Send CR first
             uart_write( &CR, 1 );
 
         }
+#endif
+#if ENABLED(SKIP_BACKSPACE_ECHO)
+        if( *c == 0x7F )
+        {
+            backspace_n_skip = 2;
+            last_backspace_t = time_microsec();
+        }
+#endif
         uart_write( c, 1 ); 
         ++c;
     }
-#else
-    uart_write_str( str );
-#endif
 
 } 
 
@@ -352,6 +361,21 @@ void term_main_loop()
             strb[0] = *uart_buffer_start++;
             if( uart_buffer_start >= uart_buffer_limit )
                 uart_buffer_start = uart_buffer;
+
+            
+#if ENABLED(SKIP_BACKSPACE_ECHO)
+            if( time_microsec()-last_backspace_t > 50000 )
+                backspace_n_skip=0;
+
+            if( backspace_n_skip  > 0 )
+            {
+                //ee_printf("Skip %c",strb[0]);
+                strb[0]=0; // Skip this char
+                backspace_n_skip--;
+                if( backspace_n_skip == 0)
+                    strb[0]=0x7F; // Add backspace instead
+            }
+#endif
 
             gfx_term_putstring( strb );
         }

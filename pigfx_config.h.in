@@ -6,6 +6,7 @@
 #define PIGFX_VERSION           "$VERSION$"
 #define SEND_CR_LF              ON              /* Send CR+LF when Return is pressed */
 #define GFX_USE_DMA             ON              /* Graphics functions use DMA when possible (faster, but occupy DMA channel 0) */
+#define SKIP_BACKSPACE_ECHO     ON              /* Skip the next incoming character after a backspace from keyboard */
 #define FRAMEBUFFER_DEBUG       OFF             /* Log framebuffer operations to UART */
 #define POSTMAN_DEBUG           OFF             /* Log mailbox operations to UART */
 #define HEARTBEAT_FREQUENCY     1               /* Status led blink frequency in Hz */

@@ -48,22 +48,38 @@ static void _keypress_handler(const char* str )
 
     while( *c )
     {
+         char ch = *c;
+         //ee_printf("CHAR 0x%x\n",ch );
+
 #if ENABLED(SEND_CR_LF)
-        if( *c == 10 )
+        if( ch == 10 )
         {
             // Send CR first
             uart_write( &CR, 1 );
 
         }
 #endif
+
+#if ENABLED( SWAP_DEL_WITH_BACKSPACE )
+        if( ch == 0x7F ) 
+        {
+            ch = 0x8;
+        }
+#endif
+
+#if ENABLED( BACKSPACE_ECHO )
+        if( ch == 0x8 )
+            gfx_term_putstring( "\x7F" );
+#endif
+
 #if ENABLED(SKIP_BACKSPACE_ECHO)
-        if( *c == 0x7F )
+        if( ch == 0x7F )
         {
             backspace_n_skip = 2;
             last_backspace_t = time_microsec();
         }
 #endif
-        uart_write( c, 1 ); 
+        uart_write( &ch, 1 ); 
         ++c;
     }
 

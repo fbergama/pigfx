@@ -452,6 +452,7 @@ void gfx_term_putstring( const char* str )
                 gfx_term_render_cursor();
                 break;
 
+            case 0x08:
             case 0x7F:
                 /* backspace */
                 if( ctx.term.cursor_col>0 )

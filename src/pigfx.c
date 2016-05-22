@@ -421,7 +421,10 @@ void entry_point()
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
     gfx_set_bg(27);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
-    ee_printf("= PiGFX = v%s\n", PIGFX_VERSION );
+    ee_printf(" ===  PiGFX ===  v.%s\n", PIGFX_VERSION );
+    gfx_term_putstring( "\x1B[2K" );
+    //gfx_term_putstring( "\x1B[2K" ); 
+    ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(0);
 
     timers_init();

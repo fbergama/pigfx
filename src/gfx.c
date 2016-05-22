@@ -222,7 +222,7 @@ void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsi
 
     dma_enqueue_operation( FG, 
                            (unsigned int *)( PFB(x,y) ), 
-                           ((height & 0xFFFF )<<16) | (width & 0xFFFF ),
+                           (((height-1) & 0xFFFF )<<16) | (width & 0xFFFF ),
                            ((ctx.Pitch-width) & 0xFFFF)<<16, /* bits 31:16 destination stride, 15:0 source stride */
                            DMA_TI_DEST_INC | DMA_TI_2DMODE );
 }
@@ -464,6 +464,12 @@ void gfx_term_putstring( const char* str )
                 }
                 break;
 
+            case 0xC:
+                /* new page */
+                gfx_term_move_cursor(0,0);
+                gfx_term_clear_screen();
+                break;
+
 
             default:
                 ctx.term.state.next( *str, &(ctx.term.state) );
@@ -654,8 +660,8 @@ void state_fun_final_letter( char ch, scn_state *state )
         case 'J':
             if( state->cmd_params_size==1 && state->cmd_params[0] ==2 )
             {
-                gfx_term_clear_screen();
                 gfx_term_move_cursor(0,0);
+                gfx_term_clear_screen();
             }
             goto back_to_normal;
             break;

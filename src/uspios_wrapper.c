@@ -60,6 +60,7 @@ int SetPowerStateOn (unsigned nDeviceId)	// "set power state" to "on", wait unti
     {
         return 0; 
     }
+    usleep(500000); // Wait some more for wireless keyboards startup time
     return 1;
 }
 

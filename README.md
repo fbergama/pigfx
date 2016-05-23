@@ -19,6 +19,9 @@ full-featured Linux system running on your raspi. This dramatically decreases
 the boot time, lets the system be more customizable and, of course, adds a lot
 of fun :) 
 
+*UPDATE*: Thanks to the [uspi](https://github.com/rsta2/uspi) bare-metal USB
+driver PiGFX now support an external USB keyboard as input device. Anything
+typed will be automatically sent to raspi UART Tx0 (pin 8, GPIO 14).
 
 By now this is a work in progress with a minimum set of features implemented so
 expect that more functionalities will be added from time to time.
@@ -26,9 +29,9 @@ expect that more functionalities will be added from time to time.
 
 Here is a preliminary TODO list of what I plan to add in the future:
 
-- Add some graphics primitives like lines/circles/rectangles etc. (I know, this
-  is mentioned in the title but not fully implemented yet)
-- Add support for USB or Ps2 keyboard
+- ✔ Add support for USB or Ps2 keyboard
+- ✔ Add some graphics primitives like lines
+- Add some more graphics primitives (circles, rectangles etc.)
 - Let the resolution being configurable without recompiling
 - Implement double buffering
 - Load bitmap fonts directly from the SD card
@@ -65,7 +68,7 @@ in the PiGFX root folder.
 
 Pin   | Function
 ---   |---
-8     | UART Tx0 (GPIO 14)  (Not used yet)
+8     | UART Tx0 (GPIO 14).  Keyboard output
 10    | UART Rx0 (GPIO 15). Connect this pin to your device transmit pin.
 
 
@@ -158,4 +161,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-

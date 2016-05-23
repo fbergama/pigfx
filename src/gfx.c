@@ -1,3 +1,4 @@
+#include "pigfx_config.h"
 #include "gfx.h"
 #include "console.h"
 #include "dma.h"
@@ -22,7 +23,6 @@ inline int __abs__( int a )
 {
     return a<0?-a:a;
 }
-
 
 typedef struct SCN_STATE
 {
@@ -127,7 +127,7 @@ void gfx_get_term_size( unsigned int* rows, unsigned int* cols )
 
 void gfx_clear()
 {
-#ifdef GFX_USE_DMA
+#if ENABLED(GFX_USE_DMA)
     unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
     *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     *(BG+1) = *BG;
@@ -176,11 +176,10 @@ void gfx_scroll_down_dma( unsigned int npixels )
 
 void gfx_scroll_down( unsigned int npixels )
 {
-#ifdef GFX_USE_DMA
+#if ENABLED(GFX_USE_DMA)
     gfx_scroll_down_dma( npixels );
     dma_execute_queue();
 #else
-    return;
     unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.Pitch*npixels);
     unsigned int* pf_dst = (unsigned int*)ctx.pfb;
     const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb + ctx.size );
@@ -223,7 +222,7 @@ void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsi
 
     dma_enqueue_operation( FG, 
                            (unsigned int *)( PFB(x,y) ), 
-                           ((height & 0xFFFF )<<16) | (width & 0xFFFF ),
+                           (((height-1) & 0xFFFF )<<16) | (width & 0xFFFF ),
                            ((ctx.Pitch-width) & 0xFFFF)<<16, /* bits 31:16 destination stride, 15:0 source stride */
                            DMA_TI_DEST_INC | DMA_TI_2DMODE );
 }
@@ -231,7 +230,7 @@ void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsi
 
 void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
-#ifdef GFX_USE_DMA
+#if ENABLED(GFX_USE_DMA)
     gfx_fill_rect_dma( x, y, width, height );
     dma_execute_queue();
 #else
@@ -425,7 +424,7 @@ void gfx_term_render_cursor_newline_dma()
 }
 
 
-void gfx_term_putstring( unsigned char* str )
+void gfx_term_putstring( const char* str )
 {
     while( *str )
     {
@@ -433,13 +432,13 @@ void gfx_term_putstring( unsigned char* str )
 
         switch( *str )
         {
-            case '\n':
+            case '\r':
                 gfx_restore_cursor_content();
                 ctx.term.cursor_col = 0;
                 gfx_term_render_cursor();
                 break;
 
-            case '\r':
+            case '\n':
                 gfx_restore_cursor_content();
                 ++ctx.term.cursor_row;
                 ctx.term.cursor_col = 0;
@@ -453,6 +452,7 @@ void gfx_term_putstring( unsigned char* str )
                 gfx_term_render_cursor();
                 break;
 
+            case 0x08:
             case 0x7F:
                 /* backspace */
                 if( ctx.term.cursor_col>0 )
@@ -462,6 +462,12 @@ void gfx_term_putstring( unsigned char* str )
                     gfx_clear_rect( ctx.term.cursor_col*8, ctx.term.cursor_row*8, 8, 8 );
                     gfx_term_render_cursor();
                 }
+                break;
+
+            case 0xC:
+                /* new page */
+                gfx_term_move_cursor(0,0);
+                gfx_term_clear_screen();
                 break;
 
 
@@ -654,8 +660,8 @@ void state_fun_final_letter( char ch, scn_state *state )
         case 'J':
             if( state->cmd_params_size==1 && state->cmd_params[0] ==2 )
             {
-                gfx_term_clear_screen();
                 gfx_term_move_cursor(0,0);
+                gfx_term_clear_screen();
             }
             goto back_to_normal;
             break;

@@ -1,4 +1,4 @@
-
+#include "pigfx_config.h"
 #include "framebuffer.h"
 #include "postman.h"
 #include "console.h"
@@ -108,8 +108,7 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
         return FB_GET_DISPLAY_SIZE_FAIL;
 
 
-#ifdef FRAMEBUFFER_DEBUG
-zsh:1: command not found: xclip
+#if ENABLED(FRAMEBUFFER_DEBUG)
     unsigned int display_w = mailbuffer[5];
     unsigned int display_h = mailbuffer[6];
     cout("Display size: ");cout_d(display_w);cout("x");cout_d(display_h);cout_endl();
@@ -190,7 +189,7 @@ zsh:1: command not found: xclip
      *       */
     *pp_fb = (void*)mem_p2v(physical_screenbase);
 
-#ifdef FRAMEBUFFER_DEBUG
+#if ENABLED(FRAMEBUFFER_DEBUG)
     cout("Screen addr: ");cout_h((unsigned int)*pp_fb); cout_endl();
     cout("Screen size: ");cout_d(*pfbsize); cout_endl();
 #endif
@@ -219,7 +218,7 @@ zsh:1: command not found: xclip
     if( *pPitch == 0 )
         return FB_INVALID_PITCH;
 
-#ifdef FRAMEBUFFER_DEBUG
+#if ENABLED(FRAMEBUFFER_DEBUG)
     cout("pitch: "); cout_d(*pPitch); cout_endl();
 #endif
 

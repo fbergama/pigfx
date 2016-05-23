@@ -2,8 +2,6 @@
 #define _POSTMAN_H_
 
 
-//#define POSTMAN_DEBUG 
-
 
 typedef enum {
 POSTMAN_SUCCESS      =0xC0,

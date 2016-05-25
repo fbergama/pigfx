@@ -34,6 +34,7 @@ volatile char* uart_buffer_limit;
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
 
+extern unsigned char G_STARTUP_LOGO;
 
 #if ENABLED(SKIP_BACKSPACE_ECHO)
 volatile unsigned int backspace_n_skip;
@@ -463,5 +464,6 @@ void entry_point()
 #endif
 
     ee_printf("---------\n");
+    gfx_put_sprite( (unsigned char*)&G_STARTUP_LOGO, 10, 300 );
     term_main_loop();
 }

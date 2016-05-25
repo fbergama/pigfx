@@ -49,6 +49,11 @@ extern void gfx_scroll_down( unsigned int npixels );
 extern void gfx_scroll_up( unsigned int npixels );
 
 
+/*!
+ * Renders a sprite to the framebuffer at the specified (x,y) location
+ */
+extern void gfx_put_sprite( unsigned char* p_sprite, unsigned int x, unsigned int y );
+
 
 /*!
  *  Terminal

@@ -124,6 +124,27 @@ void gfx_get_term_size( unsigned int* rows, unsigned int* cols )
     *cols = ctx.term.WIDTH;
 }
 
+void gfx_put_sprite( unsigned char* p_sprite, unsigned int x, unsigned int y )
+{
+    unsigned char* pf = PFB(x,y);
+    unsigned int *p_spr_32 = (unsigned int*)p_sprite;
+    unsigned int width  = *p_spr_32; p_spr_32++;
+    unsigned int height = *p_spr_32; p_spr_32++;
+
+    unsigned int i,j;
+    unsigned char* pspr = (unsigned char*)p_spr_32;
+
+    for( i=0; i<height; ++i )
+    {
+        for( j=0; j<width; ++j )
+        {
+            *pf++ = *pspr++;
+        }
+        pf += ctx.Pitch - width;
+    }
+
+
+}
 
 void gfx_clear()
 {

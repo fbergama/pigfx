@@ -10,8 +10,11 @@ all: pigfx_test.bin
 pigfx_test.bin: pigfx_test.asm pigfx.lib
 	z80asm -l -a -m -L$(CLIBSDIR) -I$(CINCDIR) -ipigfx.lib -iz80_crt0.lib -o=pigfx_test.bin rc2014init.asm pigfx_test.asm
 
+TinyBasicPlus.asm: TinyBasicPlus.c
+	zcc +zx80 -nostdlib -SO0 -O0 -a -c -z80-verb $<
+
 pigfx_test.asm: pigfx_test.c
-	zcc +zx80 -nostdlib -SO0 -O0 -a -c -z80-verb -lpigfx $<
+	zcc +zx80 -nostdlib -SO0 -O0 -a -c -z80-verb $<
 
 pigfx.lib: pigfx.asm
 	z80asm -l -xpigfx.lib pigfx.asm

@@ -1,17 +1,25 @@
 #include "pigfx.h"
+#include "rc2014.h"
 
-void fun()
+
+void entry_point_()
 {
     unsigned int i;
     pigfx_fgcol(3);
 
-    for( i=0; i<10; ++i )
+    rc2014_putc('T');
+
+    for( i=0; i<50; ++i )
     {
         pigfx_fgcol(i);
-        pigfx_print(" RC2014 ");
+        pigfx_bgcol(100-i);
+        rc2014_putc( 'A' );
     }
 
+    while(1);
+}
 
-    while(1)
-        continue;
+void aa()
+{
+    while(1);
 }

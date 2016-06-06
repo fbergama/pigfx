@@ -18,12 +18,55 @@ RST00:      di                  ; disable interrupts
             nop                 ; pad to address 0x0008
 
 RST08:      jp TX
+            nop 
+            nop
+            nop
+            nop
+            nop
 
-TX:         ld b, a             ; store in b the caracter to output
+RST10:      jp rc2014_getc
+            nop
+            nop
+            nop
+            nop
+            nop
+RST18:      jp rc2014_pollc
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+            nop
+RST38:      reti
+
+TX:         push af             
 txbusy:     in a,($80)          ; read serial status
             bit 1,a             ; check status bit 1
             jr z, txbusy        ; loop if zero (serial is busy)
-            ld a, b
+            pop af
             out ($81), a        ; transmit the character
             ret
 
@@ -35,12 +78,14 @@ txbusy:     in a,($80)          ; read serial status
 ;@---------------------------------------------------------------------
 public rc2014_getc
 rc2014_getc:         
-rxempty:    in a, ($80)
+            push af
+waitch:     in a, ($80)
             bit 0, a
-            jr z, rxempty
+            jr z, waitch
             in a, ($81)
             ld h, 0
             ld l, a
+            pop af
             ret
             
 
@@ -58,7 +103,7 @@ rc2014_putc:
 
 
 ;@---------------------------------------------------------------------
-;@ rc2014_putc 
+;@ rc2014_pollc 
 ;@
 ;@ polls the uart receive buffer status and 
 ;@ returns the result in the register L:
@@ -76,7 +121,7 @@ rc2014_pollc:
             ret
 
 
-INIT:       ld hl,$80ED         ; stack initialization
+INIT:       ld hl,$FFF0         ; stack initialization
             ld sp,hl
 
             ld a, $95           ; Initialize ACIA

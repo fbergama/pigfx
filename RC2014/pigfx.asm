@@ -54,13 +54,17 @@ pigfx_printnum:
             ld  c, -10
             call    PNDOSUB
             ld  c, b
-            jp      PNDOSUB
+            jp      PNDOSUB0
 PNCOUNT:    inc a
 PNDOSUB:    add hl, bc
             jr  c, PNCOUNT
             sbc hl, bc
             or a
             ret z
+            jp PNa
+PNDOSUB0:   add hl, bc
+            jr  c, PNCOUNT
+            sbc hl, bc
 PNa:        add a, '0'
             rst $08
             ld a, 0

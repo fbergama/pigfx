@@ -143,7 +143,7 @@ static unsigned char outStream = kStreamSerial;
 
 #define ECHO_CHARS 0
 
-#define kRamSize 4096
+#define kRamSize 8192
 
 static unsigned char program[kRamSize];
 static const char *  sentinel = "HELLO";
@@ -176,12 +176,12 @@ static unsigned char keywords[] PROGMEM = {
   'M','E','M'+0x80,
   '?'+ 0x80,
   '\''+ 0x80,
-  'A','W','R','I','T','E'+0x80,
-  'D','W','R','I','T','E'+0x80,
   'D','E','L','A','Y'+0x80,
   'E','N','D'+0x80,
   'R','S','E','E','D'+0x80,
   'C','H','A','I','N'+0x80,
+  'I','N','K'+0x80,
+  'P','A','P','E','R'+0x80,
   0
 };
 
@@ -200,11 +200,12 @@ enum {
   KW_FILES,
   KW_MEM,
   KW_QMARK, KW_QUOTE,
-  KW_AWRITE, KW_DWRITE,
   KW_DELAY,
   KW_END,
   KW_RSEED,
   KW_CHAIN,
+  KW_INK,
+  KW_PAPER,
   KW_DEFAULT /* always the final one*/
 };
 
@@ -615,9 +616,11 @@ static short int expr4(void)
     // Is it a variable reference (single alpha)
     if(txtpos[1] < 'A' || txtpos[1] > 'Z')
     {
-      a = ((short int *)variables_begin)[*txtpos - 'A'];
-      txtpos++;
-      return a;
+        short int* ptr = (short int*)variables_begin + *txtpos - 'A';
+
+        a = *ptr;
+        txtpos++;
+        return a;
     }
 
     // Is it a function with a single parameter
@@ -648,6 +651,7 @@ static short int expr4(void)
 
     case FUNC_RND:
       return( rand() % a );
+
     }
   }
 
@@ -779,7 +783,6 @@ void loop()
   unsigned char *start;
   unsigned char *newEnd;
   unsigned char linelen;
-  unsigned char isDigital;
   unsigned char alsoWait = 0;
   int val;
 
@@ -791,11 +794,11 @@ void loop()
   variables_begin = stack_limit - 27*VAR_SIZE;
 
   // memory free
-  pigfx_print("TinyBasicPlus  RC2014\r");
-  pigfx_print("---\r");
-  pigfx_print("Original authors: Mike Field <hamster@snap.net.nz>\r");
-  pigfx_print("                  Scott Lawrence <yorgle@gmail.com>\r");
-  pigfx_print("     RC2014 port: Filippo Bergamasco <fbergama@gmail.com>\r\r");
+  pigfx_print("TinyBasicPlus  RC2014\n\r");
+  pigfx_print("---\n\r");
+  pigfx_print("Original authors: Mike Field <hamster@snap.net.nz>\n\r");
+  pigfx_print("                  Scott Lawrence <yorgle@gmail.com>\n\r");
+  pigfx_print("     RC2014 port: Filippo Bergamasco <fbergama@gmail.com>\n\r\n\r");
   printnum(variables_begin-program_end);
   printmsg(memorymsg);
 
@@ -1038,6 +1041,10 @@ interperateAtTxtpos:
     goto print;
   case KW_POKE:
     goto poke;
+  case KW_INK:
+    goto ink;
+  case KW_PAPER:
+    goto paper;
   case KW_END:
   case KW_STOP:
     // This is the easy way to end - set the current line to the end of program attempt to run it
@@ -1048,13 +1055,6 @@ interperateAtTxtpos:
   case KW_BYE:
     // Leave the basic interperater
     return;
-
-  case KW_AWRITE:  // AWRITE <pin>, HIGH|LOW
-    isDigital = 0;
-    goto awrite;
-  case KW_DWRITE:  // DWRITE <pin>, HIGH|LOW
-    isDigital = 1;
-    goto dwrite;
 
   case KW_RSEED:
     goto rseed;
@@ -1082,6 +1082,8 @@ execline:
 input:
   {
     unsigned char var;
+    short int* vb = (short int*)variables_begin;
+
     ignore_blanks();
     if(*txtpos < 'A' || *txtpos > 'Z')
       goto qwhat;
@@ -1090,7 +1092,7 @@ input:
     ignore_blanks();
     if(*txtpos != NL && *txtpos != ':')
       goto qwhat;
-    ((short int *)variables_begin)[var-'A'] = 99;
+    vb[var-'A'] = 99;
 
     goto run_next_statement;
   }
@@ -1139,13 +1141,14 @@ forloop:
 
     if(!expression_error && *txtpos == NL)
     {
+      short int* vb = (short int*)variables_begin;
       struct stack_for_frame *f;
       if(sp + sizeof(struct stack_for_frame) < stack_limit)
         goto qsorry;
 
       sp -= sizeof(struct stack_for_frame);
       f = (struct stack_for_frame *)sp;
-      ((short int *)variables_begin)[var-'A'] = initial;
+      vb[var-'A'] = initial;
       f->frame_type = STACK_FOR_FLAG;
       f->for_var = var;
       f->terminal = terminal;
@@ -1247,6 +1250,7 @@ assignment:
     if(*txtpos < 'A' || *txtpos > 'Z')
       goto qhow;
     var = (short int *)variables_begin + *txtpos - 'A';
+    //pigfx_print("VAR location: "); pigfx_printhex(var);
     txtpos++;
 
     ignore_blanks();
@@ -1263,8 +1267,10 @@ assignment:
     if(*txtpos != NL && *txtpos != ':')
       goto qwhat;
     *var = value;
+    //pigfx_print("ASSIGN:"); pigfx_printnum( *var );
   }
   goto run_next_statement;
+
 poke:
   {
     short int value;
@@ -1293,6 +1299,30 @@ poke:
     // Check that we are at the end of the statement
     if(*txtpos != NL && *txtpos != ':')
       goto qwhat;
+  }
+  goto run_next_statement;
+
+ink:
+  {
+    short int value;
+    expression_error = 0;
+    value = expression();
+    if(expression_error)
+      goto qwhat;
+
+    pigfx_fgcol( (int)value );
+  }
+  goto run_next_statement;
+
+paper:
+  {
+    short int value;
+    expression_error = 0;
+    value = expression();
+    if(expression_error)
+      goto qwhat;
+
+    pigfx_bgcol( (int)value );
   }
   goto run_next_statement;
 

@@ -4,8 +4,8 @@ CINCDIR = "$(ZCCCFG)/../"
 
 
 all: pigfx_test.bin TinyBasicPlus.bin
-#cp pigfx_test.bin pigfx_test.rom
-	cp TinyBasicPlus.bin pigfx_test.rom
+	cp pigfx_test.bin pigfx_test.rom
+	cp TinyBasicPlus.bin TinyBasicPlus.rom
 
 
 pigfx_test.bin: pigfx_test.asm pigfx.lib
@@ -25,4 +25,4 @@ pigfx.lib: pigfx.asm
 	z80asm -l -xpigfx.lib pigfx.asm
 
 .PHONY clean:
-	rm -f *.bin *.lst *.ihx *.obj *.rom  *.reloc *.sym *.map pigfx.lib *.opt pigfx_test.asm zcc_opt.def
+	rm -f *.bin *.lst *.ihx *.obj *.rom  *.reloc *.sym *.map pigfx.lib *.opt pigfx_test.asm TinyBasicPlus.asm zcc_opt.def

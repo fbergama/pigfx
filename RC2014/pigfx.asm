@@ -72,6 +72,40 @@ PNa:        add a, '0'
 
 
 ;@---------------------------------------------------------------------
+;@ pigfx_printhex 
+;@
+;@  print the hex number in HL to the system UART
+;@  as an ascii string
+;@
+;@  See: http://map.grauw.nl/sources/external/z80bits.html#5.1
+;@
+;@      HL: number to print 
+;@
+;@---------------------------------------------------------------------
+public pigfx_printhex
+pigfx_printhex:
+     ld  a,h
+    call    Num1
+    ld  a,h
+    call    Num2
+    ld  a,l
+    call    Num1
+    ld  a,l
+    jr  Num2
+
+Num1:    rra
+    rra
+    rra
+    rra
+Num2:    or  $F0
+    daa
+    add a,$A0
+    adc a,$40
+    rst $08
+    ret
+
+
+;@---------------------------------------------------------------------
 ;@ pigfx_showcursor 
 ;@
 ;@  Set the cursor visible

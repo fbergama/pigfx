@@ -5,8 +5,16 @@
 // Authors: Mike Field <hamster@snap.net.nz>
 //	    Scott Lawrence <yorgle@gmail.com>
 //
-
-
+// RC2014 port: Filippo Bergamasco <fbergama@gmail.com
+//
+//--------------------------------------------------------------------------------
+// RC2014 changelog
+//
+// - ink and paper commands added
+//
+//--------------------------------------------------------------------------------
+// Original Changelog
+//
 // v0.13: 2013-03-04
 //      Support for Arduino 1.5 (SPI.h included, additional changes for DUE support)
 //
@@ -85,6 +93,9 @@ void startup()
     while(1);
 }
 
+
+// TODO: these still need to be implemented
+//
 int rand()
 {
     return 0;
@@ -95,7 +106,6 @@ void srand()
     return;
 }
 
-char eliminateCompileErrors = 1;  // fix to suppress arduino build errors
 
 
 #ifndef byte
@@ -114,15 +124,6 @@ typedef unsigned char byte;
 unsigned char inhibitOutput = 0;
 static unsigned char runAfterLoad = 0;
 static unsigned char triggerRun = 0;
-
-// these will select, at runtime, where IO happens through for load/save
-enum {
-  kStreamSerial = 0,
-  kStreamEEProm,
-  kStreamFile
-};
-static unsigned char inStream = kStreamSerial;
-static unsigned char outStream = kStreamSerial;
 
 
 ////////////////////////////////////////////////////////////////////////////////

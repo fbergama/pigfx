@@ -121,7 +121,7 @@ rc2014_pollc:
             ret
 
 
-INIT:       ld hl,$FFF0         ; stack initialization
+INIT:       ld hl,$FF00         ; stack initialization
             ld sp,hl
 
             ld a, $95           ; Initialize ACIA

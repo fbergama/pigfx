@@ -1,25 +1,33 @@
-#include "pigfx.h"
 #include "rc2014.h"
+#include "pigfx.h"
+
+
+#pragma output CRT_ORG_CODE = 107
+#pragma output REGISTER_SP  = -1
+#pragma output CLIB_MALLOC_HEAP_SIZE = 0 
 
 
 void entry_point_()
 {
-    unsigned int i;
-    //pigfx_fgcol(3);
+    int i;
 
-    rc2014_putc('T');
-    pigfx_printnum(123);
-
-    for( i=0; i<50; ++i )
+    for( i=0; i<20; ++i )
     {
-        //pigfx_fgcol(i);
-        pigfx_printnum(i);pigfx_print("\r\n");
+        pigfx_fgcol(i);
+        pigfx_bgcol(100-i);
+        pigfx_print("HELLO");
     }
 
-    while(1);
 }
 
-void aa()
+void main()
 {
+#asm
+    ld a, 'A'
+    rst $8
+#endasm
+     
+    entry_point_();
     while(1);
+
 }

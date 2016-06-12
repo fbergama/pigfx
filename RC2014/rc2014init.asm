@@ -8,10 +8,13 @@
 ;@
 ;@---------------------------------------------------------------------
 
+section INIT
+EXTERN __Start
+
 ORG 0000h			; start at 0x0000
 
 RST00:      di                  ; disable interrupts
-            jp INIT             
+            jp bootstrap
             nop
             nop
             nop
@@ -121,12 +124,14 @@ rc2014_pollc:
             ret
 
 
-INIT:       ld hl,$FF00         ; stack initialization
+bootstrap:  ld hl,$FF00         ; stack initialization
             ld sp,hl
 
             ld a, $95           ; Initialize ACIA
             out ($80),a
 
-            ; init completed
+            jp __Start  ;; this label is exported by the crt
+                        ;; if you expect main() to return here use call instead
+                        ;; if you know the c compiled portion will append here you can just fall through
 
 

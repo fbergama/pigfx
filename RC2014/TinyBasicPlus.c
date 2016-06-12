@@ -86,8 +86,13 @@
 #include "rc2014.h"
 #include "pigfx.h"
 
+#pragma output CRT_ORG_CODE = 107
+#pragma output REGISTER_SP  = -1
+#pragma output CLIB_MALLOC_HEAP_SIZE = 0 
+
+
 int entry_point_();
-void startup()
+void main()
 {
     entry_point_();
     while(1);

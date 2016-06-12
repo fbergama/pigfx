@@ -9,8 +9,7 @@
 
 MODULE pigfx
 
-section code
-
+SECTION code_user
 
 ;@---------------------------------------------------------------------
 ;@ pigfx_print 
@@ -185,7 +184,8 @@ ANSI_START: ld a, 0x1B
             rst $08
             ret
 
-section data
+
+SECTION rodata_user
 
 cursor_inv_str: DEFM "?25l",0
 cursor_vis_str: DEFM "?25h",0

@@ -124,11 +124,13 @@ rc2014_pollc:
             ret
 
 
-bootstrap:  ld hl,$FF00         ; stack initialization
+bootstrap:  ld hl,$FFF9         ; stack initialization
             ld sp,hl
 
-            ld a, $95           ; Initialize ACIA
+            ld a, $96           ; Initialize ACIA
             out ($80),a
+
+            di
 
             jp __Start  ;; this label is exported by the crt
                         ;; if you expect main() to return here use call instead

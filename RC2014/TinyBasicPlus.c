@@ -160,11 +160,9 @@ static unsigned char *tempsp;
 /***********************************************************/
 // Keyword table and constants - the last character has 0x80 added to it
 static unsigned char keywords[] PROGMEM = {
-  'L','I','S','T'+0x80,
-  'L','O','A','D'+0x80,
   'N','E','W'+0x80,
+  'L','I','S','T'+0x80,
   'R','U','N'+0x80,
-  'S','A','V','E'+0x80,
   'N','E','X','T'+0x80,
   'L','E','T'+0x80,
   'I','F'+0x80,
@@ -177,8 +175,6 @@ static unsigned char keywords[] PROGMEM = {
   'P','R','I','N','T'+0x80,
   'P','O','K','E'+0x80,
   'S','T','O','P'+0x80,
-  'B','Y','E'+0x80,
-  'F','I','L','E','S'+0x80,
   'M','E','M'+0x80,
   '?'+ 0x80,
   '\''+ 0x80,
@@ -194,16 +190,16 @@ static unsigned char keywords[] PROGMEM = {
 // by moving the command list to an enum, we can easily remove sections 
 // above and below simultaneously to selectively obliterate functionality.
 enum {
-  KW_LIST = 0,
-  KW_LOAD, KW_NEW, KW_RUN, KW_SAVE,
+  KW_NEW = 0,
+  KW_LIST,
+  KW_RUN,
   KW_NEXT, KW_LET, KW_IF,
   KW_GOTO, KW_GOSUB, KW_RETURN,
   KW_REM,
   KW_FOR,
   KW_INPUT, KW_PRINT,
   KW_POKE,
-  KW_STOP, KW_BYE,
-  KW_FILES,
+  KW_STOP,
   KW_MEM,
   KW_QMARK, KW_QUOTE,
   KW_DELAY,
@@ -233,17 +229,14 @@ struct stack_gosub_frame {
 static unsigned char func_tab[] PROGMEM = {
   'P','E','E','K'+0x80,
   'A','B','S'+0x80,
-  'A','R','E','A','D'+0x80,
-  'D','R','E','A','D'+0x80,
   'R','N','D'+0x80,
   0
 };
+
 #define FUNC_PEEK    0
 #define FUNC_ABS     1
-#define FUNC_AREAD   2
-#define FUNC_DREAD   3
-#define FUNC_RND     4
-#define FUNC_UNKNOWN 5
+#define FUNC_RND     2
+#define FUNC_UNKNOWN 3
 
 static unsigned char to_tab[] PROGMEM = {
   'T','O'+0x80,
@@ -273,17 +266,7 @@ static unsigned char relop_tab[] PROGMEM = {
 #define RELOP_LE		4
 #define RELOP_LT		5
 #define RELOP_NE_BANG		6
-#define RELOP_UNKNOWN	7
-
-static unsigned char highlow_tab[] PROGMEM = { 
-  'H','I','G','H'+0x80,
-  'H','I'+0x80,
-  'L','O','W'+0x80,
-  'L','O'+0x80,
-  0
-};
-#define HIGHLOW_HIGH    1
-#define HIGHLOW_UNKNOWN 4
+#define RELOP_UNKNOWN	        7
 
 #define STACK_SIZE (sizeof(struct stack_for_frame)*5)
 #define VAR_SIZE sizeof(short int) // Size of variables in bytes
@@ -309,7 +292,6 @@ static const unsigned char breakmsg[]         PROGMEM = "break!";
 static const unsigned char unimplimentedmsg[] PROGMEM = "Unimplemented";
 static const unsigned char backspacemsg[]     PROGMEM = "\b \b";
 static const unsigned char indentmsg[]        PROGMEM = "    ";
-static const unsigned char dirextmsg[]        PROGMEM = "(dir)";
 static const unsigned char slashmsg[]         PROGMEM = "/";
 static const unsigned char spacemsg[]         PROGMEM = " ";
 
@@ -318,13 +300,14 @@ static void outchar(unsigned char c);
 static void line_terminator(void);
 static short int expression(void);
 static unsigned char breakcheck(void);
+
 /***************************************************************************/
+
 static void ignore_blanks(void)
 {
   while(*txtpos == SPACE || *txtpos == TAB)
     txtpos++;
 }
-
 
 /***************************************************************************/
 static void scantable(unsigned char *table)
@@ -654,7 +637,6 @@ static short int expr4(void)
         return -a;
       return a;
 
-
     case FUNC_RND:
       return( rand() % a );
 
@@ -792,7 +774,6 @@ void loop()
   unsigned char alsoWait = 0;
   int val;
 
-
   program_start = program;
   program_end = program_start;
   sp = program+sizeof(program);  // Needed for printnum
@@ -894,7 +875,6 @@ prompt:
     goto prompt;
 
 
-
   // Make room for the new line, either all in one hit or lots of little shuffles
   while(linelen > 0)
   {	
@@ -988,16 +968,12 @@ interperateAtTxtpos:
       goto unimplemented;
     }
 
-  case KW_FILES:
-    goto files;
-  case KW_LIST:
-    goto list;
   case KW_CHAIN:
     goto chain;
-  case KW_LOAD:
-    goto load;
   case KW_MEM:
     goto mem;
+  case KW_LIST:
+    goto list;
   case KW_NEW:
     if(txtpos[0] != NL)
       goto qwhat;
@@ -1006,8 +982,6 @@ interperateAtTxtpos:
   case KW_RUN:
     current_line = program_start;
     goto execline;
-  case KW_SAVE:
-    goto save;
   case KW_NEXT:
     goto next;
   case KW_LET:
@@ -1058,17 +1032,13 @@ interperateAtTxtpos:
       goto qwhat;
     current_line = program_end;
     goto execline;
-  case KW_BYE:
-    // Leave the basic interperater
-    return;
 
   case KW_RSEED:
     goto rseed;
 
-
-
   case KW_DEFAULT:
     goto assignment;
+
   default:
     break;
   }
@@ -1402,36 +1372,8 @@ mem:
   goto run_next_statement;
 
 
-  /*************************************************/
-
-pinmode: // PINMODE <pin>, I/O
-awrite: // AWRITE <pin>,val
-dwrite:
-  goto unimplemented;
-
-  /*************************************************/
-files:
-  // display a listing of files on the device.
-  // version 1: no support for subdirectories
-
-  goto unimplemented;
-
-
 chain:
   runAfterLoad = 1;
-
-load:
-  // clear the program
-  program_end = program_start;
-
-  // load from a file into memory
-  goto unimplemented;
-
-
-
-save:
-  // save from memory out to a file
-  goto unimplemented;
 
 rseed:
   {
@@ -1446,53 +1388,10 @@ rseed:
     srand( value );
     goto run_next_statement;
   }
-
-}
-
-// returns 1 if the character is valid in a filename
-static int isValidFnChar( char c )
-{
-  if( c >= '0' && c <= '9' ) return 1; // number
-  if( c >= 'A' && c <= 'Z' ) return 1; // LETTER
-  if( c >= 'a' && c <= 'z' ) return 1; // letter (for completeness)
-  if( c == '_' ) return 1;
-  if( c == '+' ) return 1;
-  if( c == '.' ) return 1;
-  if( c == '~' ) return 1;  // Window~1.txt
-
-  return 0;
-}
-
-unsigned char * filenameWord(void)
-{
-  // SDL - I wasn't sure if this functionality existed above, so I figured i'd put it here
-  unsigned char * ret = txtpos;
-  expression_error = 0;
-
-  // make sure there are no quotes or spaces, search for valid characters
-  //while(*txtpos == SPACE || *txtpos == TAB || *txtpos == SQUOTE || *txtpos == DQUOTE ) txtpos++;
-  while( !isValidFnChar( *txtpos )) txtpos++;
-  ret = txtpos;
-
-  if( *ret == '\0' ) {
-    expression_error = 1;
-    return ret;
-  }
-
-  // now, find the next nonfnchar
-  txtpos++;
-  while( isValidFnChar( *txtpos )) txtpos++;
-  if( txtpos != ret ) *txtpos = '\0';
-
-  // set the error code if we've got no string
-  if( *ret == '\0' ) {
-    expression_error = 1;
-  }
-
-  return ret;
 }
 
 /***************************************************************************/
+
 static void line_terminator(void)
 {
   outchar(NL);
@@ -1500,12 +1399,14 @@ static void line_terminator(void)
 }
 
 /***********************************************************/
+
 static unsigned char breakcheck(void)
 {
     return 0;
 }
 
 /***********************************************************/
+
 static int inchar()
 {
   int v;
@@ -1518,14 +1419,13 @@ static int inchar()
 }
 
 /***********************************************************/
+
 static void outchar(unsigned char c)
 {
   if( inhibitOutput ) return;
 
   rc2014_putc(c);
 }
-
-
 
 int entry_point_()
 {

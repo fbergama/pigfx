@@ -119,7 +119,7 @@ pigfx_show_cursor:
 
 
 ;@---------------------------------------------------------------------
-;@ pigfx_showcursor 
+;@ pigfx_hidecursor 
 ;@
 ;@  Set the cursor invisible
 ;@
@@ -128,6 +128,20 @@ public pigfx_hide_cursor
 pigfx_hide_cursor:  
             call ANSI_START
             ld hl, cursor_inv_str
+            call pigfx_print
+            ret
+
+
+;@---------------------------------------------------------------------
+;@ pigfx_cls 
+;@
+;@  Clear the screen and move cursor to 0-0
+;@
+;@---------------------------------------------------------------------
+public pigfx_cls
+pigfx_cls:  
+            call ANSI_START
+            ld hl, cursor_cls_str
             call pigfx_print
             ret
 
@@ -177,7 +191,44 @@ pigfx_bgcol:
 
 
 
+;@---------------------------------------------------------------------
+;@ pigfx_movecursor 
+;@
+;@  Move the cursor to -row- -col- (read from stack)
+;@
+;@  stack:  <row > <col> <return addr>
+;@
+;@---------------------------------------------------------------------
+public pigfx_movecursor
+pigfx_movecursor:
+            call ANSI_START
+
+            pop  de             ; return addr
+            pop  bc             ; col
+            pop  hl             ; row 
+            
+            push de             ; push ret addr
+            push bc             ; push col to swap row/col
+            
+            call pigfx_printnum ; print row
+            ld a, ';'
+            rst $08 
+            pop hl              ; pop col
+            call pigfx_printnum ; print col
+            ld a, 'H'
+            rst $08 
+
+            pop hl              ; pop return address
+            push hl             ; 
+            push hl
+            push hl
+
+            ret                 ; end 
+
+
+
 ;@ Utility functions
+;@---------------------------------------------------------------------
 ANSI_START: ld a, 0x1B
             rst $08
             ld a, '['
@@ -185,9 +236,12 @@ ANSI_START: ld a, 0x1B
             ret
 
 
+;@ -------------------------------------------------------------------
+
 SECTION rodata_user
 
 cursor_inv_str: DEFM "?25l",0
 cursor_vis_str: DEFM "?25h",0
+cursor_cls_str: DEFM "2J",0
 fgcol_str:      DEFM "38;5;",0
 bgcol_str:      DEFM "48;5;",0

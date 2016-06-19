@@ -9,14 +9,16 @@
 
 void entry_point_()
 {
-    int i;
-
-    for( i=0; i<20; ++i )
+    int i=0;
+    
+    pigfx_cls();
+    pigfx_hide_cursor();
+    for( i=0; i<5; ++i )
     {
-        pigfx_fgcol(i);
-        pigfx_bgcol(100-i);
+        pigfx_movecursor( i, i );
         pigfx_print("HELLO");
     }
+    pigfx_show_cursor();
 
 }
 

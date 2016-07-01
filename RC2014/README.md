@@ -3,12 +3,12 @@
 This subdirectory contains all the software written for the 
 [RC2014 homebrew computer](http://rc2014.co.uk). 
 
-At the moment is composed by:
+At the moment is composed by the following components:
 
-- The RC2014 initialization code ```rc2014init.asm```
-- PiGFX interface library ```pigfx.asm```
+- The RC2014 initialization code for ROM/RAM system (```init/``` directory)
+- PiGFX interface library (```pigfx/``` directory)
 - [TinyBasicPlus](https://github.com/BleuLlama/TinyBasicPlus) port, originally written by Scott Lawrence and adapted for the Z80/RC2014 
-
+- A simple snake game (in the ```snake/``` directory)
 
 ## How to build
 

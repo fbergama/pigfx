@@ -2,7 +2,7 @@
 #include "pigfx.h"
 
 
-#pragma output CRT_ORG_CODE = 108
+#pragma output CRT_ORG_CODE = 122
 #pragma output REGISTER_SP  = -1
 #pragma output CLIB_MALLOC_HEAP_SIZE = 0 
 
@@ -19,6 +19,10 @@ void entry_point_()
         pigfx_print("HELLO");
     }
     pigfx_show_cursor();
+
+    rc2014_outp( 0x8165 );
+    rc2014_outp( 0x8166 );
+    rc2014_outp( 0x8167 );
 
 }
 

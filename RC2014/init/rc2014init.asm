@@ -73,6 +73,22 @@ txbusy:     in a,($80)          ; read serial status
             out ($81), a        ; transmit the character
             ret
 
+bootstrap:  ld hl,$FFF9         ; stack initialization
+            ld sp,hl
+
+            ld a, $96           ; Initialize ACIA
+            out ($80),a
+
+            di
+
+            jp __Start  ;; this label is exported by the crt
+                        ;; if you expect main() to return here use call instead
+                        ;; if you know the c compiled portion will append here 
+                        ;; you can just fall through
+
+
+;@ Follows additional functions to interact with rc2014 hardware
+;@
 ;@---------------------------------------------------------------------
 ;@ rc2014_getc 
 ;@
@@ -124,16 +140,37 @@ rc2014_pollc:
             ret
 
 
-bootstrap:  ld hl,$FFF9         ; stack initialization
-            ld sp,hl
+;@---------------------------------------------------------------------
+;@ rc2014_inp 
+;@
+;@ reads a byte from port l and returns the results in l
+;@
+;@---------------------------------------------------------------------
+public rc2014_inp
+rc2014_inp:
+            push bc
+            ld c, l
+            in b, (c)
+            ld l, b
+            pop bc
+            ret
 
-            ld a, $96           ; Initialize ACIA
-            out ($80),a
 
-            di
+;@---------------------------------------------------------------------
+;@ rc2014_inp 
+;@
+;@ writes register l to port h
+;@
+;@---------------------------------------------------------------------
+public rc2014_outp
+rc2014_outp:
+            push bc
+            ld c, h
+            ld b, l
+            out (c), b
+            pop bc
+            ret
 
-            jp __Start  ;; this label is exported by the crt
-                        ;; if you expect main() to return here use call instead
-                        ;; if you know the c compiled portion will append here you can just fall through
+
 
 

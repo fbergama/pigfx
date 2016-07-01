@@ -1,8 +1,7 @@
-#include "../rc2014.h"
-#include "../pigfx.h"
+#include "rc2014.h"
+#include "pigfx.h"
 
-
-#pragma output CRT_ORG_CODE = 108
+//#pragma output CRT_ORG_CODE = 122
 #pragma output REGISTER_SP  = -1
 #pragma output CLIB_MALLOC_HEAP_SIZE = 0 
 
@@ -247,10 +246,13 @@ int update_snake()
 
 void main()
 {
+    char usercommand;
+    int head_idx;
+
     initialize();
 
     while( !rc2014_pollc() || rc2014_getc() != 'n') 
-        rnd_x++1;
+        rnd_x++;
 
     while(1)
     {
@@ -263,43 +265,56 @@ void main()
             continue;
         }
 
+        usercommand = 0; // none
+        usercommand = rc2014_inp( 0x01 );
+
         if( rc2014_pollc() )
         {
-            int head_idx = snake_head.i * FIELD_W + snake_head.j;
-            switch( rc2014_getc() )
-            {
-                case 'w':
-                case 'W':
-                    if( field[head_idx] != 'D' )
-                        field[ head_idx ] = 'U';
-                    break;
+            usercommand = rc2014_getc();
+        }
 
-                case 'd':
-                case 'D':
-                    if( field[head_idx] != 'L' )
-                        field[ head_idx ] = 'R';
-                    break;
-
-                case 'a':
-                case 'A':
-                    if( field[head_idx] != 'R' )
-                        field[ head_idx ] = 'L';
-                    break;
-
-                case 's':
-                case 'S':
-                    if( field[head_idx] != 'U' )
-                        field[ head_idx ] = 'D';
-                    break;
-
-                case 'n':
-                case 'N':
-                    initialize();
-                    continue;
-
+        head_idx = snake_head.i * FIELD_W + snake_head.j;
+        switch( usercommand )
+        {
+            case 'w':
+            case 'W':
+            case 1:
+                if( field[head_idx] != 'D' )
+                    field[ head_idx ] = 'U';
                 break;
-            }
-        } 
+
+            case 'd':
+            case 'D':
+            case 8:
+                if( field[head_idx] != 'L' )
+                    field[ head_idx ] = 'R';
+                break;
+
+            case 'a':
+            case 'A':
+            case 4:
+                if( field[head_idx] != 'R' )
+                    field[ head_idx ] = 'L';
+                break;
+
+            case 's':
+            case 'S':
+            case 2:
+                if( field[head_idx] != 'U' )
+                    field[ head_idx ] = 'D';
+                break;
+
+            case 'n':
+            case 'N':
+                initialize();
+                continue;
+
+            case 0:
+                // do nothing
+                break;
+
+            break;
+        }
 
         // DELAY LOOP
 #asm

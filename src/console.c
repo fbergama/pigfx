@@ -14,7 +14,7 @@ void cout_endl()
 
 void cout_h( unsigned int v )
 {
-    char buff[15]={0};
+    char buff[15]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     buff[0]='0';
     buff[1]='x';
     word2hexstr( v, buff+2 ); 
@@ -23,7 +23,7 @@ void cout_h( unsigned int v )
 
 void cout_d( unsigned int val )
 {
-    char buffer[32] = {0};
+    char buffer[32];
     unsigned int i = 0;
     unsigned int t;
 

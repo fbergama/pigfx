@@ -12,14 +12,14 @@ static unsigned char* FNT = &G_FONT_GLYPHS;
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2)) 
 #define PFB( X, Y ) ( ctx.pfb + Y*ctx.Pitch + X )
 
-inline void __swap__( int* a, int* b )
+void __swap__( int* a, int* b )
 {
     int aux = *a;
     *a = *b;
     *b = aux;
 }
 
-inline int __abs__( int a )
+int __abs__( int a )
 {
     return a<0?-a:a;
 }

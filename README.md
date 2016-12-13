@@ -42,13 +42,16 @@ Here is a preliminary TODO list of what I plan to add in the future:
 1. Format an SD-card with FAT32 filesystem.
 2. Copy ```bin/kernel.img``` in the root of the SD card along with the files
    ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
-the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot)
+the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot).
+Alternatively, you can find those files in the ```bin/``` subdirectory.
 3. Insert the card and reboot the Pi.
 
-As soon as your raspi is turned on, the message "PIGFX Ready!" should be
+As soon as your raspi is turned on, some debug messages should be
 displayed as a 640x480 @ 60hz video stream from the HDMI interface. Any data
 received from the UART is immediately displayed in a terminal-like fashion (ie.
 it automatically scrolls once you reach the bottom of the screen, etc.).
+Additionally, typing on an attached keyboard (if detected) will send the data
+to the UART TX pin.
 
 
 ### Test inside QEMU

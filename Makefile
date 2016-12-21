@@ -8,18 +8,18 @@ OOB = asm.o pigfx.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console
 
 BUILD_DIR = build
 SRC_DIR = src
-BUILD_VERSION = $(shell git describe --all --long | cut -d "-" -f 3)
-
+BUILD_VERSION = $(shell git log -1 --date=short --pretty=format:%cd)-$(shell git describe --all --long | cut -d "-" -f 3)
 
 OBJS=$(patsubst %.o,$(BUILD_DIR)/%.o,$(OOB))
 
 LIBGCC=$(shell $(ARMGNU)-gcc -print-libgcc-file-name)
 LIBUSPI=uspi/lib/libuspi.a
+LIBFS=rpi-boot/libfs.a
 
-all: pigfx.elf pigfx.hex kernel 
+all: pigfx.elf pigfx.hex kernel
 	ctags src/
 
-$(SRC_DIR)/pigfx_config.h: pigfx_config.h.in 
+$(SRC_DIR)/pigfx_config.h: pigfx_config.h.in
 	@sed 's/\$$VERSION\$$/$(BUILD_VERSION)/g' pigfx_config.h.in > $(SRC_DIR)/pigfx_config.h
 	@echo "Creating pigfx_config.h"
 
@@ -36,24 +36,32 @@ dump: pigfx.elf
 	@$(ARMGNU)-objdump --disassemble-zeroes -D pigfx.elf > pigfx.dump
 	@echo "OBJDUMP $<"
 
-$(BUILD_DIR)/%.o : $(SRC_DIR)/%.c 
+$(BUILD_DIR)/%.o : $(SRC_DIR)/%.c
 	@$(ARMGNU)-gcc $(CFLAGS) -c $< -o $@
 	@echo "CC $<"
 
-$(BUILD_DIR)/%.o : $(SRC_DIR)/%.s 
+$(BUILD_DIR)/%.o : $(SRC_DIR)/%.s
 	@$(ARMGNU)-as $< -o $@
 	@echo "AS $<"
 
-%.hex : %.elf 
+%.hex : %.elf
 	@$(ARMGNU)-objcopy $< -O ihex $@
 	@echo "OBJCOPY $< -> $@"
 
-%.img : %.elf 
+%.img : %.elf
 	@$(ARMGNU)-objcopy $< -O binary $@
 	@echo "OBJCOPY $< -> $@"
 
-pigfx.elf : $(SRC_DIR)/pigfx_config.h $(OBJS) 
-	@$(ARMGNU)-ld $(OBJS) $(LIBGCC) $(LIBUSPI) -T memmap -o $@
+$(LIBFS):
+	@echo "Cloning rpi-boot"
+	git clone https://github.com/jncronin/rpi-boot.git
+	cd rpi-boot/ && git reset --hard a7ea8bd1342e38c6c6a98bbef113c295395cb5f3
+	cp ext-patches/rpiboot.patch rpi-boot/
+	cd rpi-boot/ && patch -p1 < rpiboot.patch
+	cd rpi-boot/ && $(MAKE) libfs.a
+
+pigfx.elf : $(LIBUSPI) $(LIBFS) $(SRC_DIR)/pigfx_config.h $(OBJS)
+	@$(ARMGNU)-ld $(OBJS) $(LIBGCC) $(LIBUSPI) $(LIBFS) -T memmap -o $@
 	@echo "LD $@"
 
 

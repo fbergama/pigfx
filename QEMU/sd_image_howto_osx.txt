@@ -1,0 +1,20 @@
+1) Create a new disk image
+qemu-img create sdcard.img 256M
+
+2) Create a new block device attached to sdcard.img
+hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount sdcard.img
+
+.. /dev/disk2
+
+3) Format
+
+sudo newfs_msdos -F 16 /dev/disk2
+
+4) Mount
+
+diskutil mount /dev/disk2
+
+
+
+
+

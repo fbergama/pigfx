@@ -57,6 +57,13 @@ membarrier:
     bx lr
 
 
+.globl quick_memcpy
+quick_memcpy:
+	push 	{r4-r9}
+	mov	r4, r0
+	mov	r5, r1
+
+
 ;@ strlen
 .global strlen
 strlen:

@@ -12,6 +12,40 @@
 #include "../uspi/include/uspi.h"
 
 
+/********************************/
+#define DIR unsigned int *
+#define uint8_t unsigned char
+#define uint32_t unsigned int
+#define FILE uint32_t *
+
+struct dirent {
+	struct dirent *next;
+        char *name;
+	uint32_t byte_size;
+	uint8_t is_dir;
+	void *opaque;
+	struct fs *fs;
+};
+
+extern void libfs_init();
+extern void *quick_memcpy(void *dest, void *src, unsigned int n);
+extern DIR *opendir(const char *name);
+extern struct dirent *readdir(DIR *dirp);
+extern int closedir(DIR *dirp);
+extern void vfs_list_devices();
+extern FILE *fopen(const char *path, const char *mode);
+
+unsigned int base_adjust = 0;
+void memory_barrier() { membarrier(); }
+
+int split_putc( int c ) { ee_printf("%c",c); return 0;}
+
+extern int (*stdout_putc)(int);
+extern int (*stderr_putc)(int);
+//extern int (*stream_putc)(int, FILE*);
+//extern int def_stream_putc(int, FILE*);
+/********************************/
+
 #define GPFSEL1 0x20200004
 #define GPSET0  0x2020001C
 #define GPCLR0  0x20200028
@@ -62,7 +96,7 @@ static void _keypress_handler(const char* str )
 #endif
 
 #if ENABLED( SWAP_DEL_WITH_BACKSPACE )
-        if( ch == 0x7F ) 
+        if( ch == 0x7F )
         {
             ch = 0x8;
         }
@@ -80,15 +114,15 @@ static void _keypress_handler(const char* str )
             last_backspace_t = time_microsec();
         }
 #endif
-        uart_write( &ch, 1 ); 
+        uart_write( &ch, 1 );
         ++c;
     }
 
-} 
+}
 
 
-static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
-                                      __attribute__((unused)) void* pParam, 
+static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
+                                      __attribute__((unused)) void* pParam,
                                       __attribute__((unused)) void *pContext )
 {
     if( led_status )
@@ -112,13 +146,13 @@ void uart_fill_queue( __attribute__((unused)) void* data )
         *uart_buffer_end++ = (char)( *UART0_DR & 0xFF /*uart_read_byte()*/);
 
         if( uart_buffer_end >= uart_buffer_limit )
-           uart_buffer_end = uart_buffer; 
+           uart_buffer_end = uart_buffer;
 
         if( uart_buffer_end == uart_buffer_start )
         {
             uart_buffer_start++;
             if( uart_buffer_start >= uart_buffer_limit )
-                uart_buffer_start = uart_buffer; 
+                uart_buffer_start = uart_buffer;
         }
     }
 
@@ -170,7 +204,7 @@ void heartbeat_loop()
 
     while(1)
     {
-        
+
         curr_time = time_microsec();
         if( curr_time-last_time > 500000 )
         {
@@ -184,7 +218,7 @@ void heartbeat_loop()
                 led_status = 1;
             }
             last_time = curr_time;
-        } 
+        }
     }
 }
 
@@ -203,11 +237,11 @@ void initialize_framebuffer()
     unsigned int v_w = p_w;
     unsigned int v_h = p_h;
 
-    fb_init( p_w, p_h, 
+    fb_init( p_w, p_h,
              v_w, v_h,
-             8, 
-             (void*)&p_fb, 
-             &fbsize, 
+             8,
+             (void*)&p_fb,
+             &fbsize,
              &pitch );
 
     fb_set_xterm_palette();
@@ -223,7 +257,7 @@ void initialize_framebuffer()
     //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
 
     usleep(10000);
-    gfx_set_env( p_fb, v_w, v_h, pitch, fbsize ); 
+    gfx_set_env( p_fb, v_w, v_h, pitch, fbsize );
     gfx_clear();
 }
 
@@ -307,7 +341,7 @@ void video_test()
 
 void video_line_test()
 {
-    int x=-10; 
+    int x=-10;
     int y=-10;
     int vx=1;
     int vy=0;
@@ -328,7 +362,7 @@ void video_line_test()
 
         x = x+vx;
         y = y+vy;
-        
+
         if( x>700 )
         {
             x--;
@@ -379,7 +413,7 @@ void term_main_loop()
             if( uart_buffer_start >= uart_buffer_limit )
                 uart_buffer_start = uart_buffer;
 
-            
+
 #if ENABLED(SKIP_BACKSPACE_ECHO)
             if( time_microsec()-last_backspace_t > 50000 )
                 backspace_n_skip=0;
@@ -410,13 +444,13 @@ void entry_point()
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
 
     // UART buffer allocation
-    uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE ); 
-    
+    uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE );
+
     uart_init();
     heartbeat_init();
-    
+
     //heartbeat_loop();
-    
+
     initialize_framebuffer();
 
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
@@ -424,7 +458,7 @@ void entry_point()
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
     ee_printf(" ===  PiGFX ===  v.%s\n", PIGFX_VERSION );
     gfx_term_putstring( "\x1B[2K" );
-    //gfx_term_putstring( "\x1B[2K" ); 
+    //gfx_term_putstring( "\x1B[2K" );
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(0);
 
@@ -465,5 +499,40 @@ void entry_point()
 
     ee_printf("---------\n");
     gfx_put_sprite( (unsigned char*)&G_STARTUP_LOGO, 10, 300 );
+
+
+    /**/
+    stdout_putc = split_putc;
+    stderr_putc = split_putc;
+    libfs_init();
+    ee_printf("Device list:\n");
+    vfs_list_devices();
+    ee_printf("END\n");
+
+    FILE* f = fopen( "config.txt", "r");
+    if( f )
+    {
+        ee_printf("File opened\n");
+        //fclose(f);
+    }
+
+    DIR* root = opendir("/");
+    if( root )
+    {
+        ee_printf("Root dir opened\n");
+        struct dirent* drt = readdir( root );
+
+        while( drt )
+        {
+            ee_printf("> %s (%d bytes) %d\n", drt->name, drt->byte_size, drt->is_dir );
+            drt = drt->next;
+        }
+
+        closedir( root );
+    }
+
+    ee_printf("ALL DONE!\n");
+    /**/
+
     term_main_loop();
 }

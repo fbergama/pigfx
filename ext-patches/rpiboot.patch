@@ -1,0 +1,88 @@
+diff --git a/Makefile.rpi-boot.in b/Makefile.rpi-boot.in
+index b964750..6bfaeeb 100644
+--- a/Makefile.rpi-boot.in
++++ b/Makefile.rpi-boot.in
+@@ -17,7 +17,7 @@ LIBFDT = libdtc/libftd/libftd.a
+ 
+ all: kernel.img
+ 
+-CFLAGS += -nostdlib -nostartfiles -ffreestanding -Wall -Wextra -Werror -Wshadow
++CFLAGS += -nostdlib -nostartfiles -ffreestanding -Wall -Wextra -Werror -Wshadow -mfloat-abi=hard
+ CFLAGS += -std=gnu99
+ CFLAGS += -I. -Ilibdtc/libfdt
+ CFLAGS += -DBUILDING_RPIBOOT
+@@ -105,7 +105,7 @@ MBR_OBJS = mbr.o
+ 
+ OBJS = main.o boot.o libfs.o $(SERIAL_OBJS) stdio.o stream.o atag.o mbox.o $(FONT_OBJS) $(FB_OBJS) stdlib.o mmio.o heap.o malloc.o printf.o $(SD_OBJS) block.o $(MBR_OBJS) $(FAT_OBJS) vfs.o multiboot.o memchunk.o $(EXT2_OBJS) elf.o timer.o strtol.o strtoll.o $(ASSERT_OBJS) ctype.o $(USB_OBJS) output.o $(RASPBOOTIN_OBJS) $(RAMDISK_OBJS) $(NOFS_OBJS) $(CACHE_OBJS) $(LOGFILE_OBJS) crc32.o rpifdt.o strstr.o
+ 
+-LIBFS_OBJS = libfs.o $(SD_OBJS) block.o $(MBR_OBJS) $(FAT_OBJS) vfs.o $(EXT2_OBJS) timer.o mmio.o $(RASPBOOTIN_OBJS) $(RAMDISK_OBJS) $(NOFS_OBJS) $(CACHE_OBJS) crc32.o $(ASSERT_OBJS)
++LIBFS_OBJS = libfs.o $(SD_OBJS) block.o $(MBR_OBJS) $(FAT_OBJS) vfs.o $(EXT2_OBJS) timer.o mmio.o $(RASPBOOTIN_OBJS) $(RAMDISK_OBJS) $(NOFS_OBJS) $(CACHE_OBJS) crc32.o $(ASSERT_OBJS) stdio.o stdlib.o mbox.o printf.o
+ 
+ .PHONY: clean
+ .PHONY: qemu
+diff --git a/config.h b/config.h
+index d8b40e1..a549048 100644
+--- a/config.h
++++ b/config.h
+@@ -65,17 +65,17 @@
+ #define ENABLE_RAMDISK
+ 
+ /* Enable nofs filesystem support */
+-#define ENABLE_NOFS
++#undef ENABLE_NOFS
+ 
+ /* Enable console log file support */
+ #define ENABLE_CONSOLE_LOGFILE
+ 
+ /* Enable block device cache support */
+-#define ENABLE_BLOCK_CACHE
++#undef ENABLE_BLOCK_CACHE
+ 
+ /* Enable write-back cache support (currently not implemented) */
+ #undef ENABLE_BLOCK_CACHE_WB
+ 
+ /* Presence of <unwind.h> header file.  Modern GCC should have this. */
+-#define HAVE_UNWIND_H
++#undef HAVE_UNWIND_H
+ 
+diff --git a/stdlib.c b/stdlib.c
+index 7dcde4c..5020d93 100644
+--- a/stdlib.c
++++ b/stdlib.c
+@@ -88,7 +88,7 @@ char *strncpy(char *dest, const char *src, size_t n)
+ 		*d = 0;
+ 	return dest;
+ }
+-
++/*
+ size_t strlen(const char *s)
+ {
+ 	size_t ret = 0;
+@@ -106,6 +106,7 @@ int strcmp(const char *s1, const char *s2)
+ 	}
+ 	return 0;
+ }
++*/
+ 
+ int raise(int sig)
+ {
+diff --git a/timer.c b/timer.c
+index 6ebb369..a0b3f00 100644
+--- a/timer.c
++++ b/timer.c
+@@ -36,13 +36,14 @@ void timer_set_base(uint32_t base)
+ 	timer_base = base;
+ }
+ 
++/*
+ int usleep(useconds_t usec)
+ {
+ 	struct timer_wait tw = register_timer(usec);
+ 	while(!compare_timer(tw));
+ 	return 0;	
+ }
+-
++*/
+ struct timer_wait register_timer(useconds_t usec)
+ {
+ 	struct timer_wait tw;

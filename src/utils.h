@@ -15,7 +15,7 @@ extern void membarrier();
 extern unsigned int hex2byte( unsigned char* addr );
 extern void byte2hexstr( unsigned char byte, char* outstr );
 extern void word2hexstr( unsigned int word, char* outstr );
-extern unsigned int strlen( char* str );
+extern unsigned int strlen( const char* str );
 extern int strcmp( char*s1, char* s2 );
 
 /**
@@ -36,7 +36,7 @@ inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
  *   Data memory barrier
  *   No memory access after the DMB can run until all memory accesses before it
  *    have completed
- *    
+ *
  */
 #define dmb() asm volatile \
                 ("mcr p15, #0, %[zero], c7, c10, #5" : : [zero] "r" (0) )

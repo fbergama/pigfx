@@ -9,41 +9,16 @@
 #include "dma.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
+#include "libfs.h"
+#include "hexloader.h"
 #include "../uspi/include/uspi.h"
 
 
 /********************************/
-#define DIR unsigned int *
-#define uint8_t unsigned char
-#define uint32_t unsigned int
-#define FILE uint32_t *
-
-struct dirent {
-	struct dirent *next;
-        char *name;
-	uint32_t byte_size;
-	uint8_t is_dir;
-	void *opaque;
-	struct fs *fs;
-};
-
-extern void libfs_init();
-extern void *quick_memcpy(void *dest, void *src, unsigned int n);
-extern DIR *opendir(const char *name);
-extern struct dirent *readdir(DIR *dirp);
-extern int closedir(DIR *dirp);
-extern void vfs_list_devices();
-extern FILE *fopen(const char *path, const char *mode);
-
+/* stuff needed for libfs       */
 unsigned int base_adjust = 0;
-void memory_barrier() { membarrier(); }
-
 int split_putc( int c ) { ee_printf("%c",c); return 0;}
-
-extern int (*stdout_putc)(int);
-extern int (*stderr_putc)(int);
-//extern int (*stream_putc)(int, FILE*);
-//extern int def_stream_putc(int, FILE*);
+void memory_barrier() { membarrier(); }
 /********************************/
 
 #define GPFSEL1 0x20200004
@@ -534,5 +509,19 @@ void entry_point()
     ee_printf("ALL DONE!\n");
     /**/
 
-    term_main_loop();
+    //term_main_loop();
+
+    gfx_term_putstring( "\x1B[2J" );
+    hexloader_show( "/" );
+    while(1)
+    {
+        if( !DMA_CHAN0_BUSY && uart_buffer_start != uart_buffer_end )
+        {
+            hexloader_keypressed( *uart_buffer_start++ );
+            if( uart_buffer_start >= uart_buffer_limit )
+                uart_buffer_start = uart_buffer;
+        }
+        uart_fill_queue(0);
+        timer_poll();
+    }
 }

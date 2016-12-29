@@ -9,7 +9,7 @@ static unsigned char* FNT = &G_FONT_GLYPHS;
 
 
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
-#define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2)) 
+#define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
 #define PFB( X, Y ) ( ctx.pfb + Y*ctx.Pitch + X )
 
 inline void __swap__( int* a, int* b )
@@ -49,7 +49,7 @@ typedef struct {
     unsigned int size;
     unsigned char* pfb;
 
-    struct 
+    struct
     {
         unsigned int WIDTH;
         unsigned int HEIGHT;
@@ -155,8 +155,8 @@ void gfx_clear()
     *(BG+2) = *BG;
     *(BG+3) = *BG;
 
-    dma_enqueue_operation( BG, 
-            (unsigned int *)( ctx.pfb ), 
+    dma_enqueue_operation( BG,
+            (unsigned int *)( ctx.pfb ),
             ctx.size,
             0,
             DMA_TI_DEST_INC );
@@ -180,15 +180,15 @@ void gfx_scroll_down_dma( unsigned int npixels )
     *(BG+3) = *BG;
     unsigned int line_height = ctx.Pitch * npixels;
 
-    
-    dma_enqueue_operation( (unsigned int *)( ctx.pfb + line_height ), 
-                           (unsigned int *)( ctx.pfb ), 
+
+    dma_enqueue_operation( (unsigned int *)( ctx.pfb + line_height ),
+                           (unsigned int *)( ctx.pfb ),
                            (ctx.size - line_height),
                            0,
                            DMA_TI_SRC_INC | DMA_TI_DEST_INC );
 
-    dma_enqueue_operation( BG, 
-                           (unsigned int *)( ctx.pfb + ctx.size -line_height ), 
+    dma_enqueue_operation( BG,
+                           (unsigned int *)( ctx.pfb + ctx.size -line_height ),
                            line_height,
                            0,
                            DMA_TI_DEST_INC );
@@ -225,7 +225,7 @@ void gfx_scroll_up( unsigned int npixels )
 
     while( pf_src >= pfb_end )
         *pf_dst-- = *pf_src--;
-    
+
     // Fill with bg at the top
     const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     while( pf_dst >= pfb_end )
@@ -241,8 +241,8 @@ void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsi
     *(FG+2) = *FG;
     *(FG+3) = *FG;
 
-    dma_enqueue_operation( FG, 
-                           (unsigned int *)( PFB(x,y) ), 
+    dma_enqueue_operation( FG,
+                           (unsigned int *)( PFB(x,y) ),
                            (((height-1) & 0xFFFF )<<16) | (width & 0xFFFF ),
                            ((ctx.Pitch-width) & 0xFFFF)<<16, /* bits 31:16 destination stride, 15:0 source stride */
                            DMA_TI_DEST_INC | DMA_TI_2DMODE );
@@ -320,7 +320,7 @@ void gfx_line( int x0, int y0, int x1, int y1 )
         {
             *pfb = ctx.fg;
             error = error - deltay;
-            if( error < 0 ) 
+            if( error < 0 )
             {
                 pfb += ystep;
                 error += deltax;
@@ -331,12 +331,12 @@ void gfx_line( int x0, int y0, int x1, int y1 )
     else
     {
         const int ystep = y0<y1 ? ctx.Pitch : -ctx.Pitch;
-        pfb = PFB(x0,y0); 
+        pfb = PFB(x0,y0);
         while(nr--)
         {
             *pfb = ctx.fg;
             error = error - deltay;
-            if( error < 0 ) 
+            if( error < 0 )
             {
                 pfb += ystep;
                 error += deltax;
@@ -421,7 +421,7 @@ void gfx_term_render_cursor()
     else
         while(h--)
         {
-            *pb++ = *pfb++; 
+            *pb++ = *pfb++;
             *pb++ = *pfb++;
             pfb+=stride;
         }
@@ -432,7 +432,7 @@ void gfx_term_render_cursor_newline_dma()
 {
     // Fill cursor buffer with the current background and framebuffer with fg
     unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
-    
+
     unsigned int nwords = 16;
     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
     while( nwords-- )
@@ -636,7 +636,7 @@ void state_fun_final_letter( char ch, scn_state *state )
     switch( ch )
     {
         case 'l':
-            if( state->private_mode_char == '?' && 
+            if( state->private_mode_char == '?' &&
                 state->cmd_params_size == 1 &&
                 state->cmd_params[0] == 25 )
             {
@@ -647,7 +647,7 @@ void state_fun_final_letter( char ch, scn_state *state )
             break;
 
         case 'h':
-            if( state->private_mode_char == '?' && 
+            if( state->private_mode_char == '?' &&
                 state->cmd_params_size == 1 &&
                 state->cmd_params[0] == 25 )
             {
@@ -677,7 +677,7 @@ void state_fun_final_letter( char ch, scn_state *state )
             }
             goto back_to_normal;
             break;
-        
+
         case 'J':
             if( state->cmd_params_size==1 && state->cmd_params[0] ==2 )
             {
@@ -778,7 +778,7 @@ void state_fun_read_digit( char ch, scn_state *state )
         state->next = state_fun_read_digit; // stay on this state
         return;
     }
-    
+
     if( ch == ';' )
     {
         // Another param will follow
@@ -801,7 +801,7 @@ void state_fun_selectescape( char ch, scn_state *state )
         state->cmd_params[ 0 ] = ch-'0';
         state->next = state_fun_read_digit;
         return;
-    } 
+    }
     else
     {
         if( ch=='?' || ch=='#' )
@@ -814,7 +814,7 @@ void state_fun_selectescape( char ch, scn_state *state )
             state->next = state_fun_read_digit;
             return;
         }
-    } 
+    }
 
     // Already at the final letter
     state_fun_final_letter( ch, state );

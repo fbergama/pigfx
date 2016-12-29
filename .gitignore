@@ -1,4 +1,5 @@
 *.swp
 .ctags
 sourceme.bash
+rpi-boot
 

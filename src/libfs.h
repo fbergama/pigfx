@@ -5,6 +5,7 @@
 #define DIR unsigned int *
 #define uint8_t unsigned char
 #define uint32_t unsigned int
+#define size_t uint32_t
 #define FILE uint32_t *
 
 struct dirent {
@@ -22,7 +23,11 @@ extern DIR *opendir(const char *name);
 extern struct dirent *readdir(DIR *dirp);
 extern int closedir(DIR *dirp);
 extern void vfs_list_devices();
+
 extern FILE *fopen(const char *path, const char *mode);
+extern int fclose(FILE *fp);
+extern size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
+extern size_t fwrite(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 extern void memory_barrier();
 

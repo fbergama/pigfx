@@ -1,10 +1,10 @@
-/* 
+/*
  * Downloaded and loosely tweaked from:
  * https://github.com/jpbonn/coremark_lm32/blob/master/ee_printf.c
  *
 
 
- 
+
  File : barebones/ee_printf.c
  This file contains an implementation of ee_printf that only requires a method
  to output a char to a UART without pulling in library code.
@@ -15,16 +15,16 @@ This code is based on a file that contains the following:
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
  are met:
- 
- 1. Redistributions of source code must retain the above copyright 
-    notice, this list of conditions and the following disclaimer.  
+
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
  2. Redistributions in binary form must reproduce the above copyright
     notice, this list of conditions and the following disclaimer in the
-    documentation and/or other materials provided with the distribution.  
+    documentation and/or other materials provided with the distribution.
  3. Neither the name of the project nor the names of its contributors
     may be used to endorse or promote products derived from this software
-    without specific prior written permission. 
- 
+    without specific prior written permission.
+
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -34,7 +34,7 @@ This code is based on a file that contains the following:
  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  SUCH DAMAGE.
 
 */
@@ -87,7 +87,7 @@ static char *ee_number(char *str, long num, int base, int size, int precision, i
   if (type & UPPERCASE)  dig = upper_digits;
   if (type & LEFT) type &= ~ZEROPAD;
   if (base < 2 || base > 36) return 0;
-  
+
   c = (type & ZEROPAD) ? '0' : ' ';
   sign = 0;
   if (type & SIGN)
@@ -135,7 +135,7 @@ static char *ee_number(char *str, long num, int base, int size, int precision, i
   size -= precision;
   if (!(type & (ZEROPAD | LEFT))) while (size-- > 0) *str++ = ' ';
   if (sign) *str++ = sign;
-  
+
   if (type & HEX_PREP)
   {
     if (base == 8)
@@ -187,19 +187,19 @@ static char *iaddr(char *str, unsigned char *addr, int size, int type)
   {
     if (i != 0) tmp[len++] = '.';
     n = addr[i];
-    
+
     if (n == 0)
       tmp[len++] = lower_digits[0];
     else
     {
-      if (n >= 100) 
+      if (n >= 100)
       {
         tmp[len++] = lower_digits[n / 100];
         n = n % 100;
         tmp[len++] = lower_digits[n / 10];
         n = n % 10;
       }
-      else if (n >= 10) 
+      else if (n >= 10)
       {
         tmp[len++] = lower_digits[n / 10];
         n = n % 10;
@@ -220,8 +220,8 @@ static char *iaddr(char *str, unsigned char *addr, int size, int type)
 
 char *ecvtbuf(double arg, int ndigits, int *decpt, int *sign, char *buf);
 char *fcvtbuf(double arg, int ndigits, int *decpt, int *sign, char *buf);
-static void ee_bufcpy(char *d, char *s, int count); 
- 
+static void ee_bufcpy(char *d, char *s, int count);
+
 void ee_bufcpy(char *pd, char *ps, int count) {
 	char *pe=ps+count;
 	while (ps!=pe)
@@ -343,7 +343,7 @@ static void decimal_point(char *buffer)
   if (*buffer)
   {
     int n = strnlen(buffer,256);
-    while (n > 0) 
+    while (n > 0)
     {
       buffer[n + 1] = buffer[n];
       n--;
@@ -452,7 +452,7 @@ static int ee_vsprintf(char *buf, const char *fmt, va_list args)
       *str++ = *fmt;
       continue;
     }
-                  
+
     // Process flags
     flags = 0;
 repeat:
@@ -465,7 +465,7 @@ repeat:
       case '#': flags |= HEX_PREP; goto repeat;
       case '0': flags |= ZEROPAD; goto repeat;
     }
-          
+
     // Get field width
     field_width = -1;
     if (is_digit(*fmt))
@@ -485,7 +485,7 @@ repeat:
     precision = -1;
     if (*fmt == '.')
     {
-      ++fmt;    
+      ++fmt;
       if (is_digit(*fmt))
         precision = ee_skip_atoi(&fmt);
       else if (*fmt == '*')
@@ -600,8 +600,8 @@ void uart_send_char(char c) {
   DO_LOG_STRING(str);
 }
 
-void LogWrite (const char *pSource,		
-       	       unsigned	   Severity,	
+void LogWrite (const char *pSource,
+       	       unsigned	   Severity,
 	       const char *fmt, ...)
 {
   char buf[15*80];

@@ -3,7 +3,7 @@
 
 
 
-extern void hexloader_show( char* dir );
+extern void hexloader_show();
 extern unsigned char hexloader_keypressed( unsigned int keycode );
 
 

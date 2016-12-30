@@ -1,0 +1,67 @@
+[
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/pigfx.o src/pigfx.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/pigfx.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/irq.o src/irq.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/irq.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/framebuffer.o src/framebuffer.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/framebuffer.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/postman.o src/postman.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/postman.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/console.o src/console.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/console.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/gfx.o src/gfx.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/gfx.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/dma.o src/dma.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/dma.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/nmalloc.o src/nmalloc.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/nmalloc.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/uspios_wrapper.o src/uspios_wrapper.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/uspios_wrapper.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/ee_printf.o src/ee_printf.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/ee_printf.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/raspihwconfig.o src/raspihwconfig.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/raspihwconfig.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/stupid_timer.o src/stupid_timer.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/stupid_timer.c"
+    }, 
+    {
+        "command": "cc -c -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -o build/hexloader.o src/hexloader.c", 
+        "directory": "/Users/fibe/fun/raspi/devel/pigfx", 
+        "file": "/Users/fibe/fun/raspi/devel/pigfx/src/hexloader.c"
+    }
+]

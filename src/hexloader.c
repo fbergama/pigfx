@@ -88,17 +88,70 @@ CLEAR\r\n
 );
 
 
+static char* build_path( char* pathstr )
+{
+    char* orig_pathstr = pathstr;
+    unsigned int i;
+    char* dname;
+
+    *pathstr++ = '/';
+
+    // Copy directory path
+    for( i=0; i<path_idx; ++i )
+    {
+        dname = path[i]->name;
+        while( *dname )
+            *pathstr++ = *dname++;
+
+        *pathstr++ = '/';
+    }
+
+    if( selected )
+    {
+        // Copy filename
+        dname = selected->name;
+        while( *dname )
+            *pathstr++ = *dname++;
+    }
+
+    *pathstr++ = 0; // end of string
+    return orig_pathstr;
+}
+
+
+static void clear_list( struct dirent* l )
+{
+    while( l && l->next )
+    {
+        if( l->next->name[0]=='_' || l->next->name[0]=='.' || l->next->name[0]=='~' )
+            l->next = l->next->next;
+
+        l = l->next;
+    }
+}
+
+static void hexloader_set_status( const char* str )
+{
+    gfx_term_move_cursor( win.term_r0+20, win.term_c0+HEXLOADER_W-17 );
+    ee_printf("%s",str);
+}
+
 static void hexloader_show_progress( int currv, int maxv )
 {
     unsigned int nblocks = (currv<<4)/maxv;
+    unsigned int i;
 
-    gfx_term_move_cursor( win.term_r0+20, win.term_c0+HEXLOADER_W-17 );
-    ee_printf("Progress:");
     gfx_term_move_cursor( win.term_r0+22, win.term_c0+HEXLOADER_W-17 );
-    gfx_set_bg( HEXLOADER_FG_COL );
 
-    while(nblocks--)
+    for( i=0; i<16; ++i)
+    {
+        if( i<nblocks )
+            gfx_set_bg( HEXLOADER_FG_COL );
+        else
+            gfx_set_bg( HEXLOADER_BG_COL );
+
         ee_printf(" ");
+    }
 
     gfx_set_bg( HEXLOADER_BG_COL );
 }
@@ -168,19 +221,23 @@ void hexloader_draw_window()
 
     /* print help */
     gfx_term_move_cursor( win.term_r0+2, win.term_c0+HEXLOADER_W-17 );
-    ee_printf("   RC2014");
+    ee_printf("    RC2014");
     gfx_term_move_cursor( win.term_r0+3, win.term_c0+HEXLOADER_W-17 );
-    ee_printf(" HEXLOADER");
+    ee_printf("  HEXLOADER");
     gfx_term_move_cursor( win.term_r0+4, win.term_c0+HEXLOADER_W-17 );
-    ee_printf("   %c%c%c%c%c%c ",23,23,23,23,23,23);
+    ee_printf("    %c%c%c%c%c%c ",23,23,23,23,23,23);
     gfx_term_move_cursor( win.term_r0+7, win.term_c0+HEXLOADER_W-17 );
     ee_printf("Commands:");
     gfx_term_move_cursor( win.term_r0+9, win.term_c0+HEXLOADER_W-17 );
-    ee_printf("%c %c    Move",205,206);
+    ee_printf("%c %c   Move",205,206);
     gfx_term_move_cursor( win.term_r0+11, win.term_c0+HEXLOADER_W-17 );
-    ee_printf("ENTER  Load HEX",205,206);
+    ee_printf("ENTER Load HEX",205,206);
     gfx_term_move_cursor( win.term_r0+13, win.term_c0+HEXLOADER_W-17 );
-    ee_printf("Q      Quit",205,206);
+    ee_printf("%c    Parent dir",208);
+    gfx_term_move_cursor( win.term_r0+15, win.term_c0+HEXLOADER_W-17 );
+    ee_printf(" %c   Enter dir",207);
+    gfx_term_move_cursor( win.term_r0+17, win.term_c0+HEXLOADER_W-17 );
+    ee_printf("Q     Quit",205,206);
 }
 
 
@@ -206,7 +263,6 @@ void hexloader_list()
             gfx_term_move_cursor( curr_row, curr_col );
             ee_printf("%s", entry->name);
 
-
             gfx_term_move_cursor( curr_row, curr_col+14 );
             gfx_set_fg( HEXLOADER_FG_COL );
             gfx_set_bg( HEXLOADER_BG_COL );
@@ -229,28 +285,12 @@ void hexloader_list()
 }
 
 
-struct dirent* gendirent( char* name, char isdir, unsigned int size )
-{
-    struct dirent* newd = 0;
-    newd = (struct dirent*)nmalloc_malloc( sizeof( struct dirent ) );
-    newd->next = 0;
-    newd->name = (char*)nmalloc_malloc(strlen(name)+2);
-    memcpy( newd->name, name, strlen(name)+1 );
-    newd->byte_size = size;
-    newd->is_dir = isdir;
-    newd->opaque = 0;
-    newd->fs = 0;
-    return newd;
-}
 
 
-void hexloader_show( char* dir )
+void hexloader_show( )
 {
     unsigned int term_r;
     unsigned int term_c;
-
-    //path[0] = opendir( dir );
-    //path[1] = 0;
 
     esc_status = 0;
     path_idx=0;
@@ -258,18 +298,9 @@ void hexloader_show( char* dir )
     scroll_end=HEXLOADER_H-3;
     selected_idx=0;
 
-
-    {
-        // Fake dir for testing :)
-        unsigned int k;
-        struct dirent* aux = gendirent("first.txt",0,100);
-        path[path_idx] = aux;
-        for( k=0; k<40; ++k )
-        {
-            aux->next = gendirent("aaa.txt",0,k);
-            aux = aux->next;
-        }
-    }
+    DIR* newd = opendir( "/" );
+    path[path_idx] = readdir( newd );
+    clear_list( path[path_idx] );
 
     selected = path[path_idx];
 
@@ -280,6 +311,15 @@ void hexloader_show( char* dir )
     hexloader_draw_window();
     hexloader_list();
     active = 1;
+}
+
+
+void hexloader_destroy()
+{
+    active=0;
+    gfx_set_fg(15);
+    gfx_set_bg(0);
+    gfx_clear();
 }
 
 
@@ -347,17 +387,83 @@ unsigned char hexloader_keypressed( unsigned int keycode )
             }
             break;
 
-        case 13:
-            // load!
-            uart_slow_write_str( bootloader );
-            gfx_clear();
-            active = 0;
-            return active;
+        case 0x44:
+            // left arrow
+            if( path_idx > 0 )
+            {
+                char dirpath[256];
+                --path_idx;
+                selected = 0;
+                build_path(dirpath);
+                DIR* newd = opendir( build_path( dirpath ) );
+                path[path_idx] = readdir( newd );
+                clear_list( path[path_idx] );
+                selected = path[path_idx];
+                scroll_start=0;
+                selected_idx=0;
+                scroll_end=HEXLOADER_H-3;
+                hexloader_draw_window();
+            }
+
             break;
 
+        case 0x43:
+            // right arrow
+            {
+                // Enter the selected directory
+                char dirpath[256];
+                build_path(dirpath);
+                DIR* newd = opendir( build_path( dirpath ) );
+                path[path_idx]=selected;
+                path[++path_idx] = readdir( newd );
+                clear_list( path[path_idx] );
+                selected = path[path_idx];
+                scroll_start=0;
+                selected_idx=0;
+                scroll_end=HEXLOADER_H-3;
+                hexloader_draw_window();
+            }
+            break;
+        case 13:
+            {
+
+                if( !selected->is_dir )
+                {
+                    // Load the specified file
+                    FILE* f=0;
+                    char filepath[256];
+                    char *file_buffer = nmalloc_malloc( selected->byte_size+1 );
+
+                    build_path( filepath );
+                    hexloader_set_status("Loading BAS");
+                    uart_slow_write_str( bootloader );
+                    f = fopen( filepath, "r" );
+                    if( f )
+                    {
+                        /*
+                        size_t tot_read = 0;
+                        while( tot_read < selected->byte_size )
+                        {
+                            tot_read += fread( file_buffer+tot_read, selected->byte_size - tot_read, 1, f );
+                        }
+                        */
+                        fread( file_buffer, selected->byte_size, 1, f );
+                        file_buffer[selected->byte_size] = 0;
+
+                        usleep( 100000 ); // Give some time to the hexloader to start
+                        hexloader_set_status("Loading HEX");
+                        uart_slow_write_str( file_buffer );
+                        nmalloc_free( (void**)&file_buffer );
+                        hexloader_destroy();
+                    }
+
+                    return active;
+                }
+                break;
+            }
+
         case 'q':
-            gfx_clear();
-            active = 0;
+            hexloader_destroy();
             return active;
 
     }

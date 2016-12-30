@@ -403,7 +403,11 @@ void term_main_loop()
             }
 #endif
 
-            gfx_term_putstring( strb );
+            if( strb[0]=='H' )
+                hexloader_show();
+
+            if( !hexloader_keypressed( strb[0] ) )
+                gfx_term_putstring( strb );
         }
 
         uart_fill_queue(0);
@@ -507,21 +511,8 @@ void entry_point()
     }
 
     ee_printf("ALL DONE!\n");
+
     /**/
 
-    //term_main_loop();
-
-    gfx_term_putstring( "\x1B[2J" );
-    hexloader_show( "/" );
-    while(1)
-    {
-        if( !DMA_CHAN0_BUSY && uart_buffer_start != uart_buffer_end )
-        {
-            hexloader_keypressed( *uart_buffer_start++ );
-            if( uart_buffer_start >= uart_buffer_limit )
-                uart_buffer_start = uart_buffer;
-        }
-        uart_fill_queue(0);
-        timer_poll();
-    }
+    term_main_loop();
 }

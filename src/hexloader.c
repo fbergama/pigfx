@@ -42,21 +42,31 @@ static unsigned char active=0;
 static const char* bootloader = QUOTE(
 NEW\r\n
 CLEAR\r\n
-30 PRINT "Loading Data"\r\n
+10 REM by FB and DaveP\r\n
+20 REM V0.01\r\n
+30 PRINT "Loading"\r\n
 40 LET MB = &HF800\r\n
-50 PRINT "Start Address:", HEX$(MB)\r\n
+50 PRINT "Start:", HEX$(MB)\r\n
+60 REM Go to READ Sub.\r\n
 70 GOSUB 1000\r\n
-80 PRINT "End Address:", HEX$(MB-1)\r\n
+80 PRINT "End:", HEX$(MB-1)\r\n
+90 REM Change Pointer for USR\r\n
 100 GOSUB 1100\r\n
+110 REM RUN!\r\n
 120 PRINT USR(0)\r\n
 130 END\r\n
+1000 REM load routine\r\n
+1010 REM Needs var mb set to start loc\r\n
 1020 READ A\r\n
 1030 IF A > 255 THEN RETURN\r\n
+1040 REM print HEX$(mb), a\r\n
 1050 POKE MB, A\r\n
 1060 LET MB = MB + 1\r\n
 1070 GOTO 1020\r\n
-1110 PRINT "Change Jump Location"\r\n
+1100 REM    Loc of ptr &H8049\r\n
+1110 PRINT "Jump Loc"\r\n
 1120 LET MB = &H8048\r\n
+1130 REM    JP start addr (c3 00 f8) jp f800\r\n
 1140 POKE MB, &HC3\r\n
 1150 POKE MB + 1, &H00\r\n
 1160 POKE MB + 2, &HF8\r\n
@@ -85,6 +95,7 @@ CLEAR\r\n
 9640 DATA 72, 75, 0, 10, 13, 79, 75, 0, 0, 0, 0, 0\r\n
 9670 DATA 999\r\n
 9999 END\r\n
+RUN\r\n
 );
 
 
@@ -130,11 +141,13 @@ static void clear_list( struct dirent* l )
     }
 }
 
+
 static void hexloader_set_status( const char* str )
 {
     gfx_term_move_cursor( win.term_r0+20, win.term_c0+HEXLOADER_W-17 );
     ee_printf("%s",str);
 }
+
 
 static void hexloader_show_progress( int currv, int maxv )
 {
@@ -157,7 +170,7 @@ static void hexloader_show_progress( int currv, int maxv )
 }
 
 
-static void uart_slow_write_str( const char* data )
+static void uart_slow_write_str( const char* data, unsigned int ch_delay, unsigned int line_delay )
 {
     const char* pData = data;
     unsigned int nchars = strlen( data );
@@ -166,10 +179,10 @@ static void uart_slow_write_str( const char* data )
     while( *pData )
     {
         uart_write( pData, 1 );
-        usleep( 1000 );
+        usleep( ch_delay );
 
         if( *pData == '\r' || *pData == '\n' )
-            usleep( 4000 );
+            usleep( line_delay );
 
         hexloader_show_progress( i, nchars );
         ++i;
@@ -283,8 +296,6 @@ void hexloader_list()
         ++idx;
     }
 }
-
-
 
 
 void hexloader_show( )
@@ -424,7 +435,8 @@ unsigned char hexloader_keypressed( unsigned int keycode )
                 hexloader_draw_window();
             }
             break;
-        case 13:
+
+        case 10:
             {
 
                 if( !selected->is_dir )
@@ -434,29 +446,28 @@ unsigned char hexloader_keypressed( unsigned int keycode )
                     char filepath[256];
                     char *file_buffer = nmalloc_malloc( selected->byte_size+1 );
 
+                    uart_purge();
+                    disable_irq();
+
                     build_path( filepath );
                     hexloader_set_status("Loading BAS");
-                    uart_slow_write_str( bootloader );
+                    uart_slow_write_str( bootloader, 5000, 20000 );
                     f = fopen( filepath, "r" );
                     if( f )
                     {
-                        /*
-                        size_t tot_read = 0;
-                        while( tot_read < selected->byte_size )
-                        {
-                            tot_read += fread( file_buffer+tot_read, selected->byte_size - tot_read, 1, f );
-                        }
-                        */
                         fread( file_buffer, selected->byte_size, 1, f );
                         file_buffer[selected->byte_size] = 0;
 
-                        usleep( 100000 ); // Give some time to the hexloader to start
+                        usleep( 3000000 ); // Give some time to the hexloader to start
+
                         hexloader_set_status("Loading HEX");
-                        uart_slow_write_str( file_buffer );
+                        uart_purge();
+                        uart_slow_write_str( file_buffer, 1000, 5000 );
                         nmalloc_free( (void**)&file_buffer );
                         hexloader_destroy();
                     }
 
+                    enable_irq();
                     return active;
                 }
                 break;

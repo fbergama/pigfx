@@ -5,7 +5,7 @@
 uart_init:
     push {r0,r1,r3,lr}
 
-    ;@ Disable pullup-pulldown on pin 14 and 15        
+    ;@ Disable pullup-pulldown on pin 14 and 15
     mov r3, #0x20
     mov r3, r3, LSL #8
     orr r3, r3,  #0x20
@@ -13,7 +13,7 @@ uart_init:
 
     ;@  write 0 to GPPUD
     mov r0, #0x0
-    str r0, [r3, #0x94]  
+    str r0, [r3, #0x94]
 
     ;@ wait 300 cycles
     mov r0, #300
@@ -22,7 +22,7 @@ uart_init:
     ;@ set bit 14 and 15 to PUDCLK0
     mov r0, #0x3
     mov r0, r0, LSL #14
-    str r0, [r3, #0x98]  
+    str r0, [r3, #0x98]
 
     ;@ wait 300 cycles
     mov r0, #300
@@ -30,16 +30,16 @@ uart_init:
 
     ;@  write 0 to GPPUD
     mov r0, #0x0
-    str r0, [r3, #0x94]  
+    str r0, [r3, #0x94]
 
     ;@ clear PUDCLK0
     mov r0, #0x0
-    str r0, [r3, #0x98]  
+    str r0, [r3, #0x98]
 
 
-    ;@ set r3 = UART0_BASE = 0x20201000        
+    ;@ set r3 = UART0_BASE = 0x20201000
     orr r3, r3, #0x1000
-    
+
     ;@ Disable UART0:
     ;@ clear UART0_CR = UART0_BASE + 0x30;
     mov r0, #0x0
@@ -63,23 +63,23 @@ uart_init:
 
     ;@ Set 8bit (bit 6-5=1), no parity (bit 7=0), FIFO enable (bit 4=1)
     mov r0, #0x70
-    str r0, [r3, #0x2C]  ;@ UART0_LCRH 
+    str r0, [r3, #0x2C]  ;@ UART0_LCRH
 
     ;@ Enable TX(bit9) RX(bit8) and UART0(bit0)
     mov r0, #0x3
     mov r0, r0, LSL #8
     add r0, r0, #1
-    str r0, [r3, #0x30]  ;@ UART0_CR  
+    str r0, [r3, #0x30]  ;@ UART0_CR
 
     pop {r0,r1,r3,lr}
-    bx lr        
+    bx lr
 
 
 
 ;@  Writes to UART0
 ;@  r0: memory address
 ;@  r1: data size in bytes
-;@ 
+;@
 .global uart_write
 uart_write:
     push {r2,r3,r4,r5,r6}
@@ -91,15 +91,15 @@ uart_write:
     lsl r3, r3, #8
     orr r3, #0x10
     lsl r3, r3, #8
-    
+
     ;@ set r4=UART0_FR=UART0_BASE+0x18
     add r4, r3, #0x18
 
-    mov r6, #4   
+    mov r6, #4
 
 write_loop:
     cmp r1, #0
-    beq write_done 
+    beq write_done
 
     ;@ busy wait if transmit fifo is full
 bw: ldr r5, [r4]
@@ -108,7 +108,7 @@ bw: ldr r5, [r4]
 
     ;@ load next 4 bytes of data, if needed
     cmp r6, #4
-    bne shift_and_send 
+    bne shift_and_send
     ldr r2, [r0]
     add r0, r0, #4
     mov r6, #0
@@ -122,14 +122,14 @@ shift_and_send:
     b   write_loop
 
 write_done:
-    
+
     pop {r2,r3,r4,r5,r6}
     bx lr
 
 
 ;@  Writes a null-terminated string to UART0
 ;@  r0: memory address
-;@ 
+;@
 .global uart_write_str
 uart_write_str:
     push {r0,lr}
@@ -163,11 +163,11 @@ uart_poll:
     tst r4, #0x10       ;@ check if bit4 is set
     bne 1f
     mov r0, #1
-    
+
 1:
     pop {r3,r4}
     bx lr
-    
+
 
 ;@ Received byte is put in r0
 .global uart_read_byte
@@ -184,7 +184,7 @@ uart_read_byte:
     lsl r3, r3, #8
 
     ;@ busy wait if receive fifo is empty
-bwr: 
+bwr:
     ldr r4, [r3,#0x18]  ;@ read from UART0_FR ( UART0_BASE + 0x18)
     tst r4, #0x10       ;@ check if bit4 is set
     bne bwr
@@ -234,16 +234,16 @@ uart_purge:
 1:
     pop {lr}
     bx lr
-    
 
 
-;@ Dumps a memory area to UART0 
+
+;@ Dumps a memory area to UART0
 ;@  r0: start address
 ;@  r1: end address
 ;@
 .global uart_dump_mem
 uart_dump_mem:
-    
+
     push {r2,r3,r4,r5,r6,r7,r8,lr}
     sub sp, #256
     mov r8, sp
@@ -256,7 +256,7 @@ uart_dump_mem:
 
 2:
     mov r7,#0   ;@ reset line counter
-    mov r5, r8  ;@ reset string buffer  
+    mov r5, r8  ;@ reset string buffer
 
     mov r0, r4
     mov r1, r5
@@ -284,12 +284,12 @@ uart_dump_mem:
     add r5, r5, #1      ;@ out string += 1 byte
 
     cmp r4,r6
-    beq 1f      ;@ if curr address == end address flush 
+    beq 1f      ;@ if curr address == end address flush
 
     cmp r7, #20
     bne 3b
-    
-1:  
+
+1:
     mov r2,#10            ;@ add '\n'
     strb r2, [r5]
     add r5, r5, #1      ;@ out string += 1 byte
@@ -303,9 +303,9 @@ uart_dump_mem:
     pop {r0}
 
     cmp r4,r6
-    bne 2b      ;@ if curr address != end address continue, else exit 
+    bne 2b      ;@ if curr address != end address continue, else exit
 
-4:    
+4:
     add sp, #256
     pop {r2,r3,r4,r5,r6,r7,r8,lr}
     bx lr
@@ -316,7 +316,7 @@ uart_load_ihex:
 
     push {r0,r1,r2,r4,r5,r6,r9,r10,lr}
 
-    ldr r0, =ihex_ready_str 
+    ldr r0, =ihex_ready_str
     bl uart_write_str
 
 main_loop:
@@ -329,7 +329,7 @@ wait_cl:
     cmp r0, #58     ;@ check if read byte is ':'
     bne wait_cl
 
-    
+
     ;@ read byte count (2 chars hex)
     ;@ and save it in r4
     bl  uart_read_hex
@@ -341,13 +341,13 @@ wait_cl:
     ;@ and save it in r5
     bl  uart_read_hex
     cmp r0, #0xFF
-    bgt bad_data    
+    bgt bad_data
     add r9, r9, r0
     mov r1, r0
     lsl r1,#8
     bl  uart_read_hex
     cmp r0, #0xFF
-    bgt bad_data    
+    bgt bad_data
     add r9, r9, r0
     orr r5,r1,r0
     mov r10, r5
@@ -370,7 +370,7 @@ wait_cl:
     beq main_loop  ;@ START SEGMENT type (we just ignore it)
 
     ;@ else..
-    b bad_type  
+    b bad_type
 
     ;@ read hex data and dump to memory
 line_dump:
@@ -378,7 +378,7 @@ line_dump:
     beq line_dump_done
     bl uart_read_hex
     cmp r0, #0xFF
-    bgt bad_data    
+    bgt bad_data
     add r9, r9, r0
     strb r0,[r5]
     add r5,r5,#1
@@ -397,7 +397,7 @@ line_dump_done:
     mov r0, r10
     sub r1, r5, #1
     bl uart_dump_mem
-    
+
     b main_loop
 
 dump_complete:

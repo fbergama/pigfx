@@ -89,7 +89,12 @@ static void _keypress_handler(const char* str )
             last_backspace_t = time_microsec();
         }
 #endif
-        uart_write( &ch, 1 );
+        if( ch == 0x08 /* CTRL+H */ )
+            hexloader_show();
+
+        if( !hexloader_keypressed( ch ) )
+            uart_write( &ch, 1 );
+
         ++c;
     }
 
@@ -403,11 +408,8 @@ void term_main_loop()
             }
 #endif
 
-            if( strb[0]=='H' )
-                hexloader_show();
+            gfx_term_putstring( strb );
 
-            if( !hexloader_keypressed( strb[0] ) )
-                gfx_term_putstring( strb );
         }
 
         uart_fill_queue(0);
@@ -437,7 +439,6 @@ void entry_point()
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
     ee_printf(" ===  PiGFX ===  v.%s\n", PIGFX_VERSION );
     gfx_term_putstring( "\x1B[2K" );
-    //gfx_term_putstring( "\x1B[2K" );
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(0);
 
@@ -479,39 +480,12 @@ void entry_point()
     ee_printf("---------\n");
     gfx_put_sprite( (unsigned char*)&G_STARTUP_LOGO, 10, 300 );
 
-
     /**/
     stdout_putc = split_putc;
     stderr_putc = split_putc;
     libfs_init();
-    ee_printf("Device list:\n");
+    ee_printf("VFS Device list:\n");
     vfs_list_devices();
-    ee_printf("END\n");
-
-    FILE* f = fopen( "config.txt", "r");
-    if( f )
-    {
-        ee_printf("File opened\n");
-        //fclose(f);
-    }
-
-    DIR* root = opendir("/");
-    if( root )
-    {
-        ee_printf("Root dir opened\n");
-        struct dirent* drt = readdir( root );
-
-        while( drt )
-        {
-            ee_printf("> %s (%d bytes) %d\n", drt->name, drt->byte_size, drt->is_dir );
-            drt = drt->next;
-        }
-
-        closedir( root );
-    }
-
-    ee_printf("ALL DONE!\n");
-
     /**/
 
     term_main_loop();

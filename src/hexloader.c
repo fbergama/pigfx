@@ -5,6 +5,7 @@
 #include "nmalloc.h"
 #include "utils.h"
 #include "uart.h"
+#include "buffered_uart.h"
 #include "timer.h"
 
 
@@ -447,7 +448,7 @@ unsigned char hexloader_keypressed( unsigned int keycode )
                     char *file_buffer = nmalloc_malloc( selected->byte_size+1 );
 
                     uart_purge();
-                    disable_irq();
+                    buart_purge();
 
                     build_path( filepath );
                     hexloader_set_status("Loading BAS");
@@ -461,13 +462,13 @@ unsigned char hexloader_keypressed( unsigned int keycode )
                         usleep( 3000000 ); // Give some time to the hexloader to start
 
                         hexloader_set_status("Loading HEX");
-                        uart_purge();
                         uart_slow_write_str( file_buffer, 1000, 5000 );
                         nmalloc_free( (void**)&file_buffer );
                         hexloader_destroy();
                     }
 
-                    enable_irq();
+                    uart_purge();
+                    buart_purge();
                     return active;
                 }
                 break;

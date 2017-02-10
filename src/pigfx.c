@@ -1,5 +1,6 @@
 #include "pigfx_config.h"
 #include "uart.h"
+#include "buffered_uart.h"
 #include "utils.h"
 #include "timer.h"
 #include "framebuffer.h"
@@ -27,18 +28,7 @@ void memory_barrier() { membarrier(); }
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
 
-
 unsigned int led_status;
-volatile unsigned int* UART0_DR;
-volatile unsigned int* UART0_ITCR;
-volatile unsigned int* UART0_IMSC;
-volatile unsigned int* UART0_FR;
-
-
-volatile char* uart_buffer;
-volatile char* uart_buffer_start;
-volatile char* uart_buffer_end;
-volatile char* uart_buffer_limit;
 
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
@@ -119,46 +109,7 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
 }
 
 
-void uart_fill_queue( __attribute__((unused)) void* data )
-{
-    while( !( *UART0_FR & 0x10)/*uart_poll()*/)
-    {
-        *uart_buffer_end++ = (char)( *UART0_DR & 0xFF /*uart_read_byte()*/);
 
-        if( uart_buffer_end >= uart_buffer_limit )
-           uart_buffer_end = uart_buffer;
-
-        if( uart_buffer_end == uart_buffer_start )
-        {
-            uart_buffer_start++;
-            if( uart_buffer_start >= uart_buffer_limit )
-                uart_buffer_start = uart_buffer;
-        }
-    }
-
-    /* Clear UART0 interrupts */
-    *UART0_ITCR = 0xFFFFFFFF;
-}
-
-
-
-void initialize_uart_irq()
-{
-    uart_buffer_start = uart_buffer_end = uart_buffer;
-    uart_buffer_limit = &( uart_buffer[ UART_BUFFER_SIZE ] );
-
-    UART0_DR   = (volatile unsigned int*)0x20201000;
-    UART0_IMSC = (volatile unsigned int*)0x20201038;
-    UART0_ITCR = (volatile unsigned int*)0x20201044;
-    UART0_FR   = (volatile unsigned int*)0x20201018;
-
-    *UART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
-    *UART0_ITCR = 0xFFFFFFFF; // Clear UART0 interrupts
-
-    pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
-    enable_irq();
-    irq_attach_handler( 57, uart_fill_queue, 0 );
-}
 
 
 void heartbeat_init()
@@ -377,7 +328,7 @@ void term_main_loop()
     ee_printf("Waiting for UART data (115200,8,N,1)\n");
 
     /**/
-    while( uart_buffer_start == uart_buffer_end )
+    while( buart_buffer_empty() )
         usleep(100000 );
     /**/
 
@@ -387,12 +338,10 @@ void term_main_loop()
 
     while(1)
     {
-        if( !DMA_CHAN0_BUSY && uart_buffer_start != uart_buffer_end )
+        if( !DMA_CHAN0_BUSY && !buart_buffer_empty() )
         {
-            strb[0] = *uart_buffer_start++;
-            if( uart_buffer_start >= uart_buffer_limit )
-                uart_buffer_start = uart_buffer;
 
+            strb[0] = buart_next_char();
 
 #if ENABLED(SKIP_BACKSPACE_ECHO)
             if( time_microsec()-last_backspace_t > 50000 )
@@ -412,7 +361,7 @@ void term_main_loop()
 
         }
 
-        uart_fill_queue(0);
+        buart_fill_queue(0);
         timer_poll();
     }
 
@@ -423,9 +372,6 @@ void entry_point()
 {
     // Heap init
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
-
-    // UART buffer allocation
-    uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE );
 
     uart_init();
     heartbeat_init();
@@ -445,7 +391,7 @@ void entry_point()
     timers_init();
     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
 
-    initialize_uart_irq();
+    buart_initialize_irq( UART_BUFFER_SIZE );
 
     //video_test();
     //video_line_test();

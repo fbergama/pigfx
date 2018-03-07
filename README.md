@@ -43,7 +43,11 @@ Here is a preliminary TODO list of what I plan to add in the future:
 2. Copy ```bin/kernel.img``` in the root of the SD card along with the files
    ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
 the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot)
-3. Insert the card and reboot the Pi.
+3. Add a new text file with a single line called config.txt containing:
+```
+init_uart_clock=3000000
+```
+4. Insert the card and reboot the Pi.
 
 As soon as your raspi is turned on, the message "PIGFX Ready!" should be
 displayed as a 640x480 @ 60hz video stream from the HDMI interface. Any data

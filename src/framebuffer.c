@@ -6,10 +6,13 @@
 
 
 static const unsigned int xterm_colors[256] = {
+// 16 half/full bright RGB colors
 0x000000,  0x800000,  0x008000,  0x808000,  0x000080,
 0x800080,  0x008080,  0xc0c0c0,  0x808080,  0xff0000,
 0x00ff00,  0xffff00,  0x0000ff,  0xff00ff,  0x00ffff,
-0xffffff,  0x000000,  0x00005f,  0x000087,  0x0000af,
+0xffffff,
+// gradients
+0x000000,  0x00005f,  0x000087,  0x0000af,
 0x0000df,  0x0000ff,  0x005f00,  0x005f5f,  0x005f87,
 0x005faf,  0x005fdf,  0x005fff,  0x008700,  0x00875f,
 0x008787,  0x0087af,  0x0087df,  0x0087ff,  0x00af00,
@@ -52,7 +55,9 @@ static const unsigned int xterm_colors[256] = {
 0xffaf5f,  0xffaf87,  0xffafaf,  0xffafdf,  0xffafff,
 0xffdf00,  0xffdf5f,  0xffdf87,  0xffdfaf,  0xffdfdf,
 0xffdfff,  0xffff00,  0xffff5f,  0xffff87,  0xffffaf,
-0xffffdf,  0xffffff,  0x080808,  0x121212,  0x1c1c1c,
+0xffffdf,  0xffffff,
+// 24 gray scales
+0x080808,  0x121212,  0x1c1c1c,
 0x262626,  0x303030,  0x3a3a3a,  0x444444,  0x4e4e4e,
 0x585858,  0x606060,  0x666666,  0x767676,  0x808080,
 0x8a8a8a,  0x949494,  0x9e9e9e,  0xa8a8a8,  0xb2b2b2,
@@ -63,7 +68,7 @@ static const unsigned int xterm_colors[256] = {
 
 
 /*
- * Framebuffer initialization is a modifided version 
+ * Framebuffer initialization is a modified version
  * of the code originally written by brianwiddas.
  *
  * See:
@@ -119,27 +124,27 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
     mailbuffer[c++] = 0;        // Request
 
     mailbuffer[c++] = 0x00048003;   // Tag id (set physical size)
-    mailbuffer[c++] = 8;        // Value buffer size (bytes)
-    mailbuffer[c++] = 8;        // Req. + value length (bytes)
-    mailbuffer[c++] = ph_w;     // Horizontal resolution
-    mailbuffer[c++] = ph_h;     // Vertical resolution
+    mailbuffer[c++] = 8;        	// Value buffer size (bytes)
+    mailbuffer[c++] = 8;        	// Req. + value length (bytes)
+    mailbuffer[c++] = ph_w;     	// 4 bytes: Horizontal resolution
+    mailbuffer[c++] = ph_h;     	// 4 bytes: Vertical resolution
 
     mailbuffer[c++] = 0x00048004;   // Tag id (set virtual size)
-    mailbuffer[c++] = 8;        // Value buffer size (bytes)
-    mailbuffer[c++] = 8;        // Req. + value length (bytes)
-    mailbuffer[c++] = vrt_w;     // Horizontal resolution
-    mailbuffer[c++] = vrt_h;     // Vertical resolution
+    mailbuffer[c++] = 8;        	// Value buffer size (bytes)
+    mailbuffer[c++] = 8;        	// Req. + value length (bytes)
+    mailbuffer[c++] = vrt_w;    	// 4 bytes: Horizontal resolution
+    mailbuffer[c++] = vrt_h;    	// 4 bytes: Vertical resolution
 
     mailbuffer[c++] = 0x00048005;   // Tag id (set depth)
-    mailbuffer[c++] = 4;        // Value buffer size (bytes)
-    mailbuffer[c++] = 4;        // Req. + value length (bytes)
-    mailbuffer[c++] = bpp;      //  bpp
+    mailbuffer[c++] = 4;        	// Value buffer size (bytes)
+    mailbuffer[c++] = 4;        	// Req. + value length (bytes)
+    mailbuffer[c++] = bpp;      	// 4 bytes: bpp
 
     mailbuffer[c++] = 0x00040001;   // Tag id (allocate framebuffer)
-    mailbuffer[c++] = 8;        // Value buffer size (bytes)
-    mailbuffer[c++] = 4;        // Req. + value length (bytes)
-    mailbuffer[c++] = 16;       // Alignment = 16
-    mailbuffer[c++] = 0;        // Space for response
+    mailbuffer[c++] = 8;        	// Value buffer size (bytes)
+    mailbuffer[c++] = 4;        	// Req. + value length (bytes)
+    mailbuffer[c++] = 16;       	// 4 bytes: Alignment = 16
+    mailbuffer[c++] = 0;        	// 4 bytes: Space for response
 
     mailbuffer[c++] = 0;        // Terminating tag
 

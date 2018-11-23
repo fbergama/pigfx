@@ -1,6 +1,7 @@
 # PiGFX 
 ## Raspberry Pi graphics card / ANSI terminal emulator
 
+
 <img src="doc/scr1.png" width="40%" /> <img src="doc/scr2.png" width="40%" />
 
 PiGFX is a bare metal kernel for the Raspberry Pi that implements a basic ANSI
@@ -23,6 +24,9 @@ of fun :)
 driver PiGFX now support an external USB keyboard as input device. Anything
 typed will be automatically sent to raspi UART Tx0 (pin 8, GPIO 14).
 
+*UPDATE*: (2018 Nov. by F. Pierot) Added display modes, fonts, tabulation set... 
+See [2018 Nov. modifications](README_ADD.md).
+
 By now this is a work in progress with a minimum set of features implemented so
 expect that more functionalities will be added from time to time.
 
@@ -43,6 +47,8 @@ Here is a preliminary TODO list of what I plan to add in the future:
 2. Copy ```bin/kernel.img``` in the root of the SD card along with the files
    ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
 the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot)
+Alternatively, you can find those files in the ```bin/``` subdirectory.
+
 3. Add a new text file with a single line called config.txt containing:
 ```
 init_uart_clock=3000000
@@ -50,6 +56,7 @@ init_uart_clock=3000000
 4. Insert the card and reboot the Pi.
 
 As soon as your raspi is turned on, the message "PIGFX Ready!" should be
+As soon as your raspi is turned on, some debug messages should be
 displayed as a 640x480 @ 60hz video stream from the HDMI interface. Any data
 received from the UART is immediately displayed in a terminal-like fashion (ie.
 it automatically scrolls once you reach the bottom of the screen, etc.).

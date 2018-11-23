@@ -3,70 +3,189 @@
 #include "CImg.h"
 #include <iostream>
 #include <fstream>
+#include <string>
+#include <stdlib.h>
 
 using namespace cimg_library;
+using std::string;
+using std::cout;
+using std::endl;
 
+/** Reads a PNG file and builds a BIN font file.
+ *  PNG can be any size but each pixel is considered a character pixel.
+ *
+ *  Width of font must be a divider of the PNG width.
+ *  The PNG height must be at least the font height.
+ *
+ *  The PNG is scanned for up to 256 characters. They
+ *  are scanned horizontally first, for sets of lines
+ *  based on the font height. The PNG width divided by
+ *  the font width gives the number of characters
+ *  which are stored horizontally.
+ *
+ *  Parameters:
+ *
+ *  -i <Image>       : path to the PNG file
+ *  -w <Font_width>  : number of pixels wide for a character
+ *  -h <Font_height> : number of lines for a character
+ *  -o <File>        : path to the output BIN file
+ *  -c 0             : PNG displays black chareacters on white background
+ *  -c 1             : PNG displays white characters on black background
+ 
+ * Original program by Filippo Bergamasco.
+ * Extension to more file and formats by Francis Pierot.
+ *
+ */
 int main( int argc, char* argv[] )
 {
-    std::cout << "Loading " << argv[1] << std::endl;
+	int fontwidth = 0;
+	int fontheight = 0;
+	bool black_ON = true; // black
+	bool quiet = false;
+	string pngfile;
+	string binfile;
 
-    try 
-    {
-        CImg< unsigned char > fontimg( argv[1] );
-        std::cout << "Image size: " << fontimg.width() << "x" << fontimg.height() << std::endl;
+	// Parse parameters
+	for (int i = 1 ; i < argc ; i++) {
+		string arg = string(argv[i]);
+		if (arg.compare("-i")==0) {
+			i = i+1;
+			if (i < argc) {
+				pngfile = string(argv[i]);
+			} else {
+				cout << "-i <filepath.png> missing file path" << endl;
+				return(1);
+			}
+		} else if (arg.compare("-o")==0) {
+			i = i+1;
+			if (i < argc) {
+				binfile = string(argv[i]);
+			} else {
+				cout << "-o <filepath.bin> missing file path" << endl;
+				return(1);
+			}
+		} else if (arg.compare("-w")==0) {
+			i = i+1;
+			if (i < argc) {
+				fontwidth = atoi(argv[i]);
+			} else {
+				cout << "-w <font width> missing font width" << endl;
+				return(1);
+			}
+		} else if (arg.compare("-h")==0) {
+			i = i+1;
+			if (i < argc) {
+				fontheight = atoi(argv[i]);
+			} else {
+				cout << "-h <font height> missing font height" << endl;
+				return(1);
+			}
+		} else if (arg.compare("-c")==0) {
+			i = i+1;
+			if (i < argc) {
+				black_ON = atoi(argv[i]) == 0;
+			} else {
+				cout << "-c <0|1> missing ON color parameter" << endl;
+				return(1);
+			}
+		} else if (arg.compare("-q")==0) {
+			quiet = true;
+		} else {
+			if (arg.compare("-?") != 0) {
+				cout << "Unknown parameter " << arg << endl;
+				return(1);
+			}
+			cout << "Builds a PIGFX binary BIN font bitmap file from a PNG file. " << endl;
+			cout << "Syntax:" << endl;
+			cout << "    buildfont -i <pngpath> -o <binpath> -w <fontwidth> -h <fontheight> [-c <ONcolor>] [-q]" << endl;
+			cout << "    -i <pngpath>      Full path to the PNG file containing an image of the font" << endl;
+			cout << "    -o <binfile>      Full path to the output BIN file for PIGFX." << endl;
+			cout << "    -w <font width>   Number of horizontal pixels for each character" << endl;
+			cout << "    -h <font height>  Number of lines for each character" << endl;
+			cout << "    -c <ONcolor>      Color value to set a pixel ON, 0 for black (default) or 1 for anything not black" << endl;
+			cout << "    -q                Quiet mode (no ASCII output)" << endl;
+			cout << "Exit codes:" << endl;
+			cout << "    0    ok" << endl;
+			cout << "    1    unknown or missing parameter" << endl;
+			cout << "    2    invalid parameter value" << endl;
+			cout << "    3    error while processing" << endl;
+			return(0);
+		}
+	}
 
-        if( fontimg.width() % 8 != 0 )
-        {
-            std::cout << "Width should be multiple of 8" << std::endl;
-            return -1;
-        }
-        if( fontimg.height() % 8 != 0 )
-        {
-            std::cout << "Height should be multiple of 8" << std::endl;
-            return -1;
-        }
+	// Check parameters values
+	if (fontwidth <= 0) {
+		cout << "Invalid font width (-w): " << fontwidth << endl;
+		return(2);
+	}
+	if (fontheight <= 0) {
+		cout << "Invalid font height (-w)" << endl;
+		return(2);
+	}
 
-        int nrows = fontimg.height() / 8;
-        int ncols = fontimg.width() / 8;
+	// Load the PNG
+	try {
+		CImg<unsigned char> fontimg(pngfile.c_str());
 
-        if( nrows*ncols != 256 ) 
-        {
-            std::cout << "Image does not contain 256 characters." << std::endl;
-            return -1;
-        }
+		// Check the image width
+		int remain = fontimg.width() % fontwidth;
+		if (remain != 0) {
+			cout << "PNG width is not a multiple of font width" << endl;
+			return(2);
+		}
+		if (fontimg.height() < fontheight) {
+			cout << "PNG height is less than font height" << endl;
+			return(2);
+		}
 
+		// Build the image
+		int charnum = 0;
+		int curline = 0;
 
-        std::ofstream ofs( "font8x8.bin", std::ios::binary );
+    	// output file
+        std::ofstream ofs( binfile, std::ios::binary );
 
-        for( unsigned int i=0; i<nrows; ++i )
-        {
-            for( unsigned int j=0; j<ncols; ++j )
-            {
-                for( unsigned int y=i*8; y<i*8+8; ++y )
-                {
-                    for( unsigned int x=j*8; x<j*8+8; ++x )
-                    {
+        // Build each line
+        do {
+        	// For each column
+        	int nbcols = fontimg.width() / fontwidth;
+        	for (int c = 0 ; (c < nbcols) && (charnum < 256); c++) {
+        		// send current character :
+        		//      curline to curline+fontheight
+        		//      column c to c+fontwidth
+        		if (!quiet) cout << "Character: " << charnum << endl;
+        		for (int y = curline ; y < curline + fontheight ; y++) {
+        			for (int x = c * fontwidth ; x < (c+1) * fontwidth ; x++) {
                         unsigned char v = fontimg( x,y );
-                        v = v==0 ? 0xFF : 0x0;
+                        if (black_ON)
+                        	v = v==0 ? 0xFF : 0x0;
+                        else
+                        	v = v!=0 ? 0xFF : 0x0;
                         ofs << v;
-                        std::cout << (v==0xFF ? "*" : " ") ;
-                    }
-                    std::cout << std::endl;
-                }
+                        if (!quiet) cout << (v==0xFF ? "*" : ".") ;
+        			} // next pixel on line
+        			if (!quiet) cout << endl;
+        		} // next character line
+               	charnum += 1;
+        	} // next character on current line
 
-            }
-            int aa;
-            std::cin >> aa;
-        }
-        ofs.flush();
+        	// ignore characters after 256th
+        	if (charnum > 255)
+           		break; // finish now
+
+        	// this set of lines has been read, go next
+        	curline += fontheight;
+
+        } while (curline < fontimg.height());
+
+        // close output file
+        ofs.flush(); //?? probably useless
         ofs.close();
-        
-    } 
-    catch (CImgIOException& ex )
-    {
-        std::cout << "Error: " << ex.what() << std::endl;
-    }
 
+    }  catch (CImgIOException& ex ) {
+        cout << "Error: " << ex.what() << endl;
+        return(3);
+    }
 
     return 0;
 }

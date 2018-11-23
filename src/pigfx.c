@@ -2,13 +2,14 @@
 #include "uart.h"
 #include "utils.h"
 #include "timer.h"
-#include "framebuffer.h"
 #include "console.h"
 #include "gfx.h"
+#include "framebuffer.h"
 #include "irq.h"
 #include "dma.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
+#include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
 
@@ -34,6 +35,7 @@ volatile char* uart_buffer_limit;
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
 
+extern unsigned char G_STARTUP_LOGO;
 
 #if ENABLED(SKIP_BACKSPACE_ECHO)
 volatile unsigned int backspace_n_skip;
@@ -44,7 +46,9 @@ volatile unsigned int last_backspace_t;
 static void _keypress_handler(const char* str )
 {
     const char* c = str;
+#if ENABLED(SEND_CR_LF)
     char CR = 13;
+#endif
 
     while( *c )
     {
@@ -58,6 +62,13 @@ static void _keypress_handler(const char* str )
             uart_write( &CR, 1 );
 
         }
+#endif
+
+#if ENABLED(SEND_CR_ONLY)
+	if( ch == 10 )
+	{
+		ch = 13;
+	}
 #endif
 
 #if ENABLED( SWAP_DEL_WITH_BACKSPACE )
@@ -187,8 +198,11 @@ void heartbeat_loop()
     }
 }
 
+/** Sets the frame buffer with given width, height and bit depth.
+ *  The font can be set before, or the default 8x8 font will be selected.
 
-void initialize_framebuffer()
+ */
+void initialize_framebuffer(unsigned int width, unsigned int height, unsigned int bpp)
 {
     usleep(10000);
     fb_release();
@@ -197,14 +211,14 @@ void initialize_framebuffer()
     unsigned int fbsize;
     unsigned int pitch;
 
-    unsigned int p_w = 640;
-    unsigned int p_h = 480;
+    unsigned int p_w = width;
+    unsigned int p_h = height;
     unsigned int v_w = p_w;
     unsigned int v_h = p_h;
 
     fb_init( p_w, p_h, 
              v_w, v_h,
-             8, 
+             bpp,
              (void*)&p_fb, 
              &fbsize, 
              &pitch );
@@ -222,12 +236,15 @@ void initialize_framebuffer()
     //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
 
     usleep(10000);
-    gfx_set_env( p_fb, v_w, v_h, pitch, fbsize ); 
+    gfx_set_env( p_fb, v_w, v_h, bpp, pitch, fbsize );
+    gfx_set_drawing_mode(drawingNORMAL);
+	gfx_term_set_tabulation(8);
+    gfx_term_set_font(8,16);
     gfx_clear();
 }
 
 
-void video_test()
+void video_test(int maxloops)
 {
     unsigned char ch='A';
     unsigned int row=0;
@@ -261,8 +278,10 @@ void video_test()
     }
 #endif
 #if 1
-    while(1)
+    int count = maxloops;
+    while(count >= 0)
     {
+    	count--;
         gfx_putc(row,col,ch);
         col = col+1;
         if( col >= term_cols )
@@ -304,7 +323,7 @@ void video_test()
 }
 
 
-void video_line_test()
+void video_line_test(int maxloops)
 {
     int x=-10; 
     int y=-10;
@@ -313,16 +332,23 @@ void video_line_test()
 
     gfx_set_fg( 15 );
 
-    while(1)
+    // what is current display size?
+    unsigned int width=0, height=0;
+    gfx_get_gfx_size( &width, &height );
+
+    int count = maxloops;
+    while(count >= 0)
     {
+    	count --;
+
         // Render line
-        gfx_line( 320, 240, x, y );
+        gfx_line( width, height, x, y );
 
         usleep( 1000 );
 
         // Clear line
         gfx_swap_fg_bg();
-        gfx_line( 320, 240, x, y );
+        gfx_line( width, height, x, y );
         gfx_swap_fg_bg();
 
         x = x+vx;
@@ -402,7 +428,6 @@ void term_main_loop()
 
 }
 
-
 void entry_point()
 {
     // Heap init
@@ -416,52 +441,95 @@ void entry_point()
     
     //heartbeat_loop();
     
-    initialize_framebuffer();
+    initialize_framebuffer(640, 480, 8);
+
 
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
-    gfx_set_bg(27);
+    gfx_set_bg(BLUE);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
+    gfx_set_fg(YELLOW);// bright yellow
     ee_printf(" ===  PiGFX ===  v.%s\n", PIGFX_VERSION );
     gfx_term_putstring( "\x1B[2K" );
-    //gfx_term_putstring( "\x1B[2K" ); 
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
-    gfx_set_bg(0);
+    gfx_set_bg(BLACK);
+    gfx_set_fg(DARKGRAY);
 
     timers_init();
     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
-
     initialize_uart_irq();
+
+    // draw possible colors: 0-15 are primary colors
+    int color = 0;
+    for (color = 0 ; color < 16 ; color++) {
+   		gfx_set_bg(color);
+   		ee_printf("%02x", color);
+    }
+    ee_printf("\n");
+
+    // 16-223 are gradients
+    int count = 0;
+	for (  ; color <= 255-24 ; color++) {
+		gfx_set_bg(color);
+		ee_printf("%02x", color);
+		count = (count + 1) % 36;
+		if (count == 0)
+			ee_printf("\n");
+	}
+
+	// 224-255 are gray scales
+    for (  ; color <= 255 ; color++) {
+		gfx_set_bg(color);
+		ee_printf("%02x", color);
+	}
+	ee_printf("\n");
+	gfx_set_bg(0);
+
+    /* informations
+    gfx_set_bg(0);
+    ee_printf("W: %d\nH: %d\nPitch: %d\nFont Width: %d, Height: %d\nChar bytes: %d\nFont Ints: %d, Remain: %d\n",
+			ctx.W, ctx.H,
+			ctx.Pitch,
+			ctx.term.FONTWIDTH,
+			ctx.term.FONTHEIGHT,
+			ctx.term.FONTCHARBYTES,
+			ctx.term.FONTWIDTH_INTS, ctx.term.FONTWIDTH_REMAIN);
+    ee_printf("size: %d, bpp: %d\n", ctx.size, ctx.bpp);
+	*/
 
     //video_test();
     //video_line_test();
 
-
 #if 1
-    ee_printf("Initializing USB\n");
+    ee_printf("Initializing USB: ");
 
     if( USPiInitialize() )
     {
-        ee_printf("Initialization OK!\n");
-        ee_printf("Checking for keyboards...\n");
+    	ee_printf("Initialization OK!\n");
+        ee_printf("Checking for keyboards: ");
 
         if ( USPiKeyboardAvailable () )
         {
             USPiKeyboardRegisterKeyPressedHandler( _keypress_handler );
-            gfx_set_fg(10);
+            gfx_set_fg(GREEN);
             ee_printf("Keyboard found.\n");
-            gfx_set_fg(15);
+            gfx_set_fg(GRAY);
         }
         else
         {
-            gfx_set_fg(9);
+            gfx_set_fg(RED);
             ee_printf("No keyboard found.\n");
-            gfx_set_fg(15);
+            gfx_set_fg(GRAY);
         }
     }
 
     else ee_printf("USB initialization failed.\n");
 #endif
 
-    ee_printf("---------\n");
+//    ee_printf("---------\n");
+    gfx_set_drawing_mode(drawingTRANSPARENT);
+    gfx_put_sprite( (unsigned char*)&G_STARTUP_LOGO, 0, 42 );
+    gfx_set_drawing_mode(drawingNORMAL);
+    gfx_set_fg(GRAY);
+
     term_main_loop();
 }

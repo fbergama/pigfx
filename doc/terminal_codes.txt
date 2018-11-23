@@ -16,8 +16,16 @@
 <ESC>[<n>C          Move the cursor forward <n> characters
 <ESC>[<n>D          Move the cursor backward <n> characters
 
-<ESC>[0m            Reset color attributes (white on black) 
+<ESC>[0m            Reset color attributes (white on black) and sets normal drawing (sprites and characters)
+<ESC>[1m            Set XOR drawing (sprites and characters)
+<ESC>[2m            Set transparent drawing (sprites and characters)
 <ESC>[38;5;<n>m     Set foreground color to <n> (0-255) 
 <ESC>[48;5;<n>m     Set background color to <n> (0-255) 
 
+<ESC>[=<n>h         Change to display mode <n> (legacy PC ANSI.SYS)
+                    actually only implements 640x480x8 and 320x200x8
 
+<ESC>[=0f           Set 8x8 font
+<ESC>[=1f           Set TRS-80 8x16 font
+<ESC>[=2f           Set TRS-80 8x24 font
+<ESC>[=<n>t         Set tabulation width (8 by default)

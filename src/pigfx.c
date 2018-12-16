@@ -35,7 +35,9 @@ volatile char* uart_buffer_limit;
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
 
+#if ENABLED(RC2014)
 extern unsigned char G_STARTUP_LOGO;
+#endif
 
 #if ENABLED(SKIP_BACKSPACE_ECHO)
 volatile unsigned int backspace_n_skip;
@@ -448,7 +450,7 @@ void entry_point()
     gfx_set_bg(BLUE);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
     gfx_set_fg(YELLOW);// bright yellow
-    ee_printf(" ===  PiGFX ===  v.%s\n", PIGFX_VERSION );
+    ee_printf(" ===  PiGFX %d.%d.%d ===  Build %s\n", PIGFX_MAJVERSION, PIGFX_MINVERSION, PIGFX_BUILDVERSION, PIGFX_VERSION );
     gfx_term_putstring( "\x1B[2K" );
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(BLACK);
@@ -458,7 +460,8 @@ void entry_point()
     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
     initialize_uart_irq();
 
-    // draw possible colors: 0-15 are primary colors
+    // draw possible colors:
+    // 0-15 are primary colors
     int color = 0;
     for (color = 0 ; color < 16 ; color++) {
    		gfx_set_bg(color);
@@ -482,7 +485,6 @@ void entry_point()
 		ee_printf("%02x", color);
 	}
 	ee_printf("\n");
-	gfx_set_bg(0);
 
     /* informations
     gfx_set_bg(0);
@@ -500,7 +502,11 @@ void entry_point()
     //video_line_test();
 
 #if 1
+    gfx_set_bg(BLUE);
+    gfx_set_fg(YELLOW);
     ee_printf("Initializing USB: ");
+	gfx_set_bg(BLACK);
+	gfx_set_fg(GRAY);
 
     if( USPiInitialize() )
     {
@@ -521,13 +527,18 @@ void entry_point()
             gfx_set_fg(GRAY);
         }
     }
-
-    else ee_printf("USB initialization failed.\n");
+    else
+    {
+    	gfx_set_fg(RED);
+    	ee_printf("USB initialization failed.\n");
+    }
 #endif
 
-//    ee_printf("---------\n");
+#if ENABLED(RC2014)
     gfx_set_drawing_mode(drawingTRANSPARENT);
     gfx_put_sprite( (unsigned char*)&G_STARTUP_LOGO, 0, 42 );
+#endif
+
     gfx_set_drawing_mode(drawingNORMAL);
     gfx_set_fg(GRAY);
 

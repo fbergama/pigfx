@@ -24,8 +24,7 @@ of fun :)
 driver PiGFX now support an external USB keyboard as input device. Anything
 typed will be automatically sent to raspi UART Tx0 (pin 8, GPIO 14).
 
-*UPDATE*: (2018 Nov. by F. Pierot) Added display modes, fonts, tabulation set... 
-See [2018 Nov. modifications](README_ADD.md).
+*UPDATE*: (2018 Nov. by F. Pierot) Added display modes, fonts, tabulation set... See [2018 Nov. modifications](README_ADD.md).
 
 By now this is a work in progress with a minimum set of features implemented so
 expect that more functionalities will be added from time to time.
@@ -77,10 +76,10 @@ in the PiGFX root folder.
 
 ## UART Physical connection
 
-Pin   | Function
----   |---
-8     | UART Tx0 (GPIO 14).  Keyboard output
-10    | UART Rx0 (GPIO 15). Connect this pin to your device transmit pin.
+|Pin   | Function
+|---   |---
+|8     | UART Tx0 (GPIO 14).  Keyboard output
+|10    | UART Rx0 (GPIO 15). Connect this pin to your device transmit pin.
 
 
 ***Note: Please be aware that all Raspberry Pi models accept levels between 0 and 3v3. Be sure to provide an appropriate level shifter to match your output***
@@ -94,8 +93,8 @@ stop and no parity.
 The following escape sequences can be used to further control the terminal
 behaviour
 
-Code                  | Command
----                   | ---
+|Code                  | Command
+|---                   | ---
 | \ESC[?25l           | Cursor invisible
 | \ESC[?25h           | Cursor visible
 | \ESC[H              | Move to 0-0

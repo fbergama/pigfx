@@ -16,8 +16,12 @@
 struct SCN_STATE;
 typedef struct SCN_STATE scn_state;
 
-/** Function type for scanning state */
-typedef void state_fun( char ch, scn_state *state );
+/** Function type for scanning state.
+ *	@param ch the character to scan
+ *	@param state points to the current state structure
+ *	@return true if the terminal should handle line break and screen scroll returning from this call.
+ */
+typedef int state_fun( char ch, scn_state *state );
 
 /** Scanning state. Contains the status of the input sequence scanning. */
 typedef struct SCN_STATE

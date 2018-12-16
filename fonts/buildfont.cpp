@@ -17,7 +17,7 @@ using std::endl;
  *  Width of font must be a divider of the PNG width.
  *  The PNG height must be at least the font height.
  *
- *  The PNG is scanned for up to 256 characters. They
+ *  The PNG is scaned for up to 256 characters. They
  *  are scanned horizontally first, for sets of lines
  *  based on the font height. The PNG width divided by
  *  the font width gives the number of characters

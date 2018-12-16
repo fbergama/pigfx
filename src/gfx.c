@@ -73,6 +73,7 @@ typedef struct {
 
     unsigned char* cursor_buffer;		/// Saved content under current buffer position
     unsigned int cursor_buffer_size;	/// Byte size of this buffer
+    unsigned int cursor_buffer_ready;	/// 0 if buffer is empty, 1 of it stores a content
 
 } FRAMEBUFFER_CTX;
 
@@ -85,7 +86,7 @@ struct DISPLAY_MODE_DEFINITION
 };
 
 // Number of known modes
-#define LAST_MODE_NUMBER 19
+#define LAST_MODE_NUMBER 20
 
 /**
  * Display Modes, as they were interpreted by ANSI.SYS on PC with a CGA, EGA or VGA card
@@ -93,7 +94,7 @@ struct DISPLAY_MODE_DEFINITION
  * - BPP is 8 for all so all modes are actually 256 colors/pixel and 1 byte per pixel
  * - invalid modes don't do anything
  * - mode 7 (line wrapping) is ignored
- * - only 320x200 and 640*480 seem to actually modify the resolution
+ * - only 320x200 and 640*480 seem to actually modify the resolution, other modes merely limit the area on screen.
  */
 static struct DISPLAY_MODE_DEFINITION ALL_MODES[LAST_MODE_NUMBER + 1] = {
 
@@ -107,7 +108,7 @@ static struct DISPLAY_MODE_DEFINITION ALL_MODES[LAST_MODE_NUMBER + 1] = {
 		{640,480,8},		// 3: text color 80 x 25    (CGA)
 		{320,200,8},		// 4: 320 x 200 4 colors    (CGA)
 		{320,200,8},		// 5: 320 x 200 mono        (CGA)
-		{320,200,8},		// 6: 640 x 200 mono        (CGA)
+		{640,200,8},		// 6: 640 x 200 mono        (CGA)
 
 		// Special or non assigned
 		{0,0,0},			// 7: enable line wrapping
@@ -127,11 +128,16 @@ static struct DISPLAY_MODE_DEFINITION ALL_MODES[LAST_MODE_NUMBER + 1] = {
 		{640,480,8},		// 17: 640 x 480 mono       (VGA)
 		{640,480,8},		// 18: 640 x 480 16 colors  (VGA)
 		{320,200,8},		// 19: 320 x 200 256 colors (MCGA)
+
+		{320,240,8},		// 20: 320 x 240 256 colors (Michael Abrash X-Mode)
 };
 
 /** Forward declaration for some state functions. */
-state_fun state_fun_normaltext;
+state_fun state_fun_finalletter;
 state_fun state_fun_read_digit;
+state_fun state_fun_selectescape;
+state_fun state_fun_waitquarebracket;
+state_fun state_fun_normaltext;
 
 #include "framebuffer.h"
 
@@ -154,6 +160,7 @@ void local_memset (void *pBuffer, int nValue, unsigned int nLength)
 
 // Forward declarations
 void gfx_term_render_cursor();
+void gfx_term_save_cursor_content();
 
 // Functions from pigfx.c called by some private sequences (set mode, debug tests ...)
 extern void initialize_framebuffer(unsigned int width, unsigned int height, unsigned int bpp);
@@ -203,6 +210,7 @@ void gfx_compute_font()
 	{
 		free(ctx.cursor_buffer);
 		ctx.cursor_buffer = 0;
+		ctx.cursor_buffer_ready = 0;
 	}
 	ctx.cursor_buffer = (unsigned char*)malloc(ctx.cursor_buffer_size);
 	local_memset(ctx.cursor_buffer, 0, ctx.cursor_buffer_size);
@@ -210,7 +218,7 @@ void gfx_compute_font()
 	// set logical terminal size
     ctx.term.WIDTH = ctx.W / ctx.term.FONTWIDTH;
     ctx.term.HEIGHT= ctx.H / ctx.term.FONTHEIGHT;
-
+    gfx_term_save_cursor_content();
 }
 
 /** Sets the display variables. This is called by initialize_framebuffer when setting mode.
@@ -258,10 +266,8 @@ void gfx_set_bg( GFX_COL col )
     ctx.bg = col;
     // fill precomputed 4 bytes integer
     unsigned char* p = (unsigned char*)&ctx.bg32;
-    *(p+0) = col;
-    *(p+1) = col;
-    *(p+2) = col;
-    *(p+3) = col;
+    for (size_t i = 0 ; i < sizeof ctx.fg32 ; i++)
+    	*(p++) = col;
 }
 
 /** Sets the foreground color. */
@@ -270,10 +276,8 @@ void gfx_set_fg( GFX_COL col )
     ctx.fg = col;
     // fill precomputed 4 bytes integer
     unsigned char* p = (unsigned char*)&ctx.fg32;
-    *(p+0) = col;
-    *(p+1) = col;
-    *(p+2) = col;
-    *(p+3) = col;
+    for (size_t i = 0 ; i < sizeof ctx.fg32 ; i++)
+    	*(p++) = col;
 }
 
 /** Swaps the foreground and background colors. */
@@ -460,7 +464,7 @@ void gfx_scroll_down( unsigned int npixels )
 #endif
 }
 
-/** TODO: */
+/** TODO: comments */
 void gfx_scroll_up( unsigned int npixels )
 {
     unsigned int* pf_dst = (unsigned int*)( ctx.pfb + ctx.size ) -1;
@@ -476,15 +480,14 @@ void gfx_scroll_up( unsigned int npixels )
         *pf_dst-- = BG;
 }
 
-/** TODO: */
+/** TODO: comments */
 void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
     unsigned int* FG = (unsigned int*)mem_2uncached( mem_buff_dma )+4;
     const unsigned int fg = ctx.fg32;
-    *FG = fg;
-    *(FG+1) = fg;
-    *(FG+2) = fg;
-    *(FG+3) = fg;
+    unsigned int* PFG = FG;
+    for (size_t i = 0 ; i < sizeof ctx.fg32 ; i++)
+    	*(PFG++) = fg;
 
     dma_enqueue_operation( FG, 
                            (unsigned int *)( PFB(x,y) ), 
@@ -758,12 +761,13 @@ void gfx_set_drawing_mode( DRAWING_MODE mode )
 	}
 }
 
-
 /** Restore saved content under cursor.
  *
  */
 void gfx_restore_cursor_content()
 {
+	if (!ctx.cursor_buffer_ready) return;
+
     unsigned char* pb = ctx.cursor_buffer;
     unsigned char* pfb = (unsigned char*)PFB( ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT );
     const unsigned int byte_stride = ctx.Pitch - ctx.term.FONTWIDTH;
@@ -777,15 +781,36 @@ void gfx_restore_cursor_content()
     	}
         pfb += byte_stride;
     }
+
     //cout("cursor restored");cout_d(ctx.term.cursor_row);cout("-");cout_d(ctx.term.cursor_col);cout_endl();
 }
 
+/** Saves framebuffer content in the cursor bufffer so t can be restored later. */
+void gfx_term_save_cursor_content()
+{
+	unsigned char* pb = ctx.cursor_buffer;
+	unsigned char* pfb = (unsigned char*)PFB(
+	ctx.term.cursor_col * ctx.term.FONTWIDTH,
+	ctx.term.cursor_row * ctx.term.FONTHEIGHT );
+	const unsigned int byte_stride = ctx.Pitch - ctx.term.FONTWIDTH;//$$ adjust if not 8 width?
+	unsigned int h = ctx.term.FONTHEIGHT;
+	while(h--)
+    {
+    	int w = ctx.term.FONTWIDTH;
+    	while (w--)
+    	{
+    		*pb++ = *pfb++;
+    	}
+        pfb += byte_stride;
+    }
+	ctx.cursor_buffer_ready = 1;
+}
 
+/** Saves framebuffer content that is going to be replaced by the cursor and update
+	the new content.
+*/
 void gfx_term_render_cursor()
 {
-    // Save framebuffer content that is going to be replaced by the cursor and update
-    // the new content
-    //
     unsigned char* pb = ctx.cursor_buffer;
     unsigned char* pfb = (unsigned char*)PFB(
     		ctx.term.cursor_col * ctx.term.FONTWIDTH,
@@ -813,15 +838,16 @@ void gfx_term_render_cursor()
         	}
             pfb += byte_stride;
         }
+    ctx.cursor_buffer_ready = 1;
 }
 
-
+/** Fill cursor buffer with the current background and framebuffer with fg.
+ */
 void gfx_term_render_cursor_newline_dma()
 {
-    // Fill cursor buffer with the current background and framebuffer with fg
-    const unsigned int BG = ctx.bg32;
-    
-    unsigned int nwords = 16;
+    //
+    const unsigned int BG = ctx.bg32; // 4 pixels
+    unsigned int nwords = ctx.cursor_buffer_size / 4;
     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
     while( nwords-- )
     {
@@ -832,26 +858,27 @@ void gfx_term_render_cursor_newline_dma()
         gfx_fill_rect_dma( ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
 }
 
-
+/** Draws a character string and handle control characters. */
 void gfx_term_putstring( const char* str )
 {
     while( *str )
     {
         while( DMA_CHAN0_BUSY ); // Busy wait for DMA
 
+        int checkscroll = 1;
         switch( *str )
         {
             case '\r':
                 gfx_restore_cursor_content();
                 ctx.term.cursor_col = 0;
-                gfx_term_render_cursor();
+                if( ctx.term.cursor_row < ctx.term.HEIGHT ) gfx_term_render_cursor();
                 break;
 
             case '\n':
                 gfx_restore_cursor_content();
                 ++ctx.term.cursor_row;
                 ctx.term.cursor_col = 0;
-                gfx_term_render_cursor();
+                if( ctx.term.cursor_row < ctx.term.HEIGHT ) gfx_term_render_cursor();
                 break;
 
             case 0x09: /* tab */
@@ -881,11 +908,11 @@ void gfx_term_putstring( const char* str )
 
 
             default:
-                ctx.term.state.next( *str, &(ctx.term.state) );
+            	checkscroll = ctx.term.state.next( *str, &(ctx.term.state) );
                 break;
         }
 
-        if( ctx.term.cursor_col >= ctx.term.WIDTH )
+        if( checkscroll && (ctx.term.cursor_col >= ctx.term.WIDTH ))
         {
             gfx_restore_cursor_content();
             ++ctx.term.cursor_row;
@@ -893,7 +920,7 @@ void gfx_term_putstring( const char* str )
             gfx_term_render_cursor();
         }
 
-        if( ctx.term.cursor_row >= ctx.term.HEIGHT )
+        if( checkscroll && (ctx.term.cursor_row >= ctx.term.HEIGHT ))
         {
             gfx_restore_cursor_content();
             --ctx.term.cursor_row;
@@ -1027,22 +1054,28 @@ void gfx_term_set_tabulation(int width)
 /** State parsing functions */
 
 /** Parse the last letter in ANSI sequence.
- *  It assumes previous parameters are stored as numbers in state->cmd_params[].
+ *  Normal ANSI escape sequences assume previous parameters are stored as numbers in state->cmd_params[].
  *
  *  state->private_mode_char can hold a character in which case the process is not
  *  following ANSI or VT100 specifications:
  *
  *      ESC[# implements graphic commands and tests (prioritary)
- *      ESC[= implements mode changing (PC ANSI.SYS) and font changing (prioritary)
+ *      ESC[= implements settings change: mode (PC ANSI.SYS), font, tab width
  *      ESC[? implements some ANSI commands (save/restore cursor content)
  *
  *  Any other character will end the sequence.
+ *
+ *  @param ch the character to scan
+ *	@param state points to the current state structure
+ *	@return 1 if the terminal should handle line break and screen scroll returning from this call.
+ *
  */
-void state_fun_final_letter( char ch, scn_state *state )
+int state_fun_final_letter( char ch, scn_state *state )
 {
+	int retval = 1;// handle line break and screen scroll by default
     if( state->private_mode_char == '#' )
     {
-        // Non-standard ANSI Codes
+        // Non-standard graphic commands and additionam features
         switch( ch )
         {
             case 'l':
@@ -1051,6 +1084,7 @@ void state_fun_final_letter( char ch, scn_state *state )
                 {
                     gfx_line( state->cmd_params[0], state->cmd_params[1], state->cmd_params[2], state->cmd_params[3] );
                 }
+                retval = 0; // no terminal line break/scroll
             goto back_to_normal;
             break;
             case 'r':
@@ -1059,9 +1093,9 @@ void state_fun_final_letter( char ch, scn_state *state )
                 {
                     gfx_fill_rect( state->cmd_params[0], state->cmd_params[1], state->cmd_params[2], state->cmd_params[3] );
                 }
+                retval = 0;
             goto back_to_normal;
             break;
-
 
             /** The following is only for debug purposes
             case 't':
@@ -1083,7 +1117,7 @@ void state_fun_final_letter( char ch, scn_state *state )
     	// ANSI.SYS style mode changing
     	switch( ch )
     	{
-    	case 'h': // set mode on last parameter, ignore previous
+    	case 'h': // set resolution mode on last parameter, ignore previous
     		if( state->cmd_params_size >= 1)
     		{
     			// parameter is the mode index in global array
@@ -1288,10 +1322,11 @@ back_to_normal:
     // go back to normal text
     state->cmd_params_size = 0;
     state->next = state_fun_normaltext;
+    return retval;
 }
 
 /** Read next digit of a parameter or a separator. */
-void state_fun_read_digit( char ch, scn_state *state )
+int state_fun_read_digit( char ch, scn_state *state )
 {
     if( ch>='0' && ch <= '9' )
     {
@@ -1304,7 +1339,7 @@ void state_fun_read_digit( char ch, scn_state *state )
         // parse digit
         state->cmd_params[ state->cmd_params_size - 1] = state->cmd_params[ state->cmd_params_size - 1]*10 + (ch-'0');
         state->next = state_fun_read_digit; // stay on this state
-        return;
+        return 1;
     }
     
     if( ch == ';' )
@@ -1313,15 +1348,16 @@ void state_fun_read_digit( char ch, scn_state *state )
         state->cmd_params_size++;
         state->cmd_params[ state->cmd_params_size-1 ] = 0;
         state->next = state_fun_read_digit; // stay on this state
-        return;
+        return 1;
     }
 
     // not a digit, call the final state
     state_fun_final_letter( ch, state );
+    return 1;
 }
 
 /** Right after ESC, start a parameter when reading a digit or select the private mode character. */
-void state_fun_selectescape( char ch, scn_state *state )
+int state_fun_selectescape( char ch, scn_state *state )
 {
     if( ch>='0' && ch<='9' )
     {
@@ -1329,7 +1365,7 @@ void state_fun_selectescape( char ch, scn_state *state )
         state->cmd_params_size = 1;
         state->cmd_params[ 0 ] = ch-'0';
         state->next = state_fun_read_digit;
-        return;
+        return 1;
     } 
     else
     {
@@ -1339,26 +1375,26 @@ void state_fun_selectescape( char ch, scn_state *state )
             // A digit may follow
             state->cmd_params_size = 0;
             state->next = state_fun_read_digit;
-            return;
+            return 1;
         }
     } 
 
     // Already at the final letter
     state_fun_final_letter( ch, state );
-
+    return 1;
 }
 
 /** Right after ESC, wait for a [.
  *  The special case ESC ESC is displaying ESC character and end the sequence.
  */
-void state_fun_waitsquarebracket( char ch, scn_state *state )
+int state_fun_waitsquarebracket( char ch, scn_state *state )
 {
     if( ch=='[' )
     {
         state->cmd_params[0]=1;
         state->private_mode_char=0; // reset private mode char
         state->next = state_fun_selectescape;
-        return;
+        return 1;
     }
 
     if( ch==TERM_ESCAPE_CHAR ) // Double ESCAPE prints the ESC character
@@ -1369,21 +1405,23 @@ void state_fun_waitsquarebracket( char ch, scn_state *state )
     }
 
     state->next = state_fun_normaltext;
+    return 1;
 }
 
 /** Starting state when receiving a character to display.
  *  If the character is ESC, a sequence parsing state is entered.
  *  If none of the previous happened, the character is displayed using current font.
  */
-void state_fun_normaltext( char ch, scn_state *state )
+int state_fun_normaltext( char ch, scn_state *state )
 {
     if( ch==TERM_ESCAPE_CHAR )
     {
         state->next = state_fun_waitsquarebracket;
-        return;
+        return 1;
     }
 
     gfx_putc( ctx.term.cursor_row, ctx.term.cursor_col, ch );
     ++ctx.term.cursor_col;
     gfx_term_render_cursor();
+    return 1;
 }

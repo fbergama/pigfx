@@ -14,6 +14,10 @@
 #define POSTMAN_DEBUG           OFF             /* Log mailbox operations to UART */
 #define HEARTBEAT_FREQUENCY     1               /* Status led blink frequency in Hz */
 
+#define PIGFX_MAJVERSION        1               /* Major version number */
+#define PIGFX_MINVERSION        1               /* Minor version number */
+#define PIGFX_BUILDVERSION	0		/* Build version. */
 
+#define RC2014                  OFF             /** Enable/disable RC2014 logo at startup.  */
 #endif
 

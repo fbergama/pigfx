@@ -55523,6 +55523,9 @@ namespace cimg {
       if (!path_found) {
         std::strcpy(s_path,"./convert");
         if ((file=std::fopen(s_path,"r"))!=0) { cimg::fclose(file); path_found = true; }
+        //$$macOS fixx: /usr/local/bin won't be found by $PATH if launched from GUI (e.g. XCode debugging)
+        std::strcpy(s_path, "/usr/local/bin/convert");
+		if ((file=std::fopen(s_path,"r"))!=0) { cimg::fclose(file); path_found = true; }
       }
       if (!path_found) std::strcpy(s_path,"convert");
 #endif
@@ -55632,6 +55635,9 @@ namespace cimg {
       if (!path_found) {
         std::strcpy(s_path,"./gm");
         if ((file=std::fopen(s_path,"r"))!=0) { cimg::fclose(file); path_found = true; }
+		  //$$macOS fixx: /usr/local/bin won't be found by $PATH if launched from GUI (e.g. XCode debugging)
+		  std::strcpy(s_path, "/usr/local/bin/gm");
+		  if ((file=std::fopen(s_path,"r"))!=0) { cimg::fclose(file); path_found = true; }
       }
       if (!path_found) std::strcpy(s_path,"gm");
 #endif

@@ -4,7 +4,8 @@
 #include "globaldefs.h"
 
 #define PIGFX_VERSION           "$VERSION$"
-#define SEND_CR_LF              ON              /* Send CR+LF when Return is pressed */
+#define SEND_CR_LF              OFF             /* Send CR+LF when Return is pressed */
+#define SEND_CR_ONLY            ON              /* Send CR instead of LF */
 #define GFX_USE_DMA             ON              /* Graphics functions use DMA when possible (faster, but occupy DMA channel 0) */
 #define BACKSPACE_ECHO          OFF             /* Auto-echo the backspace char */
 #define SWAP_DEL_WITH_BACKSPACE ON              /* Substitute DEL (0x7F) with BACKSPACE (0x08) */
@@ -13,6 +14,10 @@
 #define POSTMAN_DEBUG           OFF             /* Log mailbox operations to UART */
 #define HEARTBEAT_FREQUENCY     1               /* Status led blink frequency in Hz */
 
+#define PIGFX_MAJVERSION        1               /* Major version number */
+#define PIGFX_MINVERSION        1               /* Minor version number */
+#define PIGFX_BUILDVERSION	0		/* Build version. */
 
+#define RC2014                  OFF             /** Enable/disable RC2014 logo at startup.  */
 #endif
 

@@ -1,5 +1,5 @@
 # PiGFX
-## Version 1.1.0 
+## Version 1.1.1 
 
 *Modifications by Francis Piérot*
 
@@ -33,6 +33,8 @@ The following have been done in C sources.
 - Precomputed constants based on font width and height to avoid calculations at drawing time
 - Moved scn_state structure in a separate header
 - The state functions return 0 if the terminal loop should ignore line breaks and screen scroll (this is for graphics)
+
+Version 1.1.1: coordinates in the "H" escape sequence are now 1-based instead of 0-based.
  
 I try to maintain a [TODO list](TODO.md). Versions are documented in [CHANGES.MD]().
 

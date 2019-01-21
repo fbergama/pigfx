@@ -58,8 +58,8 @@ typedef struct {
         unsigned int WIDTH;				/// Terminal character width (W / font width)
         unsigned int HEIGHT;			/// Terminal character height (H / font height)
         unsigned int tab_pos;			/// 8 by default, tabulation position multiplicator
-        unsigned int cursor_row;		/// Current row position
-        unsigned int cursor_col;		/// Current column position
+        unsigned int cursor_row;		/// Current row position (0-based)
+        unsigned int cursor_col;		/// Current column position (0-based)
         unsigned int saved_cursor[2];	/// Saved cursor position
         char cursor_visible;			/// 0 if no visible cursor
 
@@ -1297,7 +1297,9 @@ int state_fun_final_letter( char ch, scn_state *state )
         case 'H':
             if( state->cmd_params_size == 2 )
             {
-                gfx_term_move_cursor( state->cmd_params[0], state->cmd_params[1]);
+            	int x = (state->cmd_params[0] - 1) % ctx.term.WIDTH; 	// 80 -> (79 % 80) -> 79, 81 -> (80 % 80) -> 0
+             	int y = (state->cmd_params[1] - 1) % ctx.term.HEIGHT;
+                gfx_term_move_cursor(x, y);
             }
             else
                 gfx_term_move_cursor(0,0);

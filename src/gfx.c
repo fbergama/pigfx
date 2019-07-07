@@ -1294,12 +1294,13 @@ int state_fun_final_letter( char ch, scn_state *state )
             goto back_to_normal;
             break;
 
+        case 'f':
         case 'H':
             if( state->cmd_params_size == 2 )
             {
-            	int x = (state->cmd_params[0] - 1) % ctx.term.WIDTH; 	// 80 -> (79 % 80) -> 79, 81 -> (80 % 80) -> 0
-             	int y = (state->cmd_params[1] - 1) % ctx.term.HEIGHT;
-                gfx_term_move_cursor(x, y);
+                int row = (state->cmd_params[0] - 1) % ctx.term.HEIGHT;
+                int col = (state->cmd_params[1] - 1) % ctx.term.WIDTH; // 80 -> (79 % 80) -> 79, 81 -> (80 % 80) -> 0
+                gfx_term_move_cursor(row, col);
             }
             else
                 gfx_term_move_cursor(0,0);

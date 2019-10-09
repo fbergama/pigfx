@@ -138,6 +138,7 @@ state_fun state_fun_read_digit;
 state_fun state_fun_selectescape;
 state_fun state_fun_waitquarebracket;
 state_fun state_fun_normaltext;
+state_fun state_fun_ignore_digit;
 
 #include "framebuffer.h"
 
@@ -1344,7 +1345,11 @@ int state_fun_read_digit( char ch, scn_state *state )
         state->next = state_fun_read_digit; // stay on this state
         return 1;
     }
-    
+    if (ch == '.')
+    {
+        state->next = state_fun_ignore_digit;
+         return 1;
+    }
     if( ch == ';' )
     {
         // Another param will follow
@@ -1355,6 +1360,26 @@ int state_fun_read_digit( char ch, scn_state *state )
     }
 
     // not a digit, call the final state
+    state_fun_final_letter( ch, state );
+    return 1;
+}
+
+/** Ignore next digits of a parameter until separator. */
+int state_fun_ignore_digit( char ch, scn_state *state )
+{
+	if( ch>='0' && ch <= '9' )
+	{
+		return 1;
+	}
+	if( ch == ';' )
+    {
+        // Another param will follow
+        state->cmd_params_size++;
+        state->cmd_params[ state->cmd_params_size-1 ] = 0;
+        state->next = state_fun_read_digit; // stay on this state
+        return 1;
+    }
+    // not a digit, end
     state_fun_final_letter( ch, state );
     return 1;
 }

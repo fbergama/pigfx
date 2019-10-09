@@ -36,7 +36,7 @@ typedef struct SCN_STATE
      * ANSI term mode (normal ESC[ sequences and ANSI private mode sequences)
      */
     unsigned int cmd_params[10];	// Scanned parameters after escape sequence start
-    unsigned int cmd_params_size;	// Number off parameters after escape sequence start
+    unsigned int cmd_params_size;	// Number of parameters after escape sequence start
     char private_mode_char;			// Escape private mode character (ESC followed by not '[')
 
     /*

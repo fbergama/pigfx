@@ -1,7 +1,13 @@
 # PiGFX
 ## TODO  List
 
-List of things to improve or add to PiGfx.
+List of things to improve or add to PiGfx. Each requires an ANSI prefix, unless
+a generic prefix is used for all, this has yet to be decided.
+
+## GCC stuff
+
+* add file support, currently open() and fopen() are unavailable because of -nostdlib
+
 
 ## Graphics
 
@@ -31,6 +37,7 @@ List of things to improve or add to PiGfx.
   * change to use 1 bit by pixels (vs 1 byte currently)
   * prefix in binary file to let pigfx know about the actual format
 * enable/disable non scroll/no line break modes (let draw text without scrolling)
+* send fonts
 
 ## System
 

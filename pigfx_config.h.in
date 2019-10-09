@@ -16,12 +16,14 @@
 
 #define PIGFX_MAJVERSION        1               /* Major version number */
 #define PIGFX_MINVERSION        1               /* Minor version number */
-#define PIGFX_BUILDVERSION	1		/* Build version. */
+#define PIGFX_BUILDVERSION      2               /* Build version. */
+#define PIGFX_INITFONT          1               /* 0=8x8, 1=8x16, 2=8x24 */
 
 /** Versions:
 	
 1.1.0  Initial version with mode change, 8x16 and 8x24 fonts etc.
 1.1.1  fix for 1-based coordinates in ESC H command instead of 0-based
+1.1.2  fix for reversed row/col parameter index in ESC H command
 
 */
 

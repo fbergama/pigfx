@@ -1,5 +1,7 @@
 .text
 
+;@ THIS IS ONLY DIFFERENT FROM uart.s BY BAUD SPEED lines 62 and 64
+
 ;@ initialize main UART on pin 14 and 15
 .global uart_init
 uart_init:
@@ -57,9 +59,9 @@ uart_init:
     ;@  115200:  D=1,F=40
     ;@  38400:   D=4, F=57
     ;@  9600:    D=19,F=34
-    mov r0, #1
+    mov r0, #4
     str r0, [r3, #0x24]  ;@ UART0_IBRD = DIVIDER
-    mov r0, #40
+    mov r0, #57
     str r0, [r3, #0x28]  ;@ UART0_IBRD = FRACTIONAL
 
     ;@ Set 8bit (bit 6-5=1), no parity (bit 7=0), FIFO enable (bit 4=1)

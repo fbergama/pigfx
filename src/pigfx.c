@@ -201,7 +201,10 @@ void heartbeat_loop()
 }
 
 /** Sets the frame buffer with given width, height and bit depth.
- *  The font can be set before, or the default 8x8 font will be selected.
+ *   Other effects:
+ *  	- font is set to 8x16
+ *  	- tabulation is set to 8
+ *  	- chars/sprites drawing mode is set to normal
 
  */
 void initialize_framebuffer(unsigned int width, unsigned int height, unsigned int bpp)

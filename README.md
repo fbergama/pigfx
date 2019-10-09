@@ -39,28 +39,33 @@ Here is a preliminary TODO list of what I plan to add in the future:
 - Implement double buffering
 - Load bitmap fonts directly from the SD card
 
-
 ## How to run
 
-1. Format an SD-card with FAT32 filesystem.
+1. Format an SD-card: you need one 1 GB partition using the FAT or FAT32 system. 
+Other formats won't boot, and a bigger size is useless. Avoid 64GB+ cards as 
+they tend to cause problems to PI. A 32GB or 16GB card is ok as long as you 
+format only 1 or 2 GB with FAT or FAT32.
+
 2. Copy ```bin/kernel.img``` in the root of the SD card along with the files
    ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
 the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot)
 Alternatively, you can find those files in the ```bin/``` subdirectory.
 
-3. Add a new text file with a single line called config.txt containing:
+3. Add a new text file with a single line called boot/config.txt containing:
 ```
 init_uart_clock=3000000
 ```
+
 4. Insert the card and reboot the Pi.
 
-As soon as your raspi is turned on, the message "PIGFX Ready!" should be
-As soon as your raspi is turned on, some debug messages should be
-displayed as a 640x480 @ 60hz video stream from the HDMI interface. Any data
+As soon as your raspi is turned on, the message "PIGFX Ready!" and other informations 
+should be displayed as a 640x480 @ 60hz video stream from the HDMI interface. 
+After that, PiGFX awaits anything coming from the serial line. Any data
 received from the UART is immediately displayed in a terminal-like fashion (ie.
 it automatically scrolls once you reach the bottom of the screen, etc.).
 
-
+You may need to reset your computer before PiGFX displays anything coming from it.
+ 
 ### Test inside QEMU
 
 PiGFX can be emulated with [QEMU](http://wiki.qemu.org/Main_Page). Just

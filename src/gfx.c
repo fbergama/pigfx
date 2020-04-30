@@ -1303,6 +1303,17 @@ int state_fun_final_letter( char ch, scn_state *state )
                 }
                 retval = 0;
             goto back_to_normal;
+            case 't':
+                /* render a triangle */
+                if (state->cmd_params_size == 6)
+                {
+                    gfx_line( state->cmd_params[0], state->cmd_params[1], state->cmd_params[2], state->cmd_params[3] );
+                    gfx_line( state->cmd_params[2], state->cmd_params[3], state->cmd_params[4], state->cmd_params[5] );
+                    gfx_line( state->cmd_params[4], state->cmd_params[5], state->cmd_params[0], state->cmd_params[1] );
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
 
             /** The following is only for debug purposes
             case 't':

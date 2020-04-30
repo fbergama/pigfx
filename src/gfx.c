@@ -527,6 +527,195 @@ void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned
 #endif
 }
 
+/** TODO */
+void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
+{
+    register unsigned char* pfb;
+    int f = 1 - rad;
+    int ddF_x = 0;
+    int ddF_y = -2 * rad;
+    int x = 0;
+    int y = rad;
+    int xdraw,ydraw;
+
+    //setPixel(x0, y0 + rad);
+    ydraw = y0+rad;
+    if (ydraw < (int)ctx.H)
+    {
+        pfb = PFB(x0,ydraw);
+        *pfb = ctx.fg;
+    }
+    
+    //setPixel(x0, y0 - rad);
+    ydraw -= rad+rad;
+    if (ydraw >= 0)
+    {
+        pfb = PFB(x0,ydraw);
+        *pfb = ctx.fg;
+    }
+    
+    //setPixel(x0 + rad, y0);
+    xdraw = x0+rad;
+    if (xdraw < (int)ctx.W)
+    {
+        pfb = PFB(xdraw,y0);
+        *pfb = ctx.fg;
+    }
+    
+    //setPixel(x0 - rad, y0);
+    xdraw -= rad+rad;
+    if (xdraw >= 0)
+    {
+        pfb = PFB(xdraw,y0);
+        *pfb = ctx.fg;
+    }
+    
+
+    while(x < y)
+    {
+        if(f >= 0)
+        {
+          y--;
+          ddF_y += 2;
+          f += ddF_y;
+        }
+        x++;
+        ddF_x += 2;
+        f += ddF_x + 1;
+
+        //setPixel(x0 + x, y0 + y);
+        xdraw = x0+x;
+        ydraw = y0+y;
+        if ((xdraw < (int)ctx.W) && (ydraw < (int)ctx.H))
+        {
+            pfb = PFB(xdraw,ydraw);
+            *pfb = ctx.fg;
+        }
+        
+        //setPixel(x0 - x, y0 + y);
+        xdraw = x0-x;
+        if ((xdraw >= 0) && (ydraw < (int)ctx.H))
+        {
+            pfb = PFB(xdraw,ydraw);
+            *pfb = ctx.fg;
+        }
+        
+        //setPixel(x0 + x, y0 - y);
+        xdraw = x0+x;
+        ydraw = y0-y;
+        if ((xdraw < (int)ctx.W) && (ydraw >= 0))
+        {
+            pfb = PFB(xdraw,ydraw);
+            *pfb = ctx.fg;
+        }
+        
+        //setPixel(x0 - x, y0 - y);
+        xdraw = x0-x;
+        if ((xdraw >= 0) && (ydraw >= 0))
+        {
+            pfb = PFB(xdraw,ydraw);
+            *pfb = ctx.fg;
+        }
+        
+        //setPixel(x0 + y, y0 + x);
+        xdraw = x0+y;
+        ydraw = y0+x;
+        if ((xdraw < (int)ctx.W) && (ydraw < (int)ctx.H))
+        {
+            pfb = PFB(xdraw,ydraw);
+            *pfb = ctx.fg;
+        }
+        
+        //setPixel(x0 - y, y0 + x);
+        xdraw = x0-y;
+        if ((xdraw >= 0) && (ydraw < (int)ctx.H))
+        {
+            pfb = PFB(xdraw,ydraw);
+            *pfb = ctx.fg;
+        }
+        
+        //setPixel(x0 + y, y0 - x);
+        xdraw = x0+y;
+        ydraw = y0-x;
+        if ((xdraw < (int)ctx.W) && (ydraw >= 0))
+        {
+            pfb = PFB(xdraw,ydraw);
+            *pfb = ctx.fg;
+        }
+        
+        //setPixel(x0 - y, y0 - x);
+        xdraw = x0-y;
+        if ((xdraw >= 0) && (ydraw >= 0))
+        {
+            pfb = PFB(xdraw,ydraw);
+            *pfb = ctx.fg;
+        }
+    }
+}
+
+// Draw a horizontal line
+void gfx_draw_hor_line(int x0, int y0, unsigned int width)
+{
+    if ((y0 < 0) || (y0 >= (int)ctx.H)) return;
+    if (x0 >= (int)ctx.W) return;
+    
+    int diff;
+    
+    if (x0 < 0)
+    {
+        diff = 0-x0;
+        x0 = 0;
+        width-=diff;
+    }
+    if (x0+width >= ctx.W)
+    {
+        width-=ctx.W-x0;
+    }
+    
+    unsigned int i;
+    register unsigned char* pfb = PFB(x0,y0);
+    for (i=0;i<width;i++)
+    {
+        *pfb++ = ctx.fg;
+        //pfb++;
+    }
+}
+
+// Draw a filled circle
+void gfx_draw_filled_circle(unsigned int x0, unsigned int y0, unsigned int rad)
+{
+    int xoff = 0;
+    int yoff = rad;
+    int balance = -rad;
+    int p0,p1,w0,w1;
+    
+    while (xoff <= yoff)
+    {
+        p0 = x0 - xoff;
+        p1 = x0 - yoff;
+        
+        w0 = xoff + xoff;
+        w1 = yoff + yoff;
+        
+        gfx_draw_hor_line(p0, y0 + yoff, w0);
+        gfx_draw_hor_line(p0, y0 - yoff, w0);
+        
+        gfx_draw_hor_line(p1, y0 + xoff, w1);
+        gfx_draw_hor_line(p1, y0 - xoff, w1);
+        
+        balance += xoff+xoff+1;
+        xoff++;
+
+        //if ((balance += xoff++ + xoff)>= 0)
+        if (balance>= 0)
+        {
+            yoff--;
+            balance -= yoff+yoff;
+            //balance-=--yoff+yoff;
+        }
+    }
+}
+
 /** TODO: */
 void gfx_clear_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
@@ -1097,6 +1286,23 @@ int state_fun_final_letter( char ch, scn_state *state )
                 retval = 0;
             goto back_to_normal;
             break;
+            case 'c':
+                /* render a circle */
+                if (state->cmd_params_size == 3)
+                {
+                    gfx_draw_circle(state->cmd_params[0], state->cmd_params[1], state->cmd_params[2]);  // x, y, radius
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+            case 'C':
+                /* render a filled circle */
+                if (state->cmd_params_size == 3)
+                {
+                    gfx_draw_filled_circle(state->cmd_params[0], state->cmd_params[1], state->cmd_params[2]);  // x, y, radius
+                }
+                retval = 0;
+            goto back_to_normal;
 
             /** The following is only for debug purposes
             case 't':

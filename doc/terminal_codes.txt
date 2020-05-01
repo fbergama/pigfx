@@ -20,8 +20,12 @@ Clearing Text
  
 Graphics
 
-<ESC>[#<x0>;<y0>;<x1>;<y1>l    Draw a line from <x0>,<y0> to <x1>,<y1>
-<ESC>[#<x0>;<y0>;<x1>;<y1>r    Fill a rectangle with top-left corner at <x0>,<y0> and bottom-right at <x1>,<y1>
+<ESC>[#<x0>;<y0>;<x1>;<y1>l              Draw a line from <x0>,<y0> to <x1>,<y1>
+<ESC>[#<x0>;<y0>;<w>;<h>r                Fill a rectangle with top-left corner at <x0>,<y0> and width <w>, height <h>
+<ESC>[#<x0>;<y0>;<w>;<h>R                Draw a rectangle with top-left corner at <x0>,<y0> and width <w>, height <h>
+<ESC>[#<x0>;<y0>;<r>c                    Fill a circle with center at <x0>,<y0> and radius <r>
+<ESC>[#<x0>;<y0>;<r>C                    Draw a circle with center at <x0>,<y0> and radius <r>
+<ESC>[#<x0>;<y0>;<x1>;<y1>;<x2>;<y2>T    Draw a triangle from <x0>,<y0> to <x1>,<y1> to <x2>,<y2>
  
 Settings
 

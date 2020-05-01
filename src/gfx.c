@@ -5,6 +5,7 @@
 #include "console.h"
 #include "dma.h"
 #include "utils.h"
+#include "ee_printf.h"
 #include <stdlib.h>
 
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
@@ -500,10 +501,6 @@ void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsi
 /** TODO: */
 void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
-#if ENABLED(GFX_USE_DMA)
-    gfx_fill_rect_dma( x, y, width, height );
-    dma_execute_queue();
-#else
     if( x >= ctx.W || y >= ctx.H )
         return;
 
@@ -513,7 +510,10 @@ void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned
     if( y+height > ctx.H )
         height = ctx.H-y;
 
-
+#if ENABLED(GFX_USE_DMA)
+    gfx_fill_rect_dma( x, y, width, height );
+    dma_execute_queue();
+#else
     while( height-- )
     {
         unsigned char* pf = PFB(x,y);
@@ -732,54 +732,32 @@ void gfx_line( int x0, int y0, int x1, int y1 )
     y0 = MAX( MIN(y0, (int)ctx.H), 0 );
     x1 = MAX( MIN(x1, (int)ctx.W), 0 );
     y1 = MAX( MIN(y1, (int)ctx.H), 0 );
-
-    unsigned char qrdt = __abs__(y1 - y0) > __abs__(x1 - x0);
-
-    if( qrdt ) {
-        __swap__(&x0, &y0);
-        __swap__(&x1, &y1);
-    }
-    if( x0 > x1 ) {
-        __swap__(&x0, &x1);
-        __swap__(&y0, &y1);
-    }
-
-    const int deltax = x1 - x0;
-    const int deltay = __abs__(y1 - y0);
-    register int error = deltax >> 1;
+    
     register unsigned char* pfb;
-    unsigned int nr = x1-x0;
+    int e2;
+    int dx =  __abs__(x1-x0);
+    int sx = x0<x1 ? 1 : -1;
+    int dy = -__abs__(y1-y0);
+    int sy = y0<y1 ? 1 : -1;
+    int err = dx+dy;  /* error value e_xy */
+    
+    while (1)   /* loop */
+    {
+        // draw pixel
+        pfb = PFB(x0,y0);
+        *pfb = ctx.fg;
 
-    if( qrdt )
-    {
-        const int ystep = y0<y1 ? 1 : -1;
-        pfb = PFB(y0,x0);
-        while(nr--)
+        if ((x0==x1) && (y0==y1)) break;
+        e2 = 2*err;
+        if (e2 >= dy)
         {
-            *pfb = ctx.fg;
-            error = error - deltay;
-            if( error < 0 ) 
-            {
-                pfb += ystep;
-                error += deltax;
-            }
-            pfb += ctx.Pitch;
+            err += dy; /* e_xy+e_x > 0 */
+            x0 += sx;
         }
-    }
-    else
-    {
-        const int ystep = y0<y1 ? ctx.Pitch : -ctx.Pitch;
-        pfb = PFB(x0,y0); 
-        while(nr--)
+        if (e2 <= dx) /* e_xy+e_y < 0 */
         {
-            *pfb = ctx.fg;
-            error = error - deltay;
-            if( error < 0 ) 
-            {
-                pfb += ystep;
-                error += deltax;
-            }
-            pfb++;
+            err += dx;
+            y0 += sy;
         }
     }
 }
@@ -1286,7 +1264,20 @@ int state_fun_final_letter( char ch, scn_state *state )
                 retval = 0;
             goto back_to_normal;
             break;
-            case 'c':
+            case 'R':
+                /* render a rectangle */
+                if( state->cmd_params_size == 4 )
+                {
+                    // x0;y0;width;height;
+                    gfx_line( state->cmd_params[0], state->cmd_params[1], state->cmd_params[0]+state->cmd_params[2], state->cmd_params[1] ); // x0/y0 to x1/y0
+                    gfx_line( state->cmd_params[0], state->cmd_params[1], state->cmd_params[0], state->cmd_params[1]+state->cmd_params[3] ); // x0/y0 to x0/y1
+                    gfx_line( state->cmd_params[0]+state->cmd_params[2], state->cmd_params[1], state->cmd_params[0]+state->cmd_params[2], state->cmd_params[1]+state->cmd_params[3] ); // x1/y0 to x1/y1
+                    gfx_line( state->cmd_params[0], state->cmd_params[1]+state->cmd_params[3], state->cmd_params[0]+state->cmd_params[2], state->cmd_params[1]+state->cmd_params[3] ); // x0/y1 to x1/y1
+                }
+                retval = 0; // no terminal line break/scroll
+            goto back_to_normal;
+            break;
+            case 'C':
                 /* render a circle */
                 if (state->cmd_params_size == 3)
                 {
@@ -1295,7 +1286,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 retval = 0;
             goto back_to_normal;
             break;
-            case 'C':
+            case 'c':
                 /* render a filled circle */
                 if (state->cmd_params_size == 3)
                 {
@@ -1303,7 +1294,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 }
                 retval = 0;
             goto back_to_normal;
-            case 't':
+            case 'T':
                 /* render a triangle */
                 if (state->cmd_params_size == 6)
                 {

@@ -411,6 +411,7 @@ void gfx_clear()
             DMA_TI_DEST_INC );
 
     dma_execute_queue();
+    while( DMA_CHAN0_BUSY ); // Busy wait for DMA
 #else
     unsigned char* pf = ctx.pfb;
     unsigned char* pfb_end = pf + ctx.size;

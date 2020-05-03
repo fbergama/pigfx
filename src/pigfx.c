@@ -25,6 +25,8 @@ volatile unsigned int* UART0_DR;
 volatile unsigned int* UART0_ITCR;
 volatile unsigned int* UART0_IMSC;
 volatile unsigned int* UART0_FR;
+volatile unsigned int* UART0_IBRD;
+volatile unsigned int* UART0_FBRD;
 
 
 volatile char* uart_buffer;
@@ -156,6 +158,30 @@ void initialize_uart_irq()
     pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
     enable_irq();
     irq_attach_handler( 57, uart_fill_queue, 0 );
+}
+
+unsigned int uart_get_baudrate()
+{
+    // Default UART Clock is 48 MHz unless otherwise configured
+    UART0_IBRD = (volatile unsigned int*)0x20201024;        // Divisor
+    UART0_FBRD = (volatile unsigned int*)0x20201028;        // Fractional part
+    unsigned int divider, baudrate;
+    unsigned int baud, multi;
+    
+    // Uart clock gets divided by 16. This is the base for further division
+    // 48 MHz divided by 16 is 3 MHz
+    // For example with a baudrate of 115200 the divider is 26, the fractional is 3. This is 26 + 3/64 = 26.046875
+    // divider = *UART0_IBRD + *UART0_FBRD / 64;
+    // as we don't want to use float, we multiply by 64
+    divider = *UART0_IBRD*64 + *UART0_FBRD;
+    baudrate = 3000000*64 / divider;
+    // this is the real baudrate (115176)
+    // now we add 150 for beeing able to calculate the configured baudrate by rounding down to the lower 300 step
+    baudrate += 150;
+    multi = (unsigned int)baudrate / 300;
+    baud = 300 * multi;     //115200*/
+    
+    return baud;
 }
 
 
@@ -390,7 +416,7 @@ void video_line_test(int maxloops)
 
 void term_main_loop()
 {
-    ee_printf("Waiting for UART data (115200,8,N,1)\n");
+    ee_printf("Waiting for UART data (%d,8,N,1)\n",uart_get_baudrate());
 
     /**/
     while( uart_buffer_start == uart_buffer_end )

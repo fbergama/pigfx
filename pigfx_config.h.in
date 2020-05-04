@@ -6,7 +6,7 @@
 #define PIGFX_VERSION           "$VERSION$"
 #define SEND_CR_LF              OFF             /* Send CR+LF when Return is pressed */
 #define SEND_CR_ONLY            ON              /* Send CR instead of LF */
-#define GFX_USE_DMA             ON              /* Graphics functions use DMA when possible (faster, but occupy DMA channel 0) */
+#define GFX_USE_DMA             OFF             /* Graphics functions use DMA when possible (faster, but buggy and occupy DMA channel 0) */
 #define BACKSPACE_ECHO          OFF             /* Auto-echo the backspace char */
 #define SWAP_DEL_WITH_BACKSPACE ON              /* Substitute DEL (0x7F) with BACKSPACE (0x08) */
 #define SKIP_BACKSPACE_ECHO     OFF             /* Skip the next incoming character after a backspace from keyboard */

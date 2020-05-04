@@ -20,6 +20,7 @@
 #define UART_BUFFER_SIZE 16384 /* 16k */
 
 
+unsigned char RASPI_VERSION;
 unsigned int led_status;
 volatile unsigned int* UART0_DR;
 volatile unsigned int* UART0_ITCR;
@@ -182,6 +183,21 @@ unsigned int uart_get_baudrate()
     baud = 300 * multi;     //115200*/
     
     return baud;
+}
+
+
+unsigned char getRaspiGeneration()
+{
+    unsigned int id;
+    unsigned char gen;
+    
+    id = getcpuid();
+    if (id == 0x410fb767) gen = 1;       // Raspi 1 or zero
+    else if (id == 0x410FC075) gen = 2;       // Raspi 2
+    else if (id == 0x410FB767) gen = 3;       // Raspi 3
+    else gen = 4;
+    
+    return gen;
 }
 
 
@@ -463,6 +479,9 @@ void entry_point()
 {
     // Heap init
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
+    
+    // Get Raspberry Generation
+    RASPI_VERSION = getRaspiGeneration();
 
     // UART buffer allocation
     uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE ); 
@@ -479,7 +498,7 @@ void entry_point()
     gfx_set_bg(BLUE);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
     gfx_set_fg(YELLOW);// bright yellow
-    ee_printf(" ===  PiGFX %d.%d.%d ===  Build %s\n", PIGFX_MAJVERSION, PIGFX_MINVERSION, PIGFX_BUILDVERSION, PIGFX_VERSION );
+    ee_printf(" ===  PiGFX %d.%d.%d  ===  Build %s  ===  Running on Raspberry Pi Gen. %d\n", PIGFX_MAJVERSION, PIGFX_MINVERSION, PIGFX_BUILDVERSION, PIGFX_VERSION, RASPI_VERSION );
     gfx_term_putstring( "\x1B[2K" );
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(BLACK);

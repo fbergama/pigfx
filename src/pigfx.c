@@ -15,7 +15,9 @@
 
 #define GPFSEL1 0x20200004
 #define GPSET0  0x2020001C
+#define GPSET1  0x20200020
 #define GPCLR0  0x20200028
+#define GPCLR1  0x2020002C  
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
 
@@ -109,10 +111,12 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
     if( led_status )
     {
         W32(GPCLR0,1<<16);
+        W32(GPCLR1,1<<15);      // ACT LED GPIO 47
         led_status = 0;
     } else
     {
         W32(GPSET0,1<<16);
+        W32(GPSET1,1<<15);      // ACT LED GPIO 47
         led_status = 1;
     }
 

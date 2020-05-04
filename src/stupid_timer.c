@@ -26,6 +26,7 @@ void timers_init()
 unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam, void* pContext )
 {
     unsigned hnd;
+    if (hz == 0) return 0;
     for( hnd=0; hnd<N_TIMERS; ++hnd )
     {
         if( timers[hnd].handler == 0 )

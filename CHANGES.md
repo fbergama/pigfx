@@ -2,6 +2,19 @@
 
 Versions and modifications.
 
+## Version 1.1.4 - 2020 May 5th
+
+* Bugfix: clear line from cursor
+* new commands for clear screan until cursor and clear screen from cursor
+
+## Version 1.1.3 - 2020 May 5th
+
+* added circle and triangle draw commands
+* set baudrate from config.txt file
+* pull up for RX pin
+* get and display Raspberry generation
+* heartbeat on ACT LED for PI B+
+
 ## Version 1.1.2 - 2019 Oct 9th
 
 * ignore fractional part in numbers (coordinates)

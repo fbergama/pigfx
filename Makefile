@@ -4,7 +4,6 @@ CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreesta
 
 ## Important!!! asm.o must be the first object to be linked!
 OOB = asm.o pigfx.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o binary_assets.o
-OOB_38400 = asm.o pigfx.o uart_38400.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o binary_assets.o
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -12,12 +11,11 @@ BUILD_VERSION = $(shell git describe --all --long | cut -d "-" -f 3)
 
 
 OBJS=$(patsubst %.o,$(BUILD_DIR)/%.o,$(OOB))
-OBJS_38400=$(patsubst %.o,$(BUILD_DIR)/%.o,$(OOB_38400))
 
 LIBGCC=$(shell $(ARMGNU)-gcc -print-libgcc-file-name)
 LIBUSPI=uspi/lib/libuspi.a
 
-all: pigfx.elf pigfx_38400.elf pigfx.hex kernel 
+all: pigfx.elf pigfx.hex kernel 
 	ctags src/
 
 $(SRC_DIR)/pigfx_config.h: pigfx_config.h.in 
@@ -27,9 +25,8 @@ $(SRC_DIR)/pigfx_config.h: pigfx_config.h.in
 run: pigfx.elf
 	./launch_qemu.bash
 
-kernel: pigfx.img pigfx_38400.img
+kernel: pigfx.img
 	cp pigfx.img bin/kernel.img
-	cp pigfx_38400.img bin/38400/kernel.img
 
 debug: pigfx.elf
 	cd JTAG && ./run_gdb.sh
@@ -56,10 +53,6 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.s
 
 pigfx.elf : $(SRC_DIR)/pigfx_config.h $(OBJS) 
 	@$(ARMGNU)-ld $(OBJS) $(LIBGCC) $(LIBUSPI) -T memmap -o $@
-	@echo "LD $@"
-	
-pigfx_38400.elf : $(SRC_DIR)/pigfx_config.h $(OBJS_38400) 
-	@$(ARMGNU)-ld $(OBJS_38400) $(LIBGCC) $(LIBUSPI) -T memmap -o $@
 	@echo "LD $@"
 
 

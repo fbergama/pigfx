@@ -1,17 +1,17 @@
 .text
 
-;@ initialize main UART on pin 14 and 15
+;@ initialize main UART on pin 14 (TX) and 15 (RX)
 .global uart_init
 uart_init:
     push {r0,r1,r3,lr}
 
-    ;@ Disable pullup-pulldown on pin 14 and 15        
+    ;@ set TX to use no resistor, RX to use pull-up resistor
     mov r3, #0x20
     mov r3, r3, LSL #8
     orr r3, r3,  #0x20
     mov r3, r3, LSL #16   ;@ r3 = GPIO_BASE = 0x20200000
 
-    ;@  write 0 to GPPUD
+    ;@  write 0 to GPPUD (use no resistor)
     mov r0, #0x0
     str r0, [r3, #0x94]  
 
@@ -19,8 +19,8 @@ uart_init:
     mov r0, #300
     bl  busywait;
 
-    ;@ set bit 14 and 15 to PUDCLK0
-    mov r0, #0x3
+    ;@ set bit 14 in PUDCLK0 (set resistor state for pin 14 - TX)
+    mov r0, #0x01
     mov r0, r0, LSL #14
     str r0, [r3, #0x98]  
 
@@ -36,6 +36,30 @@ uart_init:
     mov r0, #0x0
     str r0, [r3, #0x98]  
 
+    ; @  write 2 to GPPUD (use pull-up resistor)
+    mov r0, #0x02
+    str r0, [r3, #0x94]
+
+    ; @ wait 300 cycles
+    mov r0, #300
+    bl  busywait
+
+    ; @ set bit 15 in PUDCLK0 (set resistor state for pin 15 - RX)
+    mov r0, #0x01
+    mov r0, r0, LSL #15
+    str r0, [r3, #0x98]
+
+    ; @ wait 300 cycles
+    mov r0, #300
+    bl  busywait
+
+    ; @  write 0 to GPPUD
+    mov r0, #0x0
+    str r0, [r3, #0x94]
+
+    ; @ clear PUDCLK0
+    mov r0, #0x0
+    str r0, [r3, #0x98]
 
     ;@ set r3 = UART0_BASE = 0x20201000        
     orr r3, r3, #0x1000
@@ -49,18 +73,6 @@ uart_init:
     ;@ clear UART0_ICR = UART0_BASE + 0x44;
     mov r0, #0xFFFFFFFF
     str r0, [r3, #0x44]
-
-    ;@ Set BAUD rate by setting the:
-    ;@  DIVIDER = 3000000 / (16*Baud)
-    ;@  FRACTIONAL = (DIVIDER-floor(DIVIDER)) * 64 + 0.5
-    ;@
-    ;@  115200:  D=1,F=40
-    ;@  38400:   D=4, F=57
-    ;@  9600:    D=19,F=34
-    mov r0, #1
-    str r0, [r3, #0x24]  ;@ UART0_IBRD = DIVIDER
-    mov r0, #40
-    str r0, [r3, #0x28]  ;@ UART0_IBRD = FRACTIONAL
 
     ;@ Set 8bit (bit 6-5=1), no parity (bit 7=0), FIFO enable (bit 4=1)
     mov r0, #0x70

@@ -8,6 +8,7 @@ extern void busywait( unsigned int cycles );
 extern void W32( unsigned int addr, unsigned int data );
 extern unsigned int R32( unsigned int addr );
 extern void membarrier();
+extern unsigned int getcpuid(void);
 
 /**
  * String related

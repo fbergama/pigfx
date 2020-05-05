@@ -15,16 +15,21 @@
 
 #define GPFSEL1 0x20200004
 #define GPSET0  0x2020001C
+#define GPSET1  0x20200020
 #define GPCLR0  0x20200028
+#define GPCLR1  0x2020002C  
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
 
 
+unsigned char RASPI_VERSION;
 unsigned int led_status;
 volatile unsigned int* UART0_DR;
 volatile unsigned int* UART0_ITCR;
 volatile unsigned int* UART0_IMSC;
 volatile unsigned int* UART0_FR;
+volatile unsigned int* UART0_IBRD;
+volatile unsigned int* UART0_FBRD;
 
 
 volatile char* uart_buffer;
@@ -106,10 +111,12 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
     if( led_status )
     {
         W32(GPCLR0,1<<16);
+        W32(GPCLR1,1<<15);      // ACT LED GPIO 47
         led_status = 0;
     } else
     {
         W32(GPSET0,1<<16);
+        W32(GPSET1,1<<15);      // ACT LED GPIO 47
         led_status = 1;
     }
 
@@ -156,6 +163,45 @@ void initialize_uart_irq()
     pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
     enable_irq();
     irq_attach_handler( 57, uart_fill_queue, 0 );
+}
+
+unsigned int uart_get_baudrate()
+{
+    // Default UART Clock is 48 MHz unless otherwise configured
+    UART0_IBRD = (volatile unsigned int*)0x20201024;        // Divisor
+    UART0_FBRD = (volatile unsigned int*)0x20201028;        // Fractional part
+    unsigned int divider, baudrate;
+    unsigned int baud, multi;
+    
+    // Uart clock gets divided by 16. This is the base for further division
+    // 48 MHz divided by 16 is 3 MHz
+    // For example with a baudrate of 115200 the divider is 26, the fractional is 3. This is 26 + 3/64 = 26.046875
+    // divider = *UART0_IBRD + *UART0_FBRD / 64;
+    // as we don't want to use float, we multiply by 64
+    divider = *UART0_IBRD*64 + *UART0_FBRD;
+    baudrate = 3000000*64 / divider;
+    // this is the real baudrate (115176)
+    // now we add 150 for beeing able to calculate the configured baudrate by rounding down to the lower 300 step
+    baudrate += 150;
+    multi = (unsigned int)baudrate / 300;
+    baud = 300 * multi;     //115200*/
+    
+    return baud;
+}
+
+
+unsigned char getRaspiGeneration()
+{
+    unsigned int id;
+    unsigned char gen;
+    
+    id = getcpuid();
+    if (id == 0x410fb767) gen = 1;       // Raspi 1 or zero
+    else if (id == 0x410FC075) gen = 2;       // Raspi 2
+    else if (id == 0x410FB767) gen = 3;       // Raspi 3
+    else gen = 4;
+    
+    return gen;
 }
 
 
@@ -390,7 +436,7 @@ void video_line_test(int maxloops)
 
 void term_main_loop()
 {
-    ee_printf("Waiting for UART data (115200,8,N,1)\n");
+    ee_printf("Waiting for UART data (%d,8,N,1)\n",uart_get_baudrate());
 
     /**/
     while( uart_buffer_start == uart_buffer_end )
@@ -437,6 +483,9 @@ void entry_point()
 {
     // Heap init
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
+    
+    // Get Raspberry Generation
+    RASPI_VERSION = getRaspiGeneration();
 
     // UART buffer allocation
     uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE ); 
@@ -453,7 +502,7 @@ void entry_point()
     gfx_set_bg(BLUE);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
     gfx_set_fg(YELLOW);// bright yellow
-    ee_printf(" ===  PiGFX %d.%d.%d ===  Build %s\n", PIGFX_MAJVERSION, PIGFX_MINVERSION, PIGFX_BUILDVERSION, PIGFX_VERSION );
+    ee_printf(" ===  PiGFX %d.%d.%d  ===  Build %s  ===  Running on Raspberry Pi Gen. %d\n", PIGFX_MAJVERSION, PIGFX_MINVERSION, PIGFX_BUILDVERSION, PIGFX_VERSION, RASPI_VERSION );
     gfx_term_putstring( "\x1B[2K" );
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(BLACK);

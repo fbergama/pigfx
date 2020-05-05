@@ -26,6 +26,8 @@ typed will be automatically sent to raspi UART Tx0 (pin 8, GPIO 14).
 
 *UPDATE*: (2018 Nov. by F. Pierot) Added display modes, fonts, tabulation set... See [2018 Nov. modifications](README_ADD.md).
 
+*UPDATE*: (2020 by Ch. Lehner) Added new graphic features and configurable baudrate.
+
 By now this is a work in progress with a minimum set of features implemented so
 expect that more functionalities will be added from time to time.
 
@@ -34,31 +36,29 @@ Here is a preliminary TODO list of what I plan to add in the future:
 
 - ✔ Add support for USB or Ps2 keyboard
 - ✔ Add some graphics primitives like lines
-- Add some more graphics primitives (circles, rectangles etc.)
-- Let the resolution being configurable without recompiling
+- ✔ Add some more graphics primitives (circles, rectangles etc.)
+- ✔ Let the resolution being configurable without recompiling
+- Implement some kind of sprite handling with collision detection
 - Implement double buffering
 - Load bitmap fonts directly from the SD card
+- Port to Raspberry Pi Generation 2/3/4
 
-## How to run
+## How to run (At the moment only Raspi gen. 1 ist supported)
 
 1. Format an SD-card: you need one 1 GB partition using the FAT or FAT32 system. 
 Other formats won't boot, and a bigger size is useless. Avoid 64GB+ cards as 
 they tend to cause problems to PI. A 32GB or 16GB card is ok as long as you 
 format only 1 or 2 GB with FAT or FAT32.
 
-2. Copy ```bin/kernel.img``` in the root of the SD card along with the files
+2. Copy ```bin/kernel.img``` to the root of the SD card along with the files
    ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
-the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot)
-Alternatively, you can find those files in the ```bin/``` subdirectory.
+the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot).
 
-3. Add a new text file with a single line called boot/config.txt containing:
-```
-init_uart_clock=3000000
-```
+3. Copy ```bin/config.txt``` to the root of the SD card. Edit the file and set your desired baudrate.
 
 4. Insert the card and reboot the Pi.
 
-As soon as your raspi is turned on, the message "PIGFX Ready!" and other informations 
+As soon as your raspi is turned on, the boot screen and other informations 
 should be displayed as a 640x480 @ 60hz video stream from the HDMI interface. 
 After that, PiGFX awaits anything coming from the serial line. Any data
 received from the UART is immediately displayed in a terminal-like fashion (ie.
@@ -89,7 +89,7 @@ in the PiGFX root folder.
 
 ***Note: Please be aware that all Raspberry Pi models accept levels between 0 and 3v3. Be sure to provide an appropriate level shifter to match your output***
 
-UART communication expects a baud rate of 115200 baud, 8 bit data, 1 bit
+UART communication expects the baudrate configured in config.txt, 8 bit data, 1 bit
 stop and no parity.
 
 
@@ -127,9 +127,10 @@ Additionally, PiGFX implements the following custom codes:
 
 Code                              | Command
 ---                               | ---
-| \ESC[?#-x0-;-y0-;-x1-;-y1-l     | Draw a line from -x0-;-y0- to -x1-;-y1-
-| \ESC[?#-x0-;-y0-;-x1-;-y1-r     | Fill a rectangle with top-left corner at -x0-;-y0- and bottom-right at -x1-;-y1-
+| \ESC[#-x0-;-y0-;-x1-;-y1-l     | Draw a line from -x0-;-y0- to -x1-;-y1-
+| \ESC[#-x0-;-y0-;-x1-;-y1-r     | Fill a rectangle with top-left corner at -x0-;-y0- and bottom-right at -x1-;-y1-
 
+See [terminal_codes](doc/terminal_codes.txt) for a complete list of supported commands.
 
 
 See [Here](https://en.wikipedia.org/wiki/File:Xterm_256color_chart.svg) for a
@@ -150,7 +151,7 @@ $ make kernel
 ```
 
 in the PiGFX root directory.
- 
+
 
 
 ## License

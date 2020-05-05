@@ -15,9 +15,13 @@ Cursor Control
 
 Clearing Text
 
+<ESC>[K             Clear from cursor to the end of the line
 <ESC>[0K            Clear from cursor to the end of the line
-<ESC>[1K            Clear from the beginning of the current line to the cursor 
-<ESC>[2K            Clear the whole line 
+<ESC>[1K            Clear from the beginning of the current line to the cursor
+<ESC>[2K            Clear the whole line
+<ESC>[J             Clear the screen from cursor
+<ESC>[0J            Clear the screen from cursor
+<ESC>[1J            Clear the screen until cursor position
 <ESC>[2J            Clear the screen and move the cursor to 0-0
  
 Graphics

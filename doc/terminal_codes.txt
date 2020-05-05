@@ -3,9 +3,11 @@ Cursor Control
 <ESC>[?25l          Cursor invisible
 <ESC>[?25h          Cursor visible
 <ESC>[H             Move to 0-0
+<ESC>[f             Move to 0-0
 <ESC>[s             Save the cursor position 
 <ESC>[u             Move cursor to previously saved position 
 <ESC>[<Row>;<Col>H  Move to <Row>,<Col>
+<ESC>[<Row>;<Col>f  Move to <Row>,<Col>
 <ESC>[<n>A          Move the cursor up <n> lines
 <ESC>[<n>B          Move the cursor down <n> lines
 <ESC>[<n>C          Move the cursor forward <n> characters
@@ -29,6 +31,7 @@ Graphics
  
 Settings
 
+<ESC>[m             Reset color attributes (white on black) 
 <ESC>[38;5;<n>m     Set foreground color to <n> (0-255) 
 <ESC>[48;5;<n>m     Set background color to <n> (0-255) 
 <ESC>[=0m           Reset color attributes (white on black) and sets normal drawing (sprites and characters)

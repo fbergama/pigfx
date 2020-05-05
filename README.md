@@ -31,6 +31,8 @@ typed will be automatically sent to raspi UART Tx0 (pin 8, GPIO 14).
 By now this is a work in progress with a minimum set of features implemented so
 expect that more functionalities will be added from time to time.
 
+PiGFX is tested on Raspberry Pi Zero and B+ V1.2. It certainly does not work an Raspberry 2/3/4. It does also seem to not work on Pi Zero W, although it probably should.
+
 
 Here is a preliminary TODO list of what I plan to add in the future:
 

@@ -16,7 +16,7 @@
 
 #define PIGFX_MAJVERSION        1               /* Major version number */
 #define PIGFX_MINVERSION        1               /* Minor version number */
-#define PIGFX_BUILDVERSION      2               /* Build version. */
+#define PIGFX_BUILDVERSION      3               /* Build version. */
 #define PIGFX_INITFONT          1               /* 0=8x8, 1=8x16, 2=8x24 */
 
 /** Versions:

@@ -1149,16 +1149,18 @@ void gfx_term_restore_cursor()
 void gfx_term_clear_till_end()
 {
     gfx_swap_fg_bg();
-    gfx_fill_rect( (ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTWIDTH, ctx.W, ctx.term.FONTHEIGHT );
+    gfx_fill_rect( ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.W, ctx.term.FONTHEIGHT );
     gfx_swap_fg_bg();
+    gfx_term_render_cursor();
 }
 
 
 void gfx_term_clear_till_cursor()
 {
     gfx_swap_fg_bg();
-    gfx_fill_rect( 0, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
+    gfx_fill_rect( 0, ctx.term.cursor_row * ctx.term.FONTHEIGHT, (ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
     gfx_swap_fg_bg();
+    gfx_term_render_cursor();
 }
 
 
@@ -1175,6 +1177,28 @@ void gfx_term_clear_screen()
 {
     gfx_clear();
     gfx_term_render_cursor();
+}
+
+void gfx_term_clear_screen_from_here()
+{
+    if ( ctx.term.cursor_row < (ctx.term.HEIGHT-1) )
+    {
+        gfx_swap_fg_bg();
+        gfx_fill_rect( 0, (ctx.term.cursor_row+1) * ctx.term.FONTHEIGHT, ctx.W, ctx.H );
+        gfx_swap_fg_bg();
+    }
+    gfx_term_clear_till_end();
+}
+
+void gfx_term_clear_screen_to_here()
+{
+    if ( ctx.term.cursor_row > 0 )
+    {
+        gfx_swap_fg_bg();
+        gfx_fill_rect( 0, 0, ctx.W, ctx.term.cursor_row * ctx.term.FONTHEIGHT );
+        gfx_swap_fg_bg();
+    }
+    gfx_term_clear_till_cursor();
 }
 
 /** Set the font. */
@@ -1423,7 +1447,11 @@ int state_fun_final_letter( char ch, scn_state *state )
             break;
 
         case 'K':
-            if( state->cmd_params_size== 1 )
+            if( state->cmd_params_size== 0 )
+            {
+                gfx_term_clear_till_end();
+            }
+            else if( state->cmd_params_size== 1 )
             {
                 switch(state->cmd_params[0] )
                 {
@@ -1444,10 +1472,27 @@ int state_fun_final_letter( char ch, scn_state *state )
             break;
         
         case 'J':
-            if( state->cmd_params_size==1 && state->cmd_params[0] ==2 )
+            if( state->cmd_params_size== 0 )
             {
-                gfx_term_move_cursor(0,0);
-                gfx_term_clear_screen();
+                gfx_term_clear_screen_from_here();
+            }
+            else if( state->cmd_params_size== 1 )
+            {
+                switch(state->cmd_params[0] )
+                {
+                    case 0:
+                        gfx_term_clear_screen_from_here();
+                        goto back_to_normal;
+                    case 1:
+                        gfx_term_clear_screen_to_here();
+                        goto back_to_normal;
+                    case 2:
+                        gfx_term_move_cursor(0,0);
+                        gfx_term_clear_screen();
+                        goto back_to_normal;
+                    default:
+                        goto back_to_normal;
+                }
             }
             goto back_to_normal;
             break;

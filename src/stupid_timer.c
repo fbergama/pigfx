@@ -1,4 +1,5 @@
 #include "timer.h"
+#include "utils.h"
 
 
 typedef struct {
@@ -23,6 +24,25 @@ void timers_init()
     }
 }
 
+unsigned int time_microsec()
+{
+    return R32(0x20003004); // System Timer Lower 32 bits
+}
+
+//  busy-wait a fixed amount of time in us.
+void usleep(unsigned int us)
+{
+    unsigned int lastticks = time_microsec();
+    unsigned int actticks;
+    unsigned int passed = 0;
+    do
+    {
+        actticks = time_microsec();
+        passed += actticks - lastticks;
+        lastticks = actticks;
+    } while (passed < us);
+}
+
 unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam, void* pContext )
 {
     // The value hz is really in unit hz. So 1 hz is 1 second delay.
@@ -44,7 +64,6 @@ unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam
     return N_TIMERS+1;
 
 }
-
 
 void timer_poll()
 {

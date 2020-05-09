@@ -2,6 +2,10 @@
 
 Versions and modifications.
 
+## Version 1.1.5 - 2020 May 9th
+
+* Bugfix: Some USB keyboards not working
+
 ## Version 1.1.4 - 2020 May 5th
 
 * Bugfix: clear line from cursor

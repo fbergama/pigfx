@@ -35,7 +35,8 @@ unsigned StartKernelTimer (unsigned nHzDelay,	// in HZ units (see "system config
 			   TKernelTimerHandler *pHandler,
 			   void *pParam, void *pContext)	// handed over to the timer handler
 {
-    nHzDelay = nHzDelay * HZ;
+    if (nHzDelay == 0) nHzDelay = 1;        // uspi sometimes sends value 0, this means within the next 10ms.
+    nHzDelay = nHzDelay * HZ;       // HZ = 100
     return attach_timer_handler( nHzDelay, pHandler, pParam, pContext );
 }
 

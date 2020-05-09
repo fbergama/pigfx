@@ -25,6 +25,7 @@ void timers_init()
 
 unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam, void* pContext )
 {
+    // The value hz is really in unit hz. So 1 hz is 1 second delay.
     unsigned hnd;
     if (hz == 0) return 0;
     for( hnd=0; hnd<N_TIMERS; ++hnd )

@@ -26,7 +26,7 @@ typed will be automatically sent to raspi UART Tx0 (pin 8, GPIO 14).
 
 *UPDATE*: (2018 Nov. by F. Pierot) Added display modes, fonts, tabulation set... See [2018 Nov. modifications](README_ADD.md).
 
-*UPDATE*: (2020 by Ch. Lehner) Added new graphic features and configurable baudrate.
+*UPDATE*: (2020 by Ch. Lehner) Added new graphic features and configurable baudrate. Fixed some bugs.
 
 By now this is a work in progress with a minimum set of features implemented so
 expect that more functionalities will be added from time to time.

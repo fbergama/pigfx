@@ -32,15 +32,12 @@ unsigned int time_microsec()
 //  busy-wait a fixed amount of time in us.
 void usleep(unsigned int us)
 {
-    unsigned int lastticks = time_microsec();
-    unsigned int actticks;
-    unsigned int passed = 0;
+    unsigned int tact;
+    unsigned int tstart = time_microsec();
     do
     {
-        actticks = time_microsec();
-        passed += actticks - lastticks;
-        lastticks = actticks;
-    } while (passed < us);
+        tact = time_microsec();
+    } while (tact-tstart < us);
 }
 
 unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam, void* pContext )

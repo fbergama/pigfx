@@ -1,15 +1,13 @@
+#include "peri.h"
 #include "pigfx_config.h"
 #include "postman.h"
 #include "utils.h"
 #include "timer.h"
 
 
-#define MAPPED_REGISTERS_BASE 0x20000000
-
-
-static volatile unsigned int *MAILBOX0READ = (unsigned int *) mem_p2v(MAPPED_REGISTERS_BASE + 0xB880);
-static volatile unsigned int *MAILBOX0STATUS = (unsigned int *) mem_p2v(MAPPED_REGISTERS_BASE + 0xB898);
-static volatile unsigned int *MAILBOX0WRITE = (unsigned int *) mem_p2v(MAPPED_REGISTERS_BASE + 0xB8A0);
+static volatile unsigned int *MAILBOX0READ = (unsigned int *)MBOX_BASE;
+static volatile unsigned int *MAILBOX0STATUS = (unsigned int *)MBOX_STATUS;
+static volatile unsigned int *MAILBOX0WRITE = (unsigned int *)MBOX_WRITE;
 
 
 POSTMAN_RETURN_TYPE postman_recv( unsigned int channel, unsigned int* out_data )

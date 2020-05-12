@@ -1,6 +1,7 @@
 #ifndef _IRQ_H_
 #define _IRQ_H_
 
+#include "peri.h"
 
 /* See http://www.valvers.com/open-software/raspberry-pi/step04-bare-metal-programming-in-c-pt4/ */
 
@@ -8,7 +9,6 @@
  *         address of the controller is actually xxxxB000, but there is a 0x200 offset
  *                 to the first addressable register for the interrupt controller, so offset the
  *                         base to the first register */
-#define RPI_INTERRUPT_CONTROLLER_BASE   ( 0x2000B200 )
 
 /** @brief The interrupt controller memory mapped register set */
 typedef struct {

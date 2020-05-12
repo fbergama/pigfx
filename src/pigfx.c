@@ -1,3 +1,4 @@
+#include "peri.h"
 #include "pigfx_config.h"
 #include "uart.h"
 #include "utils.h"
@@ -12,24 +13,17 @@
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
-
-#define GPFSEL1 0x20200004
-#define GPSET0  0x2020001C
-#define GPSET1  0x20200020
-#define GPCLR0  0x20200028
-#define GPCLR1  0x2020002C  
-
 #define UART_BUFFER_SIZE 16384 /* 16k */
 
 
 unsigned char RASPI_VERSION;
 unsigned int led_status;
-volatile unsigned int* UART0_DR;
-volatile unsigned int* UART0_ITCR;
-volatile unsigned int* UART0_IMSC;
-volatile unsigned int* UART0_FR;
-volatile unsigned int* UART0_IBRD;
-volatile unsigned int* UART0_FBRD;
+volatile unsigned int* pUART0_DR;
+volatile unsigned int* pUART0_ICR;
+volatile unsigned int* pUART0_IMSC;
+volatile unsigned int* pUART0_FR;
+volatile unsigned int* pUART0_IBRD;
+volatile unsigned int* pUART0_FBRD;
 
 
 volatile char* uart_buffer;
@@ -110,13 +104,13 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
 {
     if( led_status )
     {
-        W32(GPCLR0,1<<16);
-        W32(GPCLR1,1<<15);      // ACT LED GPIO 47
+        W32(GPIO_CLR0,1<<16);
+        W32(GPIO_CLR1,1<<15);      // ACT LED GPIO 47
         led_status = 0;
     } else
     {
-        W32(GPSET0,1<<16);
-        W32(GPSET1,1<<15);      // ACT LED GPIO 47
+        W32(GPIO_SET0,1<<16);
+        W32(GPIO_SET1,1<<15);      // ACT LED GPIO 47
         led_status = 1;
     }
 
@@ -126,9 +120,9 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
 
 void uart_fill_queue( __attribute__((unused)) void* data )
 {
-    while( !( *UART0_FR & 0x10)/*uart_poll()*/)
+    while( !( *pUART0_FR & 0x10)/*uart_poll()*/)
     {
-        *uart_buffer_end++ = (char)( *UART0_DR & 0xFF /*uart_read_byte()*/);
+        *uart_buffer_end++ = (char)( *pUART0_DR & 0xFF /*uart_read_byte()*/);
 
         if( uart_buffer_end >= uart_buffer_limit )
            uart_buffer_end = uart_buffer; 
@@ -142,7 +136,7 @@ void uart_fill_queue( __attribute__((unused)) void* data )
     }
 
     /* Clear UART0 interrupts */
-    *UART0_ITCR = 0xFFFFFFFF;
+    *pUART0_ICR = 0xFFFFFFFF;
 }
 
 
@@ -152,13 +146,13 @@ void initialize_uart_irq()
     uart_buffer_start = uart_buffer_end = uart_buffer;
     uart_buffer_limit = &( uart_buffer[ UART_BUFFER_SIZE ] );
 
-    UART0_DR   = (volatile unsigned int*)0x20201000;
-    UART0_IMSC = (volatile unsigned int*)0x20201038;
-    UART0_ITCR = (volatile unsigned int*)0x20201044;
-    UART0_FR   = (volatile unsigned int*)0x20201018;
+    pUART0_DR   = (volatile unsigned int*)UART0_DR;
+    pUART0_IMSC = (volatile unsigned int*)UART0_IMSC;
+    pUART0_ICR = (volatile unsigned int*)UART0_ICR;
+    pUART0_FR   = (volatile unsigned int*)UART0_FR;
 
-    *UART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
-    *UART0_ITCR = 0xFFFFFFFF; // Clear UART0 interrupts
+    *pUART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
+    *pUART0_ICR = 0xFFFFFFFF; // Clear UART0 interrupts
 
     pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
     enable_irq();
@@ -168,17 +162,17 @@ void initialize_uart_irq()
 unsigned int uart_get_baudrate()
 {
     // Default UART Clock is 48 MHz unless otherwise configured
-    UART0_IBRD = (volatile unsigned int*)0x20201024;        // Divisor
-    UART0_FBRD = (volatile unsigned int*)0x20201028;        // Fractional part
+    pUART0_IBRD = (volatile unsigned int*)UART0_IBRD;        // Divisor
+    pUART0_FBRD = (volatile unsigned int*)UART0_FBRD;        // Fractional part
     unsigned int divider, baudrate;
     unsigned int baud, multi;
     
     // Uart clock gets divided by 16. This is the base for further division
     // 48 MHz divided by 16 is 3 MHz
     // For example with a baudrate of 115200 the divider is 26, the fractional is 3. This is 26 + 3/64 = 26.046875
-    // divider = *UART0_IBRD + *UART0_FBRD / 64;
+    // divider = *pUART0_IBRD + *pUART0_FBRD / 64;
     // as we don't want to use float, we multiply by 64
-    divider = *UART0_IBRD*64 + *UART0_FBRD;
+    divider = *pUART0_IBRD*64 + *pUART0_FBRD;
     baudrate = 3000000*64 / divider;
     // this is the real baudrate (115176)
     // now we add 150 for beeing able to calculate the configured baudrate by rounding down to the lower 300 step
@@ -208,14 +202,14 @@ unsigned char getRaspiGeneration()
 void heartbeat_init()
 {
     unsigned int ra;
-    ra=R32(GPFSEL1);
+    ra=R32(GPIO_FSEL1);
     ra&=~(7<<18);
     ra|=1<<18;
-    W32(GPFSEL1,ra);
+    W32(GPIO_FSEL1,ra);
 
     // Enable JTAG pins
-    W32( 0x20200000, 0x04a020 );
-    W32( 0x20200008, 0x65b6c0 );
+    W32( GPIO_FSEL0, 0x04a020 );
+    W32( GPIO_FSEL2, 0x65b6c0 );
 
     led_status=0;
 }
@@ -234,11 +228,11 @@ void heartbeat_loop()
         {
             if( led_status )
             {
-                W32(GPCLR0,1<<16);
+                W32(GPIO_CLR0,1<<16);
                 led_status = 0;
             } else
             {
-                W32(GPSET0,1<<16);
+                W32(GPIO_SET0,1<<16);
                 led_status = 1;
             }
             last_time = curr_time;

@@ -1,0 +1,12 @@
+#!/bin/sh 
+
+for i in 1 2 3
+do
+    cd uspi
+    echo "RASPPI = $i" > Config.mk
+    ./makeall clean
+    ./makeall
+    cd ..
+    make clean
+    make RPI=$i
+done

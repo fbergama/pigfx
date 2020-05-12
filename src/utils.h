@@ -7,7 +7,7 @@ extern void disable_irq();
 extern void busywait( unsigned int cycles );
 extern void W32( unsigned int addr, unsigned int data );
 extern unsigned int R32( unsigned int addr );
-extern void membarrier();
+//extern void membarrier();
 extern unsigned int getcpuid(void);
 
 /**
@@ -39,8 +39,12 @@ inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
  *    have completed
  *    
  */
+#if RPI==1
 #define dmb() asm volatile \
                 ("mcr p15, #0, %[zero], c7, c10, #5" : : [zero] "r" (0) )
+#else
+#define dmb() asm volatile ("dmb" ::: "memory")
+#endif
 
 
 /*

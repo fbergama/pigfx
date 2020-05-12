@@ -52,7 +52,7 @@ getcpuid:
 ;@ performs a memory barrier
 ;@ http://infocenter.arm.com/help/topic/com.arm.doc.ddi0360f/I1014942.html
 ;@
-.global membarrier
+/*.global membarrier
 membarrier:
     push {r3}
     mov r3, #0                      ;@ The read register Should Be Zero before the call
@@ -61,7 +61,7 @@ membarrier:
     mcr p15, 0, r3, c7, c14, 0      ;@ Clean and Invalidate Entire Data Cache
     mcr p15, 0, r3, c7, c10, 4      ;@ Data Synchronization Barrier
     mcr p15, 0, r3, c7, c10, 5      ;@ Data Memory Barrier
-    bx lr
+    bx lr*/
 
 
 ;@ strlen

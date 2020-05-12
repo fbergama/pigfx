@@ -2,7 +2,6 @@
 #include "utils.h"
 
 
-#define DMA_BASE 0x20007000
 #define DMA_CS_OFFSET        0x00
 #define DMA_CONBLK_AD_OFFSET 0x01
 // https://www.raspberrypi.org/forums/viewtopic.php?f=72&t=10276

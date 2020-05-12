@@ -3,7 +3,7 @@
 #include "utils.h"
 
 
-rpi_irq_controller_t* pIRQController =  (rpi_irq_controller_t*)RPI_INTERRUPT_CONTROLLER_BASE;
+rpi_irq_controller_t* pIRQController =  (rpi_irq_controller_t*)INTERRUPT_BASE;
 
 
 IntHandler* (_irq_handlers[63]) = {0};

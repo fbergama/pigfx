@@ -1,6 +1,8 @@
 #ifndef _DMA_H_
 #define _DMA_H_
 
+#include "peri.h"
+
 
 #define DMA_TI_SRC_INC              (1<<8)
 #define DMA_TI_SRC_IGNORE           (1<<11)
@@ -19,6 +21,6 @@ void dma_memcpy_32( unsigned int* src, unsigned int *dst, unsigned int size );
 int dma_running();
 
 
-#define DMA_CHAN0_BUSY (*( (volatile unsigned int*)0x20007000/*DMA_BASE*/ + (0 << 6) + 0x00/*dma_cs_offset*/  ) &  0x1)
+#define DMA_CHAN0_BUSY (*( (volatile unsigned int*)DMA_BASE + (0 << 6) + 0x00/*dma_cs_offset*/  ) &  0x1)
 
 #endif

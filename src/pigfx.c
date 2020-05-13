@@ -60,7 +60,7 @@ static void _keypress_handler(const char* str )
         if( ch == 10 )
         {
             // Send CR first
-            uart_write( &CR, 1 );
+            uart_write( CR );
 
         }
 #endif
@@ -91,7 +91,7 @@ static void _keypress_handler(const char* str )
             last_backspace_t = time_microsec();
         }
 #endif
-        uart_write( &ch, 1 ); 
+        uart_write( ch ); 
         ++c;
     }
 
@@ -120,9 +120,9 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
 
 void uart_fill_queue( __attribute__((unused)) void* data )
 {
-    while( !( *pUART0_FR & 0x10)/*uart_poll()*/)
+    while( !( *pUART0_FR & 0x10 ))
     {
-        *uart_buffer_end++ = (char)( *pUART0_DR & 0xFF /*uart_read_byte()*/);
+        *uart_buffer_end++ = (char)( *pUART0_DR & 0xFF );
 
         if( uart_buffer_end >= uart_buffer_limit )
            uart_buffer_end = uart_buffer; 

@@ -26,6 +26,22 @@ SECTIONS
         . = . + heap_size;
         _heap_end = .;
     } > ram 
+    
+    .stack :
+    {
+        . = ALIGN(8);  /* Stack must always be aligned to 8 byte boundary AAPCS32 call standard */
+        __stack_start__core0 = .;
+        . = . + 512;    /* HYP stack size core 0 */
+        __HYP_stack_core0 = .;
+        . = . + 32768;    /* SVC stack size core 0 */
+        __SVC_stack_core0 = .;
+        . = . + 4096;     /* IRQ stack size core 0 */
+        __IRQ_stack_core0 = .;
+        . = . + 4096;     /* FIQ stack size core 0 */
+        __FIQ_stack_core0 = .;
+        . = ALIGN(8);
+        __stack_end__core0 = .;  
+    } > ram
 
     /* Remove information from the standard libraries 
        /DISCARD/ :

@@ -253,4 +253,7 @@ hex2byte:
     pop {r1,r2,lr}
     bx lr
 
+.globl dummy
+dummy:
+    bx lr
 

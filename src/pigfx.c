@@ -95,7 +95,31 @@ static void _keypress_handler(const char* str )
         ++c;
     }
 
-} 
+}
+
+void blinkDebugLED()
+{
+    unsigned int old;
+    unsigned int ra;
+
+    /* Enable GPIO18 in the proper GPFSEL register */
+
+    /* clear out old value */
+    /* bit 24 of FSEL1 */
+    old=R32(GPIO_FSEL1);
+    old &= ~(0x7 << 24);
+    old |= (1<<24);
+    W32(GPIO_FSEL1,old);
+    
+    while (1)
+    {
+
+        for(ra=0;ra<0x100000;ra++) dummy(ra);
+        W32(GPIO_CLR0,(1<<18));
+        for(ra=0;ra<0x100000;ra++) dummy(ra);
+        W32(GPIO_SET0,(1<<18));
+    }
+}
 
 
 static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
@@ -473,8 +497,9 @@ void term_main_loop()
 
 }
 
-void entry_point()
+void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 {
+    blinkDebugLED();
     // Heap init
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
     

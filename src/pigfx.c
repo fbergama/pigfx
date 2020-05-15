@@ -13,6 +13,7 @@
 #include "prop.h"
 #include "board.h"
 #include "mbox.h"
+#include "actled.h"
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
@@ -20,7 +21,7 @@
 
 
 unsigned char RASPI_VERSION;
-unsigned int led_status;
+unsigned int led_status = 0;
 volatile unsigned int* pUART0_DR;
 volatile unsigned int* pUART0_ICR;
 volatile unsigned int* pUART0_IMSC;
@@ -97,30 +98,6 @@ static void _keypress_handler(const char* str )
 
 }
 
-void blinkDebugLED()
-{
-    unsigned int old;
-    unsigned int ra;
-
-    /* Enable GPIO18 in the proper GPFSEL register */
-
-    /* clear out old value */
-    /* bit 24 of FSEL1 */
-    old=R32(GPIO_FSEL1);
-    old &= ~(0x7 << 24);
-    old |= (1<<24);
-    W32(GPIO_FSEL1,old);
-    
-    while (1)
-    {
-
-        for(ra=0;ra<0x100000;ra++) dummy(ra);
-        W32(GPIO_CLR0,(1<<18));
-        for(ra=0;ra<0x100000;ra++) dummy(ra);
-        W32(GPIO_SET0,(1<<18));
-    }
-}
-
 
 static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
                                       __attribute__((unused)) void* pParam, 
@@ -128,13 +105,11 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
 {
     if( led_status )
     {
-        W32(GPIO_CLR0,1<<16);
-        W32(GPIO_CLR1,1<<15);      // ACT LED GPIO 47
+        led_set(0);
         led_status = 0;
     } else
     {
-        W32(GPIO_SET0,1<<16);
-        W32(GPIO_SET1,1<<15);      // ACT LED GPIO 47
+        led_set(1);
         led_status = 1;
     }
 
@@ -184,22 +159,7 @@ void initialize_uart_irq()
 }
 
 
-unsigned char getRaspiGeneration()
-{
-    unsigned int id;
-    unsigned char gen;
-    
-    id = getcpuid();
-    if (id == 0x410fb767) gen = 1;       // Raspi 1 or zero
-    else if (id == 0x410FC075) gen = 2;       // Raspi 2
-    else if (id == 0x410FB767) gen = 3;       // Raspi 3
-    else gen = 4;
-    
-    return gen;
-}
-
-
-void heartbeat_init()
+/*void heartbeat_init()
 {
     unsigned int ra;
     ra=R32(GPIO_FSEL1);
@@ -238,7 +198,7 @@ void heartbeat_loop()
             last_time = curr_time;
         } 
     }
-}
+}*/
 
 /** Sets the frame buffer with given width, height and bit depth.
  *   Other effects:
@@ -475,6 +435,7 @@ void term_main_loop()
 
 void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 {
+    unsigned int boardRevision;
     board_t raspiBoard;
     
     //unused
@@ -484,30 +445,37 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     
     // Heap init
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
-    
-    // Get Raspberry Generation
-    RASPI_VERSION = getRaspiGeneration();
 
     // UART buffer allocation
-    uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE ); 
+    uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE );
+    
+    // Get informations about the board we are booting
+    boardRevision = prop_revision();
+    raspiBoard = board_info(boardRevision);
+    // Do we use UART0 or UART1?
+    // Newer Models with Bluetooth use Uart1 on the GPIOs because UART0 is used for Bluetooth
+    if ((raspiBoard.model < BOARD_MODEL_3B) || (raspiBoard.model == BOARD_MODEL_ZERO))
+        actUart = 0;
+    else
+        actUart = 1;
     
     uart_init();
-    cout("Hello from the debug console\r\n");
     
-    unsigned int boardRevision = prop_revision();
-    raspiBoard = board_info(boardRevision);
+    cout("Hello from the debug console\r\n");
     cout("Booting on Raspberry Pi ");
     cout(board_model(raspiBoard.model));
-    cout(", CPU ");
+    cout(", ");
     cout(board_processor(raspiBoard.processor));
     cout("\r\n");
     
-    set_130(1);
+    // Where is the Act LED?
+    led_init(raspiBoard);
     
-    blinkDebugLED();
-    heartbeat_init();
+    // Timers and heartbeat
+    timers_init();
+    attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
     
-    //heartbeat_loop();
+    while(1) timer_poll();
     
     initialize_framebuffer(640, 480, 8);
 
@@ -522,8 +490,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     gfx_set_bg(BLACK);
     gfx_set_fg(DARKGRAY);
 
-    timers_init();
-    attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
+
     initialize_uart_irq();
 
     // draw possible colors:

@@ -59,6 +59,4 @@ extern uint32_t mem_vc2arm(const uint32_t address);
 
 int mbox_send(void* message);
 
-extern void set_130(const int on);
-
 #endif /* MBOX_H__ */ 

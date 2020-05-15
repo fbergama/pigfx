@@ -50,35 +50,3 @@ int mbox_send(void* msg) {
   return -1; // Ugh...
 } 
 
-void set_130(const int on) {
-  typedef struct {
-    mbox_msgheader_t header;
-    mbox_tagheader_t tag;
-    
-    union {
-      struct {
-        uint32_t pin;
-        uint32_t value;
-      }
-      request;
-      // No response.
-    }
-    value;
-
-    mbox_msgfooter_t footer;
-  }
-  message_t;
-
-  message_t msg __attribute__((aligned(16)));
-
-  msg.header.size = sizeof(msg);
-  msg.header.code = 0;
-  msg.tag.id = UINT32_C(0x00038041);
-  msg.tag.size = sizeof(msg.value);
-  msg.tag.code = 0;
-  msg.value.request.pin = 130;
-  msg.value.request.value = !!on;
-  msg.footer.end = 0;
-
-  mbox_send(&msg);
-}

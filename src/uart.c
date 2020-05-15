@@ -5,6 +5,8 @@
 #include "gpio.h"
 #include "uart.h"
 
+unsigned char actUart;
+
 // Loop <delay> times in a way that the compiler won't optimize away
 static inline void delay(unsigned int count)
 {
@@ -18,49 +20,54 @@ void uart_init(void)
     gpio_setpull(14, GPIO_PULL_OFF);    //set resistor state for pin 14 - TX -> no resistor
     gpio_setpull(15, GPIO_PULL_UP);     //set resistor state for pin 15 - RX -> pull up
     
-#if RPI>=3
-    // USE UART1, because Bluetooth uses UART0
-    W32(AUX_ENABLES,1);     // Enable Mini Uart
-    W32(AUX_MU_IER_REG,0);  // Clear FIFO interrupts
-    W32(AUX_MU_CNTL_REG,0); // Disable Extra control functions
-    W32(AUX_MU_LCR_REG,3);  // Set Uart to 8-bit mode
-    W32(AUX_MU_MCR_REG,0);
-    W32(AUX_MU_IER_REG,0);  // interrupt disabled
-    W32(AUX_MU_IIR_REG,0xC6);   // disable interrupts, reset FIFO
-    W32(AUX_MU_BAUD_REG,270);   // baudrate 115200
-    
-    gpio_select(14, GPIO_FUNCTION_5);
-    gpio_select(15, GPIO_FUNCTION_5);
-    
-    W32(AUX_MU_CNTL_REG,3); // enable Tx, Rx
-#else
-    // Standard UART0 RPI1/2
-    // Disable UART0:
-    // clear UART0_CR = UART0_BASE + 0x30;
-    W32(UART0_CR, 0);
-    // Clear UART0 interrupts:
-    // clear UART0_ICR = UART0_BASE + 0x44;
-    W32(UART0_ICR, 0xFFFFFFFF);
-    // Set 8bit (bit 6-5=1), no parity (bit 7=0), FIFO enable (bit 4=1)
-    W32(UART0_LCRH, 0x70);
-    // Enable TX(bit9) RX(bit8) and UART0(bit0)
-    W32(UART0_CR, (1 << 0) | (1 << 8) | (1 << 9));
-#endif
+    if (actUart == 1)
+    {
+        // USE UART1, because Bluetooth uses UART0
+        W32(AUX_ENABLES,1);     // Enable Mini Uart
+        W32(AUX_MU_IER_REG,0);  // Clear FIFO interrupts
+        W32(AUX_MU_CNTL_REG,0); // Disable Extra control functions
+        W32(AUX_MU_LCR_REG,3);  // Set Uart to 8-bit mode
+        W32(AUX_MU_MCR_REG,0);
+        W32(AUX_MU_IER_REG,0);  // interrupt disabled
+        W32(AUX_MU_IIR_REG,0xC6);   // disable interrupts, reset FIFO
+        W32(AUX_MU_BAUD_REG,270);   // baudrate 115200 TODO cannot be set from config.txt for now
+        
+        gpio_select(14, GPIO_FUNCTION_5);
+        gpio_select(15, GPIO_FUNCTION_5);
+        
+        W32(AUX_MU_CNTL_REG,3); // enable Tx, Rx
+    }
+    else {
+        // Standard UART0 RPI1/2
+        // Disable UART0:
+        // clear UART0_CR = UART0_BASE + 0x30;
+        W32(UART0_CR, 0);
+        // Clear UART0 interrupts:
+        // clear UART0_ICR = UART0_BASE + 0x44;
+        W32(UART0_ICR, 0xFFFFFFFF);
+        // Set 8bit (bit 6-5=1), no parity (bit 7=0), FIFO enable (bit 4=1)
+        W32(UART0_LCRH, 0x70);
+        // Enable TX(bit9) RX(bit8) and UART0(bit0)
+        W32(UART0_CR, (1 << 0) | (1 << 8) | (1 << 9));
+    }
 }
 
 void uart_write(const char ch )
 {
     // Wait for UART to become ready to transmit.
-#if RPI>=3
-    while(1)
+    if (actUart == 1)
     {
-        if(R32(AUX_MU_LSR_REG)&(1 << 5)) break;
+        while(1)
+        {
+            if(R32(AUX_MU_LSR_REG)&(1 << 5)) break;
+        }
+        W32(AUX_MU_IO_REG, ch);
     }
-    W32(AUX_MU_IO_REG, ch);
-#else
-    while ( R32(UART0_FR) & (1 << 5) ) { }
-    W32(UART0_DR, ch);
-#endif
+    else
+    {
+        while ( R32(UART0_FR) & (1 << 5) ) { }
+        W32(UART0_DR, ch);
+    }
 }
 
 void uart_write_str(const char* data)

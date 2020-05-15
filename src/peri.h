@@ -7,18 +7,36 @@
 
 #if RPI==1
 #define PERIPHERAL_BASE     0x20000000
+#define BUSALIAS            0x40000000
 
 #else
 #if RPI==4
 #define PERIPHERAL_BASE     0xFE000000
+#define BUSALIAS            0xC0000000      // THIS IS MOST LIKELY WRONG // TODO
 
 #else       // RPI2&3
 #define PERIPHERAL_BASE     0x3F000000
+#define BUSALIAS            0xC0000000
 #endif      //RPI==4
 
 #endif      // RPI==1
 
 // Base defined now
+
+/////////////
+// Mailbox //
+/////////////
+#define MBOX_BASE    (PERIPHERAL_BASE + 0xb880)  // 0x??00b880
+#define MBOX_READ0   (MBOX_BASE + 0x00)
+#define MBOX_PEEK0   (MBOX_BASE + 0x10)
+#define MBOX_SENDER0 (MBOX_BASE + 0x14)
+#define MBOX_STATUS0 (MBOX_BASE + 0x18)
+#define MBOX_CONFIG0 (MBOX_BASE + 0x1c)
+#define MBOX_WRITE1  (MBOX_BASE + 0x20)
+#define MBOX_PEEK1   (MBOX_BASE + 0x30)
+#define MBOX_SENDER1 (MBOX_BASE + 0x34)
+#define MBOX_STATUS1 (MBOX_BASE + 0x38)
+#define MBOX_CONFIG1 (MBOX_BASE + 0x3c)
 
 ///////////////////////////
 // Define GPIO addresses //
@@ -97,11 +115,6 @@
 /////////////
 // Various //
 /////////////
-// The offsets for Mailbox registers
-#define MBOX_BASE    (PERIPHERAL_BASE + 0xB880)  // 0x??00B880
-#define MBOX_READ    (MBOX_BASE + 0x00)          // 0x??00B880
-#define MBOX_STATUS  (MBOX_BASE + 0x18)          // 0x??00B898
-#define MBOX_WRITE   (MBOX_BASE + 0x20)          // 0x??00B8A0
 
 // DMA
 #define DMA_BASE     (PERIPHERAL_BASE+0x7000)    // 0x??007000

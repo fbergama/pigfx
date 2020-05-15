@@ -6,8 +6,8 @@
 
 
 static volatile unsigned int *MAILBOX0READ = (unsigned int *)MBOX_BASE;
-static volatile unsigned int *MAILBOX0STATUS = (unsigned int *)MBOX_STATUS;
-static volatile unsigned int *MAILBOX0WRITE = (unsigned int *)MBOX_WRITE;
+static volatile unsigned int *MAILBOX0STATUS = (unsigned int *)MBOX_STATUS0;
+static volatile unsigned int *MAILBOX0WRITE = (unsigned int *)MBOX_WRITE1;
 
 
 POSTMAN_RETURN_TYPE postman_recv( unsigned int channel, unsigned int* out_data )

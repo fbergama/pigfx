@@ -2,6 +2,7 @@
 #include "utils.h"
 #include "timer.h"
 #include "console.h"
+#include "gpio.h"
 #include "uart.h"
 
 // Loop <delay> times in a way that the compiler won't optimize away
@@ -14,34 +15,11 @@ static inline void delay(unsigned int count)
 void uart_init(void)
 {
     // set TX to use no resistor, RX to use pull-up resistor
-    W32(GPIO_PUD, 0);
-    // wait 150us
-    usleep(150);
-    // set bit 14 in PUDCLK0 (set resistor state for pin 14 - TX)
-    W32(GPIO_PUDCLK0, 1<<14);
-    // wait 150 cycles
-    delay(150);
-    // write 0 to GPPUD
-    W32(GPIO_PUD, 0);
-    // clear PUDCLK0
-    W32(GPIO_PUDCLK0, 0);
-    // write 2 to GPPUD (use pull-up resistor)
-    W32(GPIO_PUD, 2);
-    // wait 150 cycles
-    delay(150);
-    // set bit 15 in PUDCLK0 (set resistor state for pin 15 - RX)
-    W32(GPIO_PUDCLK0, 1<<15);
-    // wait 150 cycles
-    delay(150);
-    // write 0 to GPPUD
-    W32(GPIO_PUD, 0);
-    // clear PUDCLK0
-    W32(GPIO_PUDCLK0, 0);
+    gpio_setpull(14, GPIO_PULL_OFF);    //set resistor state for pin 14 - TX -> no resistor
+    gpio_setpull(15, GPIO_PULL_UP);     //set resistor state for pin 15 - RX -> pull up
     
 #if RPI>=3
     // USE UART1, because Bluetooth uses UART0
-    unsigned int ra;
-
     W32(AUX_ENABLES,1);     // Enable Mini Uart
     W32(AUX_MU_IER_REG,0);  // Clear FIFO interrupts
     W32(AUX_MU_CNTL_REG,0); // Disable Extra control functions
@@ -50,12 +28,10 @@ void uart_init(void)
     W32(AUX_MU_IER_REG,0);  // interrupt disabled
     W32(AUX_MU_IIR_REG,0xC6);   // disable interrupts, reset FIFO
     W32(AUX_MU_BAUD_REG,270);   // baudrate 115200
-    ra=R32(GPIO_FSEL1);
-    ra&=~(7<<12); //gpio14
-    ra|=2<<12;    //alt5
-    ra&=~(7<<15); //gpio15
-    ra|=2<<15;    //alt5
-    W32(GPIO_FSEL1,ra);
+    
+    gpio_select(14, GPIO_FUNCTION_5);
+    gpio_select(15, GPIO_FUNCTION_5);
+    
     W32(AUX_MU_CNTL_REG,3); // enable Tx, Rx
 #else
     // Standard UART0 RPI1/2
@@ -156,11 +132,3 @@ unsigned int uart0_get_baudrate()
     
     return baud;
 }
-
-
-
-
-
-
-
-

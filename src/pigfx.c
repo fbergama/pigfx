@@ -10,6 +10,9 @@
 #include "dma.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
+#include "prop.h"
+#include "board.h"
+#include "mbox.h"
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
@@ -472,6 +475,8 @@ void term_main_loop()
 
 void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 {
+    board_t raspiBoard;
+    
     //unused
     (void) r0;
     (void) r1;
@@ -488,6 +493,17 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     
     uart_init();
     cout("Hello from the debug console\r\n");
+    
+    unsigned int boardRevision = prop_revision();
+    raspiBoard = board_info(boardRevision);
+    cout("Booting on Raspberry Pi ");
+    cout(board_model(raspiBoard.model));
+    cout(", CPU ");
+    cout(board_processor(raspiBoard.processor));
+    cout("\r\n");
+    
+    set_130(1);
+    
     blinkDebugLED();
     heartbeat_init();
     

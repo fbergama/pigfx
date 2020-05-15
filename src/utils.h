@@ -41,8 +41,7 @@ inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
  *    
  */
 #if RPI==1
-#define dmb() asm volatile \
-                ("mcr p15, #0, %[zero], c7, c10, #5" : : [zero] "r" (0) )
+#define dmb() asm volatile ("mcr p15, 0, %0, c7, c10, 5" : : "r" (0) : "memory")
 #else
 #define dmb() asm volatile ("dmb" ::: "memory")
 #endif

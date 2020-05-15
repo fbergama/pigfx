@@ -53,7 +53,7 @@ _reset_:
     
     ;// Get CPU Id
     mrc     p15,0,r3,c0,c0,0
-    ldr     r4, =0x410fb767     /* RPI Gen. 1 */
+    ldr     r4, =0x410fb767     ;@ RPI Gen. 1
     cmp     r3,r4
     beq     setup_stack     ;@ skip mode change
     

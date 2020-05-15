@@ -22,9 +22,6 @@ volatile unsigned int* pUART0_DR;
 volatile unsigned int* pUART0_ICR;
 volatile unsigned int* pUART0_IMSC;
 volatile unsigned int* pUART0_FR;
-volatile unsigned int* pUART0_IBRD;
-volatile unsigned int* pUART0_FBRD;
-
 
 volatile char* uart_buffer;
 volatile char* uart_buffer_start;
@@ -181,30 +178,6 @@ void initialize_uart_irq()
     pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
     enable_irq();
     irq_attach_handler( 57, uart_fill_queue, 0 );
-}
-
-unsigned int uart_get_baudrate()
-{
-    // Default UART Clock is 48 MHz unless otherwise configured
-    pUART0_IBRD = (volatile unsigned int*)UART0_IBRD;        // Divisor
-    pUART0_FBRD = (volatile unsigned int*)UART0_FBRD;        // Fractional part
-    unsigned int divider, baudrate;
-    unsigned int baud, multi;
-    
-    // Uart clock gets divided by 16. This is the base for further division
-    // 48 MHz divided by 16 is 3 MHz
-    // For example with a baudrate of 115200 the divider is 26, the fractional is 3. This is 26 + 3/64 = 26.046875
-    // divider = *pUART0_IBRD + *pUART0_FBRD / 64;
-    // as we don't want to use float, we multiply by 64
-    divider = *pUART0_IBRD*64 + *pUART0_FBRD;
-    baudrate = 3000000*64 / divider;
-    // this is the real baudrate (115176)
-    // now we add 150 for beeing able to calculate the configured baudrate by rounding down to the lower 300 step
-    baudrate += 150;
-    multi = (unsigned int)baudrate / 300;
-    baud = 300 * multi;     //115200*/
-    
-    return baud;
 }
 
 
@@ -454,7 +427,7 @@ void video_line_test(int maxloops)
 
 void term_main_loop()
 {
-    ee_printf("Waiting for UART data (%d,8,N,1)\n",uart_get_baudrate());
+    ee_printf("Waiting for UART data (%d,8,N,1)\n",uart0_get_baudrate());
 
     /**/
     while( uart_buffer_start == uart_buffer_end )
@@ -499,7 +472,11 @@ void term_main_loop()
 
 void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 {
-    blinkDebugLED();
+    //unused
+    (void) r0;
+    (void) r1;
+    (void) atags;
+    
     // Heap init
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
     
@@ -510,6 +487,8 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE ); 
     
     uart_init();
+    cout("Hello from the debug console\r\n");
+    blinkDebugLED();
     heartbeat_init();
     
     //heartbeat_loop();

@@ -15,7 +15,7 @@ void cout( const char* str )
  */
 void cout_endl()
 {
-	cout("\x0D"); //cout("\n");
+	cout("\r\n"); //cout("\x0D"); //cout("\n");
 }
 
 /** Outputs a 32-bits integer to UART as hexadecimal 0xXXXXXXXXX string.

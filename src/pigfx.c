@@ -20,7 +20,6 @@
 #define UART_BUFFER_SIZE 16384 /* 16k */
 
 
-unsigned char RASPI_VERSION;
 unsigned int led_status = 0;
 volatile unsigned int* pUART0_DR;
 volatile unsigned int* pUART0_ICR;
@@ -159,47 +158,6 @@ void initialize_uart_irq()
 }
 
 
-/*void heartbeat_init()
-{
-    unsigned int ra;
-    ra=R32(GPIO_FSEL1);
-    ra&=~(7<<18);
-    ra|=1<<18;
-    W32(GPIO_FSEL1,ra);
-
-    // Enable JTAG pins
-    W32( GPIO_FSEL0, 0x04a020 );
-    W32( GPIO_FSEL2, 0x65b6c0 );
-
-    led_status=0;
-}
-
-
-void heartbeat_loop()
-{
-    unsigned int last_time = 0;
-    unsigned int curr_time;
-
-    while(1)
-    {
-        
-        curr_time = time_microsec();
-        if( curr_time-last_time > 500000 )
-        {
-            if( led_status )
-            {
-                W32(GPIO_CLR0,1<<16);
-                led_status = 0;
-            } else
-            {
-                W32(GPIO_SET0,1<<16);
-                led_status = 1;
-            }
-            last_time = curr_time;
-        } 
-    }
-}*/
-
 /** Sets the frame buffer with given width, height and bit depth.
  *   Other effects:
  *  	- font is set to 8x16
@@ -209,7 +167,6 @@ void heartbeat_loop()
  */
 void initialize_framebuffer(unsigned int width, unsigned int height, unsigned int bpp)
 {
-    usleep(10000);
     fb_release();
 
     unsigned char* p_fb=0;
@@ -228,22 +185,17 @@ void initialize_framebuffer(unsigned int width, unsigned int height, unsigned in
              &fbsize, 
              &pitch );
 
-    fb_set_xterm_palette();
-
-    //cout("fb addr: ");cout_h((unsigned int)p_fb);cout_endl();
-    //cout("fb size: ");cout_d((unsigned int)fbsize);cout(" bytes");cout_endl();
-    //cout("  pitch: ");cout_d((unsigned int)pitch);cout_endl();
-
-    if( fb_get_phisical_buffer_size( &p_w, &p_h ) != FB_SUCCESS )
+    if (fb_set_xterm_palette() != 0)
     {
-        //cout("fb_get_phisical_buffer_size error");cout_endl();
+#if ENABLED(FRAMEBUFFER_DEBUG)
+        cout("Set Palette failed"); cout_endl();
+#endif
     }
-    //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
 
-    usleep(10000);
+    //usleep(10000);
     gfx_set_env( p_fb, v_w, v_h, bpp, pitch, fbsize );
     gfx_set_drawing_mode(drawingNORMAL);
-	gfx_term_set_tabulation(8);
+    gfx_term_set_tabulation(8);
     gfx_term_set_font(8,16);
     gfx_clear();
 }
@@ -475,21 +427,20 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     timers_init();
     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
     
-    while(1) timer_poll();
-    
     initialize_framebuffer(640, 480, 8);
-
+    
 
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
     gfx_set_bg(BLUE);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
     gfx_set_fg(YELLOW);// bright yellow
-    ee_printf(" ===  PiGFX %d.%d.%d  ===  Build %s  ===  Running on Raspberry Pi Gen. %d\n", PIGFX_MAJVERSION, PIGFX_MINVERSION, PIGFX_BUILDVERSION, PIGFX_VERSION, RASPI_VERSION );
+    ee_printf(" ===  PiGFX %d.%d.%d  ===  Build %s\n", PIGFX_MAJVERSION, PIGFX_MINVERSION, PIGFX_BUILDVERSION, PIGFX_VERSION );
     gfx_term_putstring( "\x1B[2K" );
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(BLACK);
     gfx_set_fg(DARKGRAY);
-
+    
+    while(1) timer_poll();
 
     initialize_uart_irq();
 

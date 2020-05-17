@@ -27,7 +27,7 @@ uint32_t prop_revision(void) {
 
   msg.header.size = sizeof(msg);
   msg.header.code = 0;
-  msg.tag.id = UINT32_C(0x00010002); // Get board revision.
+  msg.tag.id = MAILBOX_TAG_GET_BOARD_REVISION; // Get board revision.
   msg.tag.size = sizeof(msg.value);
   msg.tag.code = 0;
   msg.footer.end = 0;
@@ -61,7 +61,7 @@ uint32_t prop_fwrev(void) {
 
   msg.header.size = sizeof(msg);
   msg.header.code = 0;
-  msg.tag.id = UINT32_C(0x00000001); // Get firmware revision.
+  msg.tag.id = MAILBOX_TAG_GET_VERSION; // Get firmware revision.
   msg.tag.size = sizeof(msg.value);
   msg.tag.code = 0;
   msg.footer.end = 0;
@@ -96,7 +96,7 @@ uint64_t prop_macaddr(void) {
 
   msg.header.size = sizeof(msg);
   msg.header.code = 0;
-  msg.tag.id = UINT32_C(0x00010003); // Get board MAC address.
+  msg.tag.id = MAILBOX_TAG_GET_BOARD_MAC_ADDRESS; // Get board MAC address.
   msg.tag.size = sizeof(msg.value);
   msg.tag.code = 0;
   msg.footer.end = 0;
@@ -135,7 +135,7 @@ uint64_t prop_serial(void) {
 
   msg.header.size = sizeof(msg);
   msg.header.code = 0;
-  msg.tag.id = UINT32_C(0x00010004); // Get board serial.
+  msg.tag.id = MAILBOX_TAG_GET_BOARD_SERIAL; // Get board serial.
   msg.tag.size = sizeof(msg.value);
   msg.tag.code = 0;
   msg.footer.end = 0;

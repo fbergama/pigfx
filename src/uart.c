@@ -28,9 +28,9 @@ void uart_init(void)
         W32(AUX_MU_CNTL_REG,0); // Disable Extra control functions
         W32(AUX_MU_LCR_REG,3);  // Set Uart to 8-bit mode
         W32(AUX_MU_MCR_REG,0);
-        W32(AUX_MU_IER_REG,0);  // interrupt disabled
         W32(AUX_MU_IIR_REG,0xC6);   // disable interrupts, reset FIFO
         W32(AUX_MU_BAUD_REG,270);   // baudrate 115200 TODO cannot be set from config.txt for now
+        W32(AUX_MU_IER_REG,13);  // enable rx interrupts
         
         gpio_select(14, GPIO_FUNCTION_5);
         gpio_select(15, GPIO_FUNCTION_5);

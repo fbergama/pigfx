@@ -987,15 +987,15 @@ void gfx_term_render_cursor()
 {
     
     unsigned char* pb = ctx.cursor_buffer;
-    cout("pb: "); cout_h((unsigned int)pb);cout_endl();
+    //cout("pb: "); cout_h((unsigned int)pb);cout_endl();
     unsigned char* pfb = (unsigned char*)PFB(
     		ctx.term.cursor_col * ctx.term.FONTWIDTH,
     		ctx.term.cursor_row * ctx.term.FONTHEIGHT );
-    cout("pfb: "); cout_h((unsigned int)pfb);cout_endl();
+    //cout("pfb: "); cout_h((unsigned int)pfb);cout_endl();
     const unsigned int byte_stride = ctx.Pitch - ctx.term.FONTWIDTH;//$$ adjust if not 8 width?
-    cout("byte_stride: "); cout_d(byte_stride);  cout(" pitch: "); cout_d(ctx.Pitch); cout(" FONTWIDTH: "); cout_d(ctx.term.FONTWIDTH);cout_endl();
+    //cout("byte_stride: "); cout_d(byte_stride);  cout(" pitch: "); cout_d(ctx.Pitch); cout(" FONTWIDTH: "); cout_d(ctx.term.FONTWIDTH);cout_endl();
     unsigned int h = ctx.term.FONTHEIGHT;
-    cout("h: "); cout_d(h);cout_endl();
+    //cout("h: "); cout_d(h);cout_endl();
 
     if( ctx.term.cursor_visible )
         while(h--)
@@ -1240,8 +1240,8 @@ void gfx_term_set_font(int width, int height)
 			gfx_compute_font();
 			break;
 		}
-		cout("ctx.term.FONTWIDTH: ");cout_d(ctx.term.FONTWIDTH);cout_endl();
-        cout("ctx.term.FONTHEIGHT: ");cout_d(ctx.term.FONTHEIGHT);cout_endl();
+		//cout("ctx.term.FONTWIDTH: ");cout_d(ctx.term.FONTWIDTH);cout_endl();
+        //cout("ctx.term.FONTHEIGHT: ");cout_d(ctx.term.FONTHEIGHT);cout_endl();
 	}
 }
 

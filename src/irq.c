@@ -23,8 +23,16 @@ void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata )
 
 void __attribute__((interrupt("IRQ"))) irq_handler_(void)
 {
+    if( pIRQController->IRQ_pending_1 & (1<<29) &&
+        _irq_handlers[29] )
+    {
+        // IRQ 29 AUX UART1
+        IntHandler* hnd = _irq_handlers[29]; 
+        hnd( _irq_handlers_data[29] );
 
-    if( pIRQController->IRQ_basic_pending & (1<<19) &&
+    }
+    // Bit 19 on basic means IRQ 57 is pending. This would actually be bit 25 in IRQ_pending_2
+    else if( pIRQController->IRQ_basic_pending & (1<<19) &&
         _irq_handlers[57] )
     {
         // IRQ 57
@@ -32,6 +40,7 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
         hnd( _irq_handlers_data[57] );
 
     }
+    // Bit 11 in Basic means IRQ 9
     else if( pIRQController->IRQ_basic_pending & (1<<11) &&
         _irq_handlers[9] )
     {

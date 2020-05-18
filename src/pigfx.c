@@ -116,7 +116,7 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
 }
 
 
-void uart_fill_queue( __attribute__((unused)) void* data )
+void uart0_fill_queue( __attribute__((unused)) void* data )
 {
     while( !( *pUART0_FR & 0x10 ))
     {
@@ -137,6 +137,30 @@ void uart_fill_queue( __attribute__((unused)) void* data )
     *pUART0_ICR = 0xFFFFFFFF;
 }
 
+void uart1_fill_queue( __attribute__((unused)) void* data )
+{
+    unsigned int rb,rc;
+    while(1)
+    {
+        rb = R32(AUX_MU_IIR_REG);
+        if ((rb & 1) == 1) break; //no more interrupts
+        if ((rb & 6) == 4)
+        {
+            //receiver holds a valid byte
+            rc=R32(AUX_MU_IO_REG); //read byte from rx fifo
+            *uart_buffer_end++ = rc&0xFF;
+            if( uart_buffer_end >= uart_buffer_limit )
+            uart_buffer_end = uart_buffer; 
+
+            if( uart_buffer_end == uart_buffer_start )
+            {
+                uart_buffer_start++;
+                if( uart_buffer_start >= uart_buffer_limit )
+                    uart_buffer_start = uart_buffer; 
+            }
+        }
+    }
+}
 
 
 void initialize_uart_irq()
@@ -144,17 +168,27 @@ void initialize_uart_irq()
     uart_buffer_start = uart_buffer_end = uart_buffer;
     uart_buffer_limit = &( uart_buffer[ UART_BUFFER_SIZE ] );
 
-    pUART0_DR   = (volatile unsigned int*)UART0_DR;
-    pUART0_IMSC = (volatile unsigned int*)UART0_IMSC;
-    pUART0_ICR = (volatile unsigned int*)UART0_ICR;
-    pUART0_FR   = (volatile unsigned int*)UART0_FR;
+    if (actUart == 0)
+    {
+        pUART0_DR   = (volatile unsigned int*)UART0_DR;
+        pUART0_IMSC = (volatile unsigned int*)UART0_IMSC;
+        pUART0_ICR = (volatile unsigned int*)UART0_ICR;
+        pUART0_FR   = (volatile unsigned int*)UART0_FR;
 
-    *pUART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
-    *pUART0_ICR = 0xFFFFFFFF; // Clear UART0 interrupts
+        *pUART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
+        *pUART0_ICR = 0xFFFFFFFF; // Clear UART0 interrupts
 
-    pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
-    enable_irq();
-    irq_attach_handler( 57, uart_fill_queue, 0 );
+        pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
+        irq_attach_handler( 57, uart0_fill_queue, 0 );
+        enable_irq();
+    }
+    else
+    {
+        W32(AUX_MU_IER_REG,13);  // enable rx interrupts
+        pIRQController->Enable_IRQs_1 = RPI_AUX_INTERRUPT_IRQ;
+        irq_attach_handler( 29, uart1_fill_queue, 0 );
+        enable_irq();
+    }
 }
 
 
@@ -379,7 +413,8 @@ void term_main_loop()
             gfx_term_putstring( strb );
         }
 
-        uart_fill_queue(0);
+        if (actUart == 0) uart0_fill_queue(0);
+        else uart1_fill_queue(0);
         timer_poll();
     }
 
@@ -440,8 +475,6 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     gfx_set_bg(BLACK);
     gfx_set_fg(DARKGRAY);
     
-    while(1) timer_poll();
-
     initialize_uart_irq();
 
     // draw possible colors:
@@ -484,13 +517,20 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     //video_test();
     //video_line_test();
-
-#if 1
+    
+    gfx_set_bg(BLACK);
+    gfx_set_fg(GRAY);
+    ee_printf("\nBooting on Raspberry Pi ");
+    ee_printf(board_model(raspiBoard.model));
+    ee_printf(", ");
+    ee_printf(board_processor(raspiBoard.processor));
+    ee_printf("\n");
+    
     gfx_set_bg(BLUE);
     gfx_set_fg(YELLOW);
-    ee_printf("Initializing USB: ");
-	gfx_set_bg(BLACK);
-	gfx_set_fg(GRAY);
+    ee_printf("Initializing USB:\n");
+    gfx_set_bg(BLACK);
+    gfx_set_fg(GRAY);
 
     if( USPiInitialize() )
     {
@@ -516,7 +556,6 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     	gfx_set_fg(RED);
     	ee_printf("USB initialization failed.\n");
     }
-#endif
 
 #if ENABLED(RC2014)
     gfx_set_drawing_mode(drawingTRANSPARENT);
@@ -525,6 +564,8 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     gfx_set_drawing_mode(drawingNORMAL);
     gfx_set_fg(GRAY);
+    
+    while(1) timer_poll();
 
     term_main_loop();
 }

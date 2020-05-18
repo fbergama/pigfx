@@ -80,6 +80,7 @@ setup_stack:
     ;@ Fill BSS with zeros
     ldr   r4, bss_start
     ldr   r9, bss_end
+    mov   r5, #0
 clear_bss:
     str   r5,[r4]
     add   r4,r4,#4

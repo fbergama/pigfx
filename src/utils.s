@@ -13,19 +13,6 @@ disable_irq:
         cpsid i
         mov pc, lr
 
-;@ Wait for at least r0 cycles
-.global busywait
-busywait:
-        push {r1}
-        mov r0, r0, ASR #1
-bloop:  ;@ eor r1, r0, r1
-        subs r0,r0,#1
-        bne bloop
-        
-        ;@ quit
-        pop {r1}
-        bx lr   ;@ Return 
-
 
 
 ;@ W32( address, data ) 
@@ -40,13 +27,6 @@ W32:    str  r1, [r0]
 .global R32
 R32:    ldr  r0, [r0]
         bx lr    
-
-
-;@ Get the CPU ID Code for getting the CPU type we are using RPI1/2/3/4
-.globl getcpuid
-getcpuid:
-    mrc p15,0,r0,c0,c0,0
-    bx lr
 
 
 ;@ performs a memory barrier

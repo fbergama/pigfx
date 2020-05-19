@@ -2,9 +2,10 @@
 #include "nmalloc.h"
 #include "timer.h"
 #include "ee_printf.h"
-#include "raspihwconfig.h"
 #include "uart.h"
 #include "irq.h"
+#include "prop.h"
+#include "mbox.h"
 
 
 void *malloc (unsigned nSize)		// result must be 4-byte aligned
@@ -57,10 +58,48 @@ void ConnectInterrupt (unsigned nIRQ, TInterruptHandler *pHandler, void *pParam)
 
 int SetPowerStateOn (unsigned nDeviceId)	// "set power state" to "on", wait until completed
 {
-    if( RHW_SUCCESS != rhw_set_device_power( (RHW_DEVICE)nDeviceId, RHW_POWER_ON ) )
+    // Set PowerOn State
+    typedef struct
     {
-        return 0; 
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
+
+        union
+        {
+            struct
+            {
+                uint32_t deviceId;
+                uint32_t state;
+            }
+            request;
+            struct
+            {
+                uint32_t deviceId;
+                uint32_t state;
+            }
+            response;
+        }
+        value;
+
+        mbox_msgfooter_t footer;
     }
+    message_t;
+
+    message_t msg __attribute__((aligned(16)));
+
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    msg.tag.id = MAILBOX_TAG_SET_POWER_STATE;
+    msg.tag.size = sizeof(msg.value);
+    msg.tag.code = 0;
+    msg.value.request.deviceId = nDeviceId;
+    msg.value.request.state = 1; // Bit 0: 0=off, 1=on; Bit 1: 0=do not wait, 1=wait; Bits 2-31: reserved for future use (set to 0)
+    msg.footer.end = 0;
+
+    if (mbox_send(&msg) != 0) {
+        return 0;   // Error
+    }
+    
     usleep(500000); // Wait some more for wireless keyboards startup time
     return 1;
 }
@@ -70,8 +109,8 @@ int GetMACAddress (unsigned char Buffer[6])	// "get board MAC address"
 {
     //ee_printf("* GetMacAddress *\n");
 
-    if( RHW_SUCCESS != rhw_get_mac_address( Buffer ) )
-        return 0;
+    if (prop_macaddr(Buffer) != 1)
+        return 0;   // error
 
     return 1;
 }

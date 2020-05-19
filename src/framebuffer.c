@@ -1,12 +1,13 @@
 #include "pigfx_config.h"
 #include "framebuffer.h"
-#include "postman.h"
 #include "console.h"
 #include "utils.h"
 #include "mbox.h"
 
+#define NB_PALETTE_ELE 256
 
-static const unsigned int xterm_colors[256] = {
+
+static const unsigned int xterm_colors[NB_PALETTE_ELE] = {
 // 16 half/full bright RGB colors
 0x000000,  0x800000,  0x008000,  0x808000,  0x000080,
 0x800080,  0x008080,  0xc0c0c0,  0x808080,  0xff0000,
@@ -299,68 +300,111 @@ FB_RETURN_TYPE fb_get_phys_res(unsigned int* pRes_w, unsigned int* pRes_h)
 
 FB_RETURN_TYPE fb_set_grayscale_palette()
 {
-    // TODO: This should be done like the other mailbox calls
-    unsigned int pBuffData[4096] __attribute__((aligned (16)));
-    unsigned int off;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = MAILBOX_TAG_SET_PALETTE;  // Tag: blank
-    pBuffData[off++] = 4;           // response buffer size in bytes
-    pBuffData[off++] = 1032;        // request size
-    pBuffData[off++] = 0;           // first palette index
-    pBuffData[off++] = 256;         // num entries 
-
-    unsigned int pi;
-    for(pi=0;pi<256;++pi)
+    // Set grayscale palette
+    unsigned int i;
+    typedef struct
     {
-        unsigned int entry = 0;
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
 
-        entry =  (pi & 0xFF)<<16 | (pi & 0xFF)<<8 | (pi & 0xFF);
-        entry = entry | 0xFF000000; //alpha
+        union
+        {
+            struct
+            {
+                uint32_t offset;
+                uint32_t nbrOfEntries;
+                uint32_t entries[NB_PALETTE_ELE];
+            }
+            request;
+            struct
+            {
+                uint32_t invalid;
+            }
+            response;
+        }
+        value;
 
-        pBuffData[off++] = entry;         
+        mbox_msgfooter_t footer;
     }
-    pBuffData[off++] = 0;           // end tag
+    message_t;
+    
+    message_t msg __attribute__((aligned(16)));
 
-    pBuffData[0]=off*4; // Total message size
-
-    if (mbox_send(pBuffData) != 0) {
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    msg.tag.id = MAILBOX_TAG_SET_PALETTE;
+    msg.tag.size = sizeof(msg.value);
+    msg.tag.code = 0;
+    
+    msg.value.request.offset = 0;
+    msg.value.request.nbrOfEntries = NB_PALETTE_ELE;
+    for(i=0;i<NB_PALETTE_ELE;i++)
+    {
+        msg.value.request.entries[i] = (i & 0xFF)<<16 | (i & 0xFF)<<8 | (i & 0xFF);
+        msg.value.request.entries[i] = msg.value.request.entries[i] | 0xFF000000; //alpha
+    }
+    
+    msg.footer.end = 0;
+    
+    if (mbox_send(&msg) != 0) {
         return FB_ERROR;
     }
-
+    
     return FB_SUCCESS;
 }
 
 FB_RETURN_TYPE fb_set_xterm_palette()
 {
-    // TODO: This should be done like the other mailbox calls
-    unsigned int pBuffData[4096] __attribute__((aligned (16)));
-    unsigned int off;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = MAILBOX_TAG_SET_PALETTE;  // Tag: blank
-    pBuffData[off++] = 4;           // response buffer size in bytes
-    pBuffData[off++] = 1032;        // request size
-    pBuffData[off++] = 0;           // first palette index
-    pBuffData[off++] = 256;         // num entries 
-
-    unsigned int pi;
-    for(pi=0;pi<256;++pi)
+    // Set xterm palette
+    unsigned int i;
+    typedef struct
     {
-        const unsigned int vc = xterm_colors[pi];
-        // RGB -> BGR
-        pBuffData[off++] = (vc<<16 & 0xFF0000) | ( vc & 0x00FF00) | ( vc>>16 & 0x0000FF) | 0xFF000000;         
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
+
+        union
+        {
+            struct
+            {
+                uint32_t offset;
+                uint32_t nbrOfEntries;
+                uint32_t entries[NB_PALETTE_ELE];
+            }
+            request;
+            struct
+            {
+                uint32_t invalid;
+            }
+            response;
+        }
+        value;
+
+        mbox_msgfooter_t footer;
     }
-    pBuffData[off++] = 0;           // end tag
+    message_t;
+    
+    message_t msg __attribute__((aligned(16)));
 
-    pBuffData[0]=off*4; // Total message size
-
-    if (mbox_send(pBuffData) != 0) {
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    msg.tag.id = MAILBOX_TAG_SET_PALETTE;
+    msg.tag.size = sizeof(msg.value);
+    msg.tag.code = 0;
+    
+    msg.value.request.offset = 0;
+    msg.value.request.nbrOfEntries = NB_PALETTE_ELE;
+    for(i=0;i<NB_PALETTE_ELE;i++)
+    {
+        const unsigned int vc = xterm_colors[i];
+        msg.value.request.entries[i] = (vc<<16 & 0xFF0000) | ( vc & 0x00FF00) | ( vc>>16 & 0x0000FF) | 0xFF000000;
+    }
+    
+    msg.footer.end = 0;
+    
+    if (mbox_send(&msg) != 0) {
         return FB_ERROR;
     }
-
+    
     return FB_SUCCESS;
 }
 

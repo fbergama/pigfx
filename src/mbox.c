@@ -44,10 +44,7 @@ int mbox_send(void* msg) {
   if ((((mbox_msgheader_t*)msg)->code & MAIL_FULL) != 0) {
     return 0; // Success!
   }
-  
-  //cout("mbox not happy: ");
-  //cout_h(((mbox_msgheader_t*)msg)->code);
-  //cout("\r\n");
+
   return -1; // Ugh...
 } 
 

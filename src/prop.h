@@ -19,7 +19,7 @@
 uint32_t   prop_revision(void);
 uint32_t   prop_fwrev(void);
 uint32_t   prop_model(void);
-uint64_t   prop_macaddr(void);
+int        prop_macaddr(unsigned char* pOutAddr);
 uint64_t   prop_serial(void);
 
 #endif /* PROP_H__ */ 

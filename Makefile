@@ -13,7 +13,7 @@ CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreesta
 endif
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o postman.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o binary_assets.o
+OOB = asm.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o binary_assets.o
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -36,7 +36,16 @@ run: pigfx.elf
 	./launch_qemu.bash
 
 kernel: pigfx.img
-	cp pigfx.img bin/kernel$(RPI).img
+	@if [ $(RPI) == 1 ]; then \
+		cp pigfx.img bin/kernel.img; \
+	elif [ $(RPI) == 2 ]; then \
+		cp pigfx.img bin/kernel7.img; \
+	elif [ $(RPI) == 3 ]; then \
+		cp pigfx.img bin/kernel8-32.img; \
+	else \
+		cp pigfx.img bin/kernel7l.img; \
+	fi;
+
 
 debug: pigfx.elf
 	cd JTAG && ./run_gdb.sh

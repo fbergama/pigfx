@@ -11,12 +11,11 @@
 #define SWAP_DEL_WITH_BACKSPACE ON              /* Substitute DEL (0x7F) with BACKSPACE (0x08) */
 #define SKIP_BACKSPACE_ECHO     OFF             /* Skip the next incoming character after a backspace from keyboard */
 #define FRAMEBUFFER_DEBUG       OFF             /* Log framebuffer operations to UART */
-#define POSTMAN_DEBUG           OFF             /* Log mailbox operations to UART */
 #define HEARTBEAT_FREQUENCY     1               /* Status led blink frequency in Hz */
 
 #define PIGFX_MAJVERSION        1               /* Major version number */
-#define PIGFX_MINVERSION        1               /* Minor version number */
-#define PIGFX_BUILDVERSION      6               /* Build version. */
+#define PIGFX_MINVERSION        2               /* Minor version number */
+#define PIGFX_BUILDVERSION      0               /* Build version. */
 #define PIGFX_INITFONT          1               /* 0=8x8, 1=8x16, 2=8x24 */
 
 /** Versions:

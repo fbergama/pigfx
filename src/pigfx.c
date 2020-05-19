@@ -376,11 +376,15 @@ void video_line_test(int maxloops)
 
 void term_main_loop()
 {
-    ee_printf("Waiting for UART data (%d,8,N,1)\n",uart0_get_baudrate());
+    if (actUart == 0)
+        ee_printf("Waiting for UART data (%d,8,N,1)\n",uart0_get_baudrate());
+    else
+        ee_printf("Waiting for UART data (115200,8,N,1)\n");
 
     /**/
     while( uart_buffer_start == uart_buffer_end )
-        usleep(100000 );
+        //usleep(100000 );
+        timer_poll();       // ActLed working while waiting for data
     /**/
 
     gfx_term_putstring( "\x1B[2J" );
@@ -415,6 +419,7 @@ void term_main_loop()
 
         if (actUart == 0) uart0_fill_queue(0);
         else uart1_fill_queue(0);
+        
         timer_poll();
     }
 
@@ -448,12 +453,12 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     
     uart_init();
     
-    cout("Hello from the debug console\r\n");
+    /*cout("Hello from the debug console\r\n");
     cout("Booting on Raspberry Pi ");
     cout(board_model(raspiBoard.model));
     cout(", ");
     cout(board_processor(raspiBoard.processor));
-    cout("\r\n");
+    cout("\r\n");*/
     
     // Where is the Act LED?
     led_init(raspiBoard);
@@ -564,8 +569,6 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     gfx_set_drawing_mode(drawingNORMAL);
     gfx_set_fg(GRAY);
-    
-    while(1) timer_poll();
 
     term_main_loop();
 }

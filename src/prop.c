@@ -73,7 +73,8 @@ uint32_t prop_fwrev(void) {
   return msg.value.response.firmware;
 }
 
-uint64_t prop_macaddr(void) {
+int prop_macaddr(unsigned char* pOutAddr) {
+  unsigned char off;
   typedef struct {
     mbox_msgheader_t header;
     mbox_tagheader_t tag;
@@ -104,13 +105,12 @@ uint64_t prop_macaddr(void) {
   if (mbox_send(&msg) != 0) {
     return 0;
   }
-
-  return (uint64_t)msg.value.response.addr[0] << 40
-       | (uint64_t)msg.value.response.addr[1] << 32
-       | (uint64_t)msg.value.response.addr[2] << 24
-       | (uint64_t)msg.value.response.addr[3] << 16
-       | (uint64_t)msg.value.response.addr[4] <<  8
-       | (uint64_t)msg.value.response.addr[5];
+  
+  for( off=0; off<6; ++off )
+  {
+      pOutAddr[off] = msg.value.response.addr[off];
+  }
+  return 1;
 }
 
 uint64_t prop_serial(void) {

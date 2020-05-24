@@ -62,12 +62,6 @@ inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
                 ("mcr p15, #0, %[zero], c7, c14, #0" : : [zero] "r" (0) )
 
 
-//#define mem_2uncached(X) (X)
-//#define mem_2cached(X)   (X)
-#define mem_2uncached(X) ((((unsigned int)X)&0x0FFFFFFF)|0x40000000)
-#define mem_2cached(X)   ((((unsigned int)X)&0x0FFFFFFF))
-
-
 
 
 

@@ -33,7 +33,8 @@ expect that more functionalities will be added from time to time.
 
 PiGFX should be working on all Pi models from generation 1 to generation 3. It's tested on the following models:
 
-- Pi Zero (without W)
+- Pi Zero
+- Pi Zero W (UART works quite bad)
 - Pi B
 - Pi B+
 - Pi 2B

@@ -8,6 +8,7 @@
 #include "timer.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
+#include "mbox.h"
 
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
@@ -402,7 +403,7 @@ draw_putsprite_fun (*gfx_put_sprite) = gfx_put_sprite_NORMAL;
 void gfx_clear()
 {
 #if ENABLED(GFX_USE_DMA)
-    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    unsigned int* BG = (unsigned int*)mem_arm2vc( (unsigned int)mem_buff_dma );
     // Fill the 16 bytes of dma buffer with background color
     *BG = ctx.bg32;
     *(BG+1) = *BG;
@@ -428,7 +429,7 @@ void gfx_clear()
 /** TODO: */
 void gfx_scroll_down_dma( unsigned int npixels )
 {
-    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    unsigned int* BG = (unsigned int*)mem_arm2vc( (unsigned int)mem_buff_dma );
     const unsigned int bg = ctx.bg32;
     *BG = bg;
     *(BG+1) = bg;
@@ -491,7 +492,7 @@ void gfx_scroll_up( unsigned int npixels )
 /** TODO: comments */
 void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
-    unsigned int* FG = (unsigned int*)mem_2uncached( mem_buff_dma )+4;
+    unsigned int* FG = (unsigned int*)mem_arm2vc( (unsigned int)mem_buff_dma )+4;
     const unsigned int fg = ctx.fg32;
     unsigned int* PFG = FG;
     for (size_T i = 0 ; i < sizeof ctx.fg32 ; i++)
@@ -1104,7 +1105,7 @@ void gfx_term_putstring( const char* str )
             gfx_restore_cursor_content();
             --ctx.term.cursor_row;
 
-            gfx_scroll_down_dma(ctx.term.FONTHEIGHT);
+            gfx_scroll_down(ctx.term.FONTHEIGHT);
             gfx_term_render_cursor_newline_dma();
             dma_execute_queue();
         }

@@ -383,8 +383,11 @@ void term_main_loop()
 
     /**/
     while( uart_buffer_start == uart_buffer_end )
+    {
         //usleep(100000 );
         timer_poll();       // ActLed working while waiting for data
+        USPiKeyboardUpdateLEDs();
+    }
     /**/
 
     gfx_term_putstring( "\x1B[2J" );
@@ -421,6 +424,8 @@ void term_main_loop()
         else uart1_fill_queue(0);
         
         timer_poll();
+        
+        USPiKeyboardUpdateLEDs();
     }
 
 }

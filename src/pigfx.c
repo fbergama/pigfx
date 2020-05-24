@@ -1,3 +1,4 @@
+#include "peri.h"
 #include "pigfx_config.h"
 #include "uart.h"
 #include "utils.h"
@@ -9,28 +10,21 @@
 #include "dma.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
+#include "prop.h"
+#include "board.h"
+#include "mbox.h"
+#include "actled.h"
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
-
-
-#define GPFSEL1 0x20200004
-#define GPSET0  0x2020001C
-#define GPSET1  0x20200020
-#define GPCLR0  0x20200028
-#define GPCLR1  0x2020002C  
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
 
 
-unsigned char RASPI_VERSION;
-unsigned int led_status;
-volatile unsigned int* UART0_DR;
-volatile unsigned int* UART0_ITCR;
-volatile unsigned int* UART0_IMSC;
-volatile unsigned int* UART0_FR;
-volatile unsigned int* UART0_IBRD;
-volatile unsigned int* UART0_FBRD;
-
+unsigned int led_status = 0;
+volatile unsigned int* pUART0_DR;
+volatile unsigned int* pUART0_ICR;
+volatile unsigned int* pUART0_IMSC;
+volatile unsigned int* pUART0_FR;
 
 volatile char* uart_buffer;
 volatile char* uart_buffer_start;
@@ -66,7 +60,7 @@ static void _keypress_handler(const char* str )
         if( ch == 10 )
         {
             // Send CR first
-            uart_write( &CR, 1 );
+            uart_write( CR );
 
         }
 #endif
@@ -97,11 +91,11 @@ static void _keypress_handler(const char* str )
             last_backspace_t = time_microsec();
         }
 #endif
-        uart_write( &ch, 1 ); 
+        uart_write( ch ); 
         ++c;
     }
 
-} 
+}
 
 
 static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
@@ -110,13 +104,11 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
 {
     if( led_status )
     {
-        W32(GPCLR0,1<<16);
-        W32(GPCLR1,1<<15);      // ACT LED GPIO 47
+        led_set(0);
         led_status = 0;
     } else
     {
-        W32(GPSET0,1<<16);
-        W32(GPSET1,1<<15);      // ACT LED GPIO 47
+        led_set(1);
         led_status = 1;
     }
 
@@ -124,11 +116,11 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
 }
 
 
-void uart_fill_queue( __attribute__((unused)) void* data )
+void uart0_fill_queue( __attribute__((unused)) void* data )
 {
-    while( !( *UART0_FR & 0x10)/*uart_poll()*/)
+    while( !( *pUART0_FR & 0x10 ))
     {
-        *uart_buffer_end++ = (char)( *UART0_DR & 0xFF /*uart_read_byte()*/);
+        *uart_buffer_end++ = (char)( *pUART0_DR & 0xFF );
 
         if( uart_buffer_end >= uart_buffer_limit )
            uart_buffer_end = uart_buffer; 
@@ -142,9 +134,33 @@ void uart_fill_queue( __attribute__((unused)) void* data )
     }
 
     /* Clear UART0 interrupts */
-    *UART0_ITCR = 0xFFFFFFFF;
+    *pUART0_ICR = 0xFFFFFFFF;
 }
 
+void uart1_fill_queue( __attribute__((unused)) void* data )
+{
+    unsigned int rb,rc;
+    while(1)
+    {
+        rb = R32(AUX_MU_IIR_REG);
+        if ((rb & 1) == 1) break; //no more interrupts
+        if ((rb & 6) == 4)
+        {
+            //receiver holds a valid byte
+            rc=R32(AUX_MU_IO_REG); //read byte from rx fifo
+            *uart_buffer_end++ = rc&0xFF;
+            if( uart_buffer_end >= uart_buffer_limit )
+            uart_buffer_end = uart_buffer; 
+
+            if( uart_buffer_end == uart_buffer_start )
+            {
+                uart_buffer_start++;
+                if( uart_buffer_start >= uart_buffer_limit )
+                    uart_buffer_start = uart_buffer; 
+            }
+        }
+    }
+}
 
 
 void initialize_uart_irq()
@@ -152,99 +168,29 @@ void initialize_uart_irq()
     uart_buffer_start = uart_buffer_end = uart_buffer;
     uart_buffer_limit = &( uart_buffer[ UART_BUFFER_SIZE ] );
 
-    UART0_DR   = (volatile unsigned int*)0x20201000;
-    UART0_IMSC = (volatile unsigned int*)0x20201038;
-    UART0_ITCR = (volatile unsigned int*)0x20201044;
-    UART0_FR   = (volatile unsigned int*)0x20201018;
-
-    *UART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
-    *UART0_ITCR = 0xFFFFFFFF; // Clear UART0 interrupts
-
-    pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
-    enable_irq();
-    irq_attach_handler( 57, uart_fill_queue, 0 );
-}
-
-unsigned int uart_get_baudrate()
-{
-    // Default UART Clock is 48 MHz unless otherwise configured
-    UART0_IBRD = (volatile unsigned int*)0x20201024;        // Divisor
-    UART0_FBRD = (volatile unsigned int*)0x20201028;        // Fractional part
-    unsigned int divider, baudrate;
-    unsigned int baud, multi;
-    
-    // Uart clock gets divided by 16. This is the base for further division
-    // 48 MHz divided by 16 is 3 MHz
-    // For example with a baudrate of 115200 the divider is 26, the fractional is 3. This is 26 + 3/64 = 26.046875
-    // divider = *UART0_IBRD + *UART0_FBRD / 64;
-    // as we don't want to use float, we multiply by 64
-    divider = *UART0_IBRD*64 + *UART0_FBRD;
-    baudrate = 3000000*64 / divider;
-    // this is the real baudrate (115176)
-    // now we add 150 for beeing able to calculate the configured baudrate by rounding down to the lower 300 step
-    baudrate += 150;
-    multi = (unsigned int)baudrate / 300;
-    baud = 300 * multi;     //115200*/
-    
-    return baud;
-}
-
-
-unsigned char getRaspiGeneration()
-{
-    unsigned int id;
-    unsigned char gen;
-    
-    id = getcpuid();
-    if (id == 0x410fb767) gen = 1;       // Raspi 1 or zero
-    else if (id == 0x410FC075) gen = 2;       // Raspi 2
-    else if (id == 0x410FB767) gen = 3;       // Raspi 3
-    else gen = 4;
-    
-    return gen;
-}
-
-
-void heartbeat_init()
-{
-    unsigned int ra;
-    ra=R32(GPFSEL1);
-    ra&=~(7<<18);
-    ra|=1<<18;
-    W32(GPFSEL1,ra);
-
-    // Enable JTAG pins
-    W32( 0x20200000, 0x04a020 );
-    W32( 0x20200008, 0x65b6c0 );
-
-    led_status=0;
-}
-
-
-void heartbeat_loop()
-{
-    unsigned int last_time = 0;
-    unsigned int curr_time;
-
-    while(1)
+    if (actUart == 0)
     {
-        
-        curr_time = time_microsec();
-        if( curr_time-last_time > 500000 )
-        {
-            if( led_status )
-            {
-                W32(GPCLR0,1<<16);
-                led_status = 0;
-            } else
-            {
-                W32(GPSET0,1<<16);
-                led_status = 1;
-            }
-            last_time = curr_time;
-        } 
+        pUART0_DR   = (volatile unsigned int*)UART0_DR;
+        pUART0_IMSC = (volatile unsigned int*)UART0_IMSC;
+        pUART0_ICR = (volatile unsigned int*)UART0_ICR;
+        pUART0_FR   = (volatile unsigned int*)UART0_FR;
+
+        *pUART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
+        *pUART0_ICR = 0xFFFFFFFF; // Clear UART0 interrupts
+
+        pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
+        irq_attach_handler( 57, uart0_fill_queue, 0 );
+        enable_irq();
+    }
+    else
+    {
+        W32(AUX_MU_IER_REG,13);  // enable rx interrupts
+        pIRQController->Enable_IRQs_1 = RPI_AUX_INTERRUPT_IRQ;
+        irq_attach_handler( 29, uart1_fill_queue, 0 );
+        enable_irq();
     }
 }
+
 
 /** Sets the frame buffer with given width, height and bit depth.
  *   Other effects:
@@ -255,7 +201,6 @@ void heartbeat_loop()
  */
 void initialize_framebuffer(unsigned int width, unsigned int height, unsigned int bpp)
 {
-    usleep(10000);
     fb_release();
 
     unsigned char* p_fb=0;
@@ -274,22 +219,17 @@ void initialize_framebuffer(unsigned int width, unsigned int height, unsigned in
              &fbsize, 
              &pitch );
 
-    fb_set_xterm_palette();
-
-    //cout("fb addr: ");cout_h((unsigned int)p_fb);cout_endl();
-    //cout("fb size: ");cout_d((unsigned int)fbsize);cout(" bytes");cout_endl();
-    //cout("  pitch: ");cout_d((unsigned int)pitch);cout_endl();
-
-    if( fb_get_phisical_buffer_size( &p_w, &p_h ) != FB_SUCCESS )
+    if (fb_set_xterm_palette() != 0)
     {
-        //cout("fb_get_phisical_buffer_size error");cout_endl();
+#if ENABLED(FRAMEBUFFER_DEBUG)
+        cout("Set Palette failed"); cout_endl();
+#endif
     }
-    //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
 
-    usleep(10000);
+    //usleep(10000);
     gfx_set_env( p_fb, v_w, v_h, bpp, pitch, fbsize );
     gfx_set_drawing_mode(drawingNORMAL);
-	gfx_term_set_tabulation(8);
+    gfx_term_set_tabulation(8);
     gfx_term_set_font(8,16);
     gfx_clear();
 }
@@ -436,11 +376,18 @@ void video_line_test(int maxloops)
 
 void term_main_loop()
 {
-    ee_printf("Waiting for UART data (%d,8,N,1)\n",uart_get_baudrate());
+    if (actUart == 0)
+        ee_printf("Waiting for UART data (%d,8,N,1)\n",uart0_get_baudrate());
+    else
+        ee_printf("Waiting for UART data (115200,8,N,1)\n");
 
     /**/
     while( uart_buffer_start == uart_buffer_end )
-        usleep(100000 );
+    {
+        //usleep(100000 );
+        timer_poll();       // ActLed working while waiting for data
+        USPiKeyboardUpdateLEDs();
+    }
     /**/
 
     gfx_term_putstring( "\x1B[2J" );
@@ -473,43 +420,71 @@ void term_main_loop()
             gfx_term_putstring( strb );
         }
 
-        uart_fill_queue(0);
+        if (actUart == 0) uart0_fill_queue(0);
+        else uart1_fill_queue(0);
+        
         timer_poll();
+        
+        USPiKeyboardUpdateLEDs();
     }
 
 }
 
-void entry_point()
+void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 {
+    unsigned int boardRevision;
+    board_t raspiBoard;
+    
+    //unused
+    (void) r0;
+    (void) r1;
+    (void) atags;
+    
     // Heap init
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
-    
-    // Get Raspberry Generation
-    RASPI_VERSION = getRaspiGeneration();
 
     // UART buffer allocation
-    uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE ); 
+    uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE );
+    
+    // Get informations about the board we are booting
+    boardRevision = prop_revision();
+    raspiBoard = board_info(boardRevision);
+    // Do we use UART0 or UART1?
+    // Newer Models with Bluetooth use Uart1 on the GPIOs because UART0 is used for Bluetooth
+    if ((raspiBoard.model < BOARD_MODEL_3B) || (raspiBoard.model == BOARD_MODEL_ZERO))
+        actUart = 0;
+    else
+        actUart = 1;
     
     uart_init();
-    heartbeat_init();
     
-    //heartbeat_loop();
+    /*cout("Hello from the debug console\r\n");
+    cout("Booting on Raspberry Pi ");
+    cout(board_model(raspiBoard.model));
+    cout(", ");
+    cout(board_processor(raspiBoard.processor));
+    cout("\r\n");*/
+    
+    // Where is the Act LED?
+    led_init(raspiBoard);
+    
+    // Timers and heartbeat
+    timers_init();
+    attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
     
     initialize_framebuffer(640, 480, 8);
-
+    
 
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
     gfx_set_bg(BLUE);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
     gfx_set_fg(YELLOW);// bright yellow
-    ee_printf(" ===  PiGFX %d.%d.%d  ===  Build %s  ===  Running on Raspberry Pi Gen. %d\n", PIGFX_MAJVERSION, PIGFX_MINVERSION, PIGFX_BUILDVERSION, PIGFX_VERSION, RASPI_VERSION );
+    ee_printf(" ===  PiGFX %d.%d.%d  ===  Build %s\n", PIGFX_MAJVERSION, PIGFX_MINVERSION, PIGFX_BUILDVERSION, PIGFX_VERSION );
     gfx_term_putstring( "\x1B[2K" );
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(BLACK);
     gfx_set_fg(DARKGRAY);
-
-    timers_init();
-    attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
+    
     initialize_uart_irq();
 
     // draw possible colors:
@@ -552,13 +527,20 @@ void entry_point()
 
     //video_test();
     //video_line_test();
-
-#if 1
+    
+    gfx_set_bg(BLACK);
+    gfx_set_fg(GRAY);
+    ee_printf("\nBooting on Raspberry Pi ");
+    ee_printf(board_model(raspiBoard.model));
+    ee_printf(", ");
+    ee_printf(board_processor(raspiBoard.processor));
+    ee_printf("\n");
+    
     gfx_set_bg(BLUE);
     gfx_set_fg(YELLOW);
-    ee_printf("Initializing USB: ");
-	gfx_set_bg(BLACK);
-	gfx_set_fg(GRAY);
+    ee_printf("Initializing USB:\n");
+    gfx_set_bg(BLACK);
+    gfx_set_fg(GRAY);
 
     if( USPiInitialize() )
     {
@@ -584,7 +566,6 @@ void entry_point()
     	gfx_set_fg(RED);
     	ee_printf("USB initialization failed.\n");
     }
-#endif
 
 #if ENABLED(RC2014)
     gfx_set_drawing_mode(drawingTRANSPARENT);

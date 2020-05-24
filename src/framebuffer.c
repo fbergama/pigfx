@@ -1,11 +1,13 @@
 #include "pigfx_config.h"
 #include "framebuffer.h"
-#include "postman.h"
 #include "console.h"
 #include "utils.h"
+#include "mbox.h"
+
+#define NB_PALETTE_ELE 256
 
 
-static const unsigned int xterm_colors[256] = {
+static const unsigned int xterm_colors[NB_PALETTE_ELE] = {
 // 16 half/full bright RGB colors
 0x000000,  0x800000,  0x008000,  0x808000,  0x000080,
 0x800080,  0x008080,  0xc0c0c0,  0x808080,  0xff0000,
@@ -74,571 +76,376 @@ static const unsigned int xterm_colors[256] = {
  * See:
  * https://github.com/brianwiddas/pi-baremetal.git
  *
+ * Now it's even more modified by Christian Lehner
  */
 FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w, unsigned int vrt_h,
                         unsigned int bpp, void** pp_fb, unsigned int* pfbsize, unsigned int* pPitch )
 {
-    unsigned int var;
-    unsigned int count;
-    unsigned int physical_screenbase;
-
-    /* Storage space for the buffer used to pass information between the
-     * CPU and VideoCore
-     * Needs to be aligned to 16 bytes as the bottom 4 bits of the address
-     * passed to VideoCore are used for the mailbox number
-     */
-    volatile unsigned int mailbuffer[256] __attribute__((aligned (16)));
-
-    /* Physical memory address of the mailbuffer, for passing to VC */
-    unsigned int physical_mb = mem_v2p((unsigned int)mailbuffer);
-
-    /* Get the display size */
-    mailbuffer[0] = 8 * 4;      // Total size
-    mailbuffer[1] = 0;          // Request
-    mailbuffer[2] = 0x40003;    // Display size
-    mailbuffer[3] = 8;          // Buffer size
-    mailbuffer[4] = 0;          // Request size
-    mailbuffer[5] = 0;          // Space for horizontal resolution
-    mailbuffer[6] = 0;          // Space for vertical resolution
-    mailbuffer[7] = 0;          // End tag
-
-    if( POSTMAN_SUCCESS != postman_send( 8, physical_mb ) )
-        return FB_POSTMAN_FAIL;
-
-    if( POSTMAN_SUCCESS != postman_recv( 8, &var ) )
-        return FB_POSTMAN_FAIL;
-
-    /* Valid response in data structure */
-    if(mailbuffer[1] != 0x80000000)
-        return FB_GET_DISPLAY_SIZE_FAIL;
-
-
 #if ENABLED(FRAMEBUFFER_DEBUG)
-    unsigned int display_w = mailbuffer[5];
-    unsigned int display_h = mailbuffer[6];
-    cout("Display size: ");cout_d(display_w);cout("x");cout_d(display_h);cout_endl();
+    unsigned int getPhysRes_w, getPhysRes_h;
+    
+    // Get physical display size
+    if (fb_get_phys_res(&getPhysRes_w, &getPhysRes_h) != 0) return FB_GET_DISPLAY_SIZE_FAIL;
+    cout("Display size: ");cout_d(getPhysRes_w);cout("x");cout_d(getPhysRes_h);cout_endl();
 #endif
 
-    /* Set up screen */
-    unsigned int c = 1;
-    mailbuffer[c++] = 0;        // Request
-
-    mailbuffer[c++] = 0x00048003;   // Tag id (set physical size)
-    mailbuffer[c++] = 8;        	// Value buffer size (bytes)
-    mailbuffer[c++] = 8;        	// Req. + value length (bytes)
-    mailbuffer[c++] = ph_w;     	// 4 bytes: Horizontal resolution
-    mailbuffer[c++] = ph_h;     	// 4 bytes: Vertical resolution
-
-    mailbuffer[c++] = 0x00048004;   // Tag id (set virtual size)
-    mailbuffer[c++] = 8;        	// Value buffer size (bytes)
-    mailbuffer[c++] = 8;        	// Req. + value length (bytes)
-    mailbuffer[c++] = vrt_w;    	// 4 bytes: Horizontal resolution
-    mailbuffer[c++] = vrt_h;    	// 4 bytes: Vertical resolution
-
-    mailbuffer[c++] = 0x00048005;   // Tag id (set depth)
-    mailbuffer[c++] = 4;        	// Value buffer size (bytes)
-    mailbuffer[c++] = 4;        	// Req. + value length (bytes)
-    mailbuffer[c++] = bpp;      	// 4 bytes: bpp
-
-    mailbuffer[c++] = 0x00040001;   // Tag id (allocate framebuffer)
-    mailbuffer[c++] = 8;        	// Value buffer size (bytes)
-    mailbuffer[c++] = 4;        	// Req. + value length (bytes)
-    mailbuffer[c++] = 16;       	// 4 bytes: Alignment = 16
-    mailbuffer[c++] = 0;        	// 4 bytes: Space for response
-
-    mailbuffer[c++] = 0;        // Terminating tag
-
-    mailbuffer[0] = c*4;        // Buffer size
-
-
-    if( POSTMAN_SUCCESS != postman_send( 8, physical_mb ) )
-        return FB_POSTMAN_FAIL;
-
-    if( POSTMAN_SUCCESS != postman_recv( 8, &var ) )
-        return FB_POSTMAN_FAIL;
-
-
-    /* Valid response in data structure */
-    if(mailbuffer[1] != 0x80000000)
-        return FB_FRAMEBUFFER_SETUP_FAIL;
-
-    count=2;    /* First tag */
-    while((var = mailbuffer[count]))
+    // Set up the framebuffer and get one
+    // Set display size
+    typedef struct
     {
-        if(var == 0x40001)
-            break;
+        mbox_msgheader_t header;
+        
+        mbox_tagheader_t tag_phys_size;
+        union
+        {
+            struct
+            {
+                uint32_t display_w;
+                uint32_t display_h;
+            }
+            request;
+            struct
+            {
+                uint32_t act_display_w;
+                uint32_t act_display_h;
+            }
+            response;
+        }
+        value_phys_size;
+        
+        mbox_tagheader_t tag_virt_size;
+        union
+        {
+            struct
+            {
+                uint32_t display_w;
+                uint32_t display_h;
+            }
+            request;
+            struct
+            {
+                uint32_t act_display_w;
+                uint32_t act_display_h;
+            }
+            response;
+        }
+        value_virt_size;
+        
+        mbox_tagheader_t tag_colour_depth;
+        union
+        {
+            struct
+            {
+                uint32_t depth;
+            }
+            request;
+            struct
+            {
+                uint32_t act_depth;
+            }
+            response;
+        }
+        value_colour_depth;
+        
+        mbox_tagheader_t tag_get_buf;
+        union
+        {
+            struct
+            {
+                uint32_t alignment;
+            }
+            request;
+            struct
+            {
+                uint32_t bufferaddr;
+                uint32_t buffersize;
+            }
+            response;
+        }
+        value_get_buf;
 
-        /* Skip to next tag
-         * Advance count by 1 (tag) + 2 (buffer size/value size)
-         *                          + specified buffer size
-         */
-        count += 3+(mailbuffer[count+1]>>2);
-
-        if(count>c)
-            return FB_FRAMEBUFFER_SETUP_FAIL;
+        mbox_msgfooter_t footer;
     }
+    message_t;
 
-    /* 8 bytes, plus MSB set to indicate a response */
-    if(mailbuffer[count+2] != 0x80000008)
-        return FB_FRAMEBUFFER_SETUP_FAIL;
+    message_t msg __attribute__((aligned(16)));
 
-    /* Framebuffer address/size in response */
-    physical_screenbase = mailbuffer[count+3];
-    *pfbsize = mailbuffer[count+4];
-
-    if(physical_screenbase == 0 || *pfbsize == 0)
-        return FB_INVALID_TAG_DATA;
-
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    
+    msg.tag_phys_size.id = MAILBOX_TAG_SET_PHYSICAL_WIDTH_HEIGHT; // Set physical resolution
+    msg.tag_phys_size.size = sizeof(msg.value_phys_size);
+    msg.tag_phys_size.code = 0;
+    msg.value_phys_size.request.display_w = ph_w;
+    msg.value_phys_size.request.display_h = ph_h;
+    
+    msg.tag_virt_size.id = MAILBOX_TAG_SET_VIRTUAL_WIDTH_HEIGHT; // Set virtual resolution
+    msg.tag_virt_size.size = sizeof(msg.value_virt_size);
+    msg.tag_virt_size.code = 0;
+    msg.value_virt_size.request.display_w = vrt_w;
+    msg.value_virt_size.request.display_h = vrt_h;
+    
+    msg.tag_colour_depth.id = MAILBOX_TAG_SET_COLOUR_DEPTH; // Set colour depth
+    msg.tag_colour_depth.size = sizeof(msg.value_colour_depth);
+    msg.tag_colour_depth.code = 0;
+    msg.value_colour_depth.request.depth = bpp;
+    
+    msg.tag_get_buf.id = MAILBOX_TAG_ALLOCATE_FRAMEBUFFER; // we want one
+    msg.tag_get_buf.size = sizeof(msg.value_get_buf);
+    msg.tag_get_buf.code = 0;
+    msg.value_get_buf.request.alignment = 16;
+    
+    msg.footer.end = 0;
+    
+    if (mbox_send(&msg) != 0) {
+        return FB_ERROR;
+    }
+    
+    if ((msg.value_get_buf.response.bufferaddr == 0) || (msg.value_get_buf.response.buffersize == 0)) return FB_INVALID_TAG_DATA;
+    
     /* physical_screenbase is the address of the screen in RAM
-     *   * screenbase needs to be the screen address in virtual memory
-     *       */
-    *pp_fb = (void*)mem_p2v(physical_screenbase);
-
+    *   * screenbase needs to be the screen address in virtual memory
+    *       */
+    *pp_fb = (void*)mem_vc2arm(msg.value_get_buf.response.bufferaddr);
+    *pfbsize = msg.value_get_buf.response.buffersize;
+    
 #if ENABLED(FRAMEBUFFER_DEBUG)
+    cout("Set physical display size: ");cout_d(ph_w);cout("x");cout_d(ph_h);cout_endl();
+    cout("Response: ");cout_d(msg.value_phys_size.response.act_display_w);cout("x");cout_d(msg.value_phys_size.response.act_display_h);cout_endl();
+    cout("Set virtual display size: ");cout_d(vrt_w);cout("x");cout_d(vrt_h);cout_endl();
+    cout("Response: ");cout_d(msg.value_virt_size.response.act_display_w);cout("x");cout_d(msg.value_virt_size.response.act_display_h);cout_endl();
+    cout("Set colour depth: ");cout_d(bpp);cout(" bpp");cout_endl();
+    cout("Response: ");cout_d(msg.value_colour_depth.response.act_depth);cout(" bpp");cout_endl();
     cout("Screen addr: ");cout_h((unsigned int)*pp_fb); cout_endl();
     cout("Screen size: ");cout_d(*pfbsize); cout_endl();
 #endif
-
-    /* Get the framebuffer pitch (bytes per line) */
-    mailbuffer[0] = 7 * 4;      // Total size
-    mailbuffer[1] = 0;      // Request
-    mailbuffer[2] = 0x40008;    // Display size
-    mailbuffer[3] = 4;      // Buffer size
-    mailbuffer[4] = 0;      // Request size
-    mailbuffer[5] = 0;      // Space for pitch
-    mailbuffer[6] = 0;      // End tag
-
-    if( POSTMAN_SUCCESS != postman_send( 8, physical_mb ) )
-        return FB_POSTMAN_FAIL;
-
-    if( POSTMAN_SUCCESS != postman_recv( 8, &var ) )
-        return FB_POSTMAN_FAIL;
-
-    /* 4 bytes, plus MSB set to indicate a response */
-    if(mailbuffer[4] != 0x80000004)
-        return FB_INVALID_PITCH;
-
-    *pPitch = mailbuffer[5];
-
-    if( *pPitch == 0 )
-        return FB_INVALID_PITCH;
+    
+    // Get pitch (bytes per line)
+    if (fb_get_pitch(pPitch) != 0) return FB_INVALID_PITCH;
 
 #if ENABLED(FRAMEBUFFER_DEBUG)
-    cout("pitch: "); cout_d(*pPitch); cout_endl();
+    cout("Pitch: "); cout_d(*pPitch); cout_endl();
 #endif
 
     return FB_SUCCESS;
 }
 
-
-
 FB_RETURN_TYPE fb_release()
 {
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
+    typedef struct {
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
+        mbox_msgfooter_t footer;
+    }
+    message_t;
+    
+    message_t msg __attribute__((aligned(16)));
+    
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    msg.tag.id = MAILBOX_TAG_RELEASE_FRAMEBUFFER; // Release framebuffer
+    msg.tag.size = 0;
+    msg.tag.code = 0;
+    msg.footer.end = 0;
 
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00048001;  // Tag: blank
-    pBuffData[off++] = 0;           // response buffer size in bytes
-    pBuffData[off++] = 0;           // request size
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    unsigned int physical_mb = mem_v2p((unsigned int)pBuffData);
-    if( POSTMAN_SUCCESS != postman_send( 8, physical_mb ) )
-        return FB_POSTMAN_FAIL;
-
-    if( POSTMAN_SUCCESS != postman_recv( 8, &respmsg ) )
-        return FB_POSTMAN_FAIL;
-
-    if( pBuffData[1]!=0x80000000 )
-    {
+    if (mbox_send(&msg) != 0) {
         return FB_ERROR;
     }
-
+    
     return FB_SUCCESS;
-
 }
 
+FB_RETURN_TYPE fb_get_phys_res(unsigned int* pRes_w, unsigned int* pRes_h)
+{
+    // Get physical display size
+    typedef struct
+    {
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
+
+        union
+        {
+            // No request.
+            struct
+            {
+                uint32_t display_w;
+                uint32_t display_h;
+            }
+            response;
+        }
+        value;
+
+        mbox_msgfooter_t footer;
+    }
+    message_t;
+
+    message_t msg __attribute__((aligned(16)));
+
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    msg.tag.id = MAILBOX_TAG_GET_PHYSICAL_WIDTH_HEIGHT; // Get physical resolution
+    msg.tag.size = sizeof(msg.value);
+    msg.tag.code = 0;
+    msg.footer.end = 0;
+
+    if (mbox_send(&msg) != 0) {
+        return FB_ERROR;
+    }
+    
+    *pRes_w = msg.value.response.display_w;
+    *pRes_h = msg.value.response.display_h;
+    
+    return FB_SUCCESS;
+}
 
 FB_RETURN_TYPE fb_set_grayscale_palette()
 {
-    volatile unsigned int pBuffData[4096] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x0004800B;  // Tag: blank
-    pBuffData[off++] = 4;           // response buffer size in bytes
-    pBuffData[off++] = 1032;        // request size
-    pBuffData[off++] = 0;           // first palette index
-    pBuffData[off++] = 256;         // num entries 
-
-    unsigned int pi;
-    for(pi=0;pi<256;++pi)
+    // Set grayscale palette
+    unsigned int i;
+    typedef struct
     {
-        unsigned int entry = 0;
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
 
-        entry =  (pi & 0xFF)<<16 | (pi & 0xFF)<<8 | (pi & 0xFF);
-        entry = entry | 0xFF000000; //alpha
+        union
+        {
+            struct
+            {
+                uint32_t offset;
+                uint32_t nbrOfEntries;
+                uint32_t entries[NB_PALETTE_ELE];
+            }
+            request;
+            struct
+            {
+                uint32_t invalid;
+            }
+            response;
+        }
+        value;
 
-        pBuffData[off++] = entry;         
+        mbox_msgfooter_t footer;
     }
-    pBuffData[off++] = 0;           // end tag
+    message_t;
+    
+    message_t msg __attribute__((aligned(16)));
 
-    pBuffData[0]=off*4; // Total message size
-
-    unsigned int physical_mb = mem_v2p((unsigned int)pBuffData);
-    if( POSTMAN_SUCCESS != postman_send( 8, physical_mb ) )
-        return FB_POSTMAN_FAIL;
-
-    if( POSTMAN_SUCCESS != postman_recv( 8, &respmsg ) )
-        return FB_POSTMAN_FAIL;
-
-    if( pBuffData[1]!=0x80000000 )
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    msg.tag.id = MAILBOX_TAG_SET_PALETTE;
+    msg.tag.size = sizeof(msg.value);
+    msg.tag.code = 0;
+    
+    msg.value.request.offset = 0;
+    msg.value.request.nbrOfEntries = NB_PALETTE_ELE;
+    for(i=0;i<NB_PALETTE_ELE;i++)
     {
+        msg.value.request.entries[i] = (i & 0xFF)<<16 | (i & 0xFF)<<8 | (i & 0xFF);
+        msg.value.request.entries[i] = msg.value.request.entries[i] | 0xFF000000; //alpha
+    }
+    
+    msg.footer.end = 0;
+    
+    if (mbox_send(&msg) != 0) {
         return FB_ERROR;
     }
-
+    
     return FB_SUCCESS;
-
 }
-
 
 FB_RETURN_TYPE fb_set_xterm_palette()
 {
-    volatile unsigned int pBuffData[4096] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x0004800B;  // Tag: blank
-    pBuffData[off++] = 4;           // response buffer size in bytes
-    pBuffData[off++] = 1032;        // request size
-    pBuffData[off++] = 0;           // first palette index
-    pBuffData[off++] = 256;         // num entries 
-
-    unsigned int pi;
-    for(pi=0;pi<256;++pi)
+    // Set xterm palette
+    unsigned int i;
+    typedef struct
     {
-        const unsigned int vc = xterm_colors[pi];
-        // RGB -> BGR
-        pBuffData[off++] = (vc<<16 & 0xFF0000) | ( vc & 0x00FF00) | ( vc>>16 & 0x0000FF) | 0xFF000000;         
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
+
+        union
+        {
+            struct
+            {
+                uint32_t offset;
+                uint32_t nbrOfEntries;
+                uint32_t entries[NB_PALETTE_ELE];
+            }
+            request;
+            struct
+            {
+                uint32_t invalid;
+            }
+            response;
+        }
+        value;
+
+        mbox_msgfooter_t footer;
     }
-    pBuffData[off++] = 0;           // end tag
+    message_t;
+    
+    message_t msg __attribute__((aligned(16)));
 
-    pBuffData[0]=off*4; // Total message size
-
-    unsigned int physical_mb = mem_v2p((unsigned int)pBuffData);
-    if( POSTMAN_SUCCESS != postman_send( 8, physical_mb ) )
-        return FB_POSTMAN_FAIL;
-
-    if( POSTMAN_SUCCESS != postman_recv( 8, &respmsg ) )
-        return FB_POSTMAN_FAIL;
-
-    if( pBuffData[1]!=0x80000000 )
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    msg.tag.id = MAILBOX_TAG_SET_PALETTE;
+    msg.tag.size = sizeof(msg.value);
+    msg.tag.code = 0;
+    
+    msg.value.request.offset = 0;
+    msg.value.request.nbrOfEntries = NB_PALETTE_ELE;
+    for(i=0;i<NB_PALETTE_ELE;i++)
     {
+        const unsigned int vc = xterm_colors[i];
+        msg.value.request.entries[i] = (vc<<16 & 0xFF0000) | ( vc & 0x00FF00) | ( vc>>16 & 0x0000FF) | 0xFF000000;
+    }
+    
+    msg.footer.end = 0;
+    
+    if (mbox_send(&msg) != 0) {
         return FB_ERROR;
     }
-
+    
     return FB_SUCCESS;
 }
-
-
-FB_RETURN_TYPE fb_blank_screen( unsigned int blank )
-{
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00040002;  // Tag: blank
-    pBuffData[off++] = 4;           // response buffer size in bytes
-    pBuffData[off++] = 4;           // request size
-    pBuffData[off++] = blank;       // state
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    unsigned int physical_mb = mem_v2p((unsigned int)pBuffData);
-    if( POSTMAN_SUCCESS != postman_send( 8, physical_mb ) )
-        return FB_POSTMAN_FAIL;
-
-    if( POSTMAN_SUCCESS != postman_recv( 8, &respmsg ) )
-        return FB_POSTMAN_FAIL;
-
-    if( pBuffData[1]!=0x80000000 )
-    {
-        return FB_ERROR;
-    }
-
-    return FB_SUCCESS;
-}
-
-
-
-FB_RETURN_TYPE fb_set_depth( unsigned int* pDepth )
-{
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00048005;  // Tag: get pitch 
-    pBuffData[off++] = 4;           // response buffer size in bytes
-    pBuffData[off++] = 4;           // request size 
-    pBuffData[off++] = *pDepth;           // response buffer
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    postman_send( 8, mem_v2p((unsigned int)pBuffData) );
-    postman_recv( 8, &respmsg);
-
-    if( pBuffData[1]!=0x80000000 )
-    {
-        return FB_ERROR;
-    }
-
-    *pDepth = pBuffData[5];
-
-    return FB_SUCCESS;
-}
-
-
 
 FB_RETURN_TYPE fb_get_pitch( unsigned int* pPitch )
 {
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00040008;  // Tag: get pitch 
-    pBuffData[off++] = 4;           // response buffer size in bytes
-    pBuffData[off++] = 0;           // request size 
-    pBuffData[off++] = 0;           // response buffer
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    postman_send( 8, mem_v2p((unsigned int)pBuffData) );
-    postman_recv( 8, &respmsg);
-
-    if( pBuffData[1]!=0x80000000 )
+    // Get pitch
+    typedef struct
     {
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
+
+        union
+        {
+            // No request.
+            struct
+            {
+                uint32_t pitch;
+            }
+            response;
+        }
+        value;
+
+        mbox_msgfooter_t footer;
+    }
+    message_t;
+
+    message_t msg __attribute__((aligned(16)));
+
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    msg.tag.id = MAILBOX_TAG_GET_PITCH; // Get pitch (bytes per line)
+    msg.tag.size = sizeof(msg.value);
+    msg.tag.code = 0;
+    msg.footer.end = 0;
+
+    if (mbox_send(&msg) != 0) {
         return FB_ERROR;
     }
-
-    if( pPitch )
-        *pPitch = pBuffData[5];
-
+    
+    *pPitch = msg.value.response.pitch;
+    
     return FB_SUCCESS;
 }
 
-
-FB_RETURN_TYPE fb_get_phisical_buffer_size( unsigned int* pWidth, unsigned int* pHeight )
-{
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00040003;  // Tag: get phisical buffer size 
-    pBuffData[off++] = 8;           // response buffer size in bytes
-    pBuffData[off++] = 0;           // request size 
-    pBuffData[off++] = 0;           // response buffer
-    pBuffData[off++] = 0;           // response buffer
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    postman_send( 8, mem_v2p((unsigned int)pBuffData) );
-    postman_recv( 8, &respmsg);
-
-    if( pBuffData[1]!=0x80000000 )
-    {
-        return FB_ERROR;
-    }
-
-    if( pWidth )
-        *pWidth = pBuffData[5];
-    if( pHeight )
-        *pHeight = pBuffData[6];
-
-    return FB_SUCCESS;
-}
-
-
-FB_RETURN_TYPE fb_set_phisical_buffer_size( unsigned int* pWidth, unsigned int* pHeight )
-{
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00048003;  // Tag: set phisical buffer size 
-    pBuffData[off++] = 8;           // response buffer size in bytes
-    pBuffData[off++] = 8;           // request size 
-    pBuffData[off++] = *pWidth;     // response buffer
-    pBuffData[off++] = *pHeight;    // response buffer
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    postman_send( 8, mem_v2p((unsigned int)pBuffData) );
-    postman_recv( 8, &respmsg);
-
-    if( pBuffData[1]!=0x80000000 )
-    {
-        return FB_ERROR;
-    }
-
-    if( pWidth )
-        *pWidth = pBuffData[5];
-    if( pHeight )
-        *pHeight = pBuffData[6];
-
-    return FB_SUCCESS;
-}
-
-
-FB_RETURN_TYPE fb_allocate_buffer( void** ppBuffer, unsigned int* pBufferSize )
-{
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00040004;  // Tag: allocate buffer 
-    pBuffData[off++] = 8;           // response buffer size in bytes
-    pBuffData[off++] = 4;           // request size 
-    pBuffData[off++] = 16;          // response buffer
-    pBuffData[off++] = 0;           // response buffer
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    postman_send( 8, mem_v2p((unsigned int)pBuffData) );
-    postman_recv( 8, &respmsg);
-
-    if( pBuffData[1]!=0x80000000 )
-    {
-        return FB_ERROR;
-    }
-
-    *ppBuffer = (void*)pBuffData[5];
-    *pBufferSize = pBuffData[6];
-
-    return FB_SUCCESS;
-}
-
-
-FB_RETURN_TYPE fb_get_virtual_buffer_size( unsigned int* pVWidth, unsigned int* pVHeight )
-{
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00040004;  // Tag: get virtual buffer size 
-    pBuffData[off++] = 8;           // response buffer size in bytes
-    pBuffData[off++] = 0;           // request size 
-    pBuffData[off++] = 0;           // response buffer
-    pBuffData[off++] = 0;           // response buffer
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    postman_send( 8, mem_v2p((unsigned int)pBuffData) );
-    postman_recv( 8, &respmsg);
-
-    if( pBuffData[1]!=0x80000000 )
-    {
-        return FB_ERROR;
-    }
-
-    if( pVWidth )
-        *pVWidth = pBuffData[5];
-    if( pVHeight )
-        *pVHeight = pBuffData[6];
-
-    return FB_SUCCESS;
-}
-
-
-FB_RETURN_TYPE fb_set_virtual_buffer_size( unsigned int* pWidth, unsigned int* pHeight )
-{
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00048004;  // Tag: set virtual buffer size 
-    pBuffData[off++] = 8;           // response buffer size in bytes
-    pBuffData[off++] = 8;           // request size 
-    pBuffData[off++] = *pWidth;       // response buffer
-    pBuffData[off++] = *pHeight;      // response buffer
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    postman_send( 8, mem_v2p((unsigned int)pBuffData) );
-    postman_recv( 8, &respmsg);
-
-    if( pBuffData[1]!=0x80000000 )
-    {
-        return FB_ERROR;
-    }
-
-    if( pWidth )
-        *pWidth = pBuffData[5];
-    if( pHeight )
-        *pHeight = pBuffData[6];
-
-    return FB_SUCCESS;
-}
-
-
-FB_RETURN_TYPE fb_set_virtual_offset( unsigned int pX, unsigned int pY )
-{
-    volatile unsigned int pBuffData[256] __attribute__((aligned (16)));
-    unsigned int off;
-    unsigned int respmsg;
-
-    off=1;
-    pBuffData[off++] = 0;           // Request 
-    pBuffData[off++] = 0x00048009;  // Tag: set virtual offset 
-    pBuffData[off++] = 8;           // response buffer size in bytes
-    pBuffData[off++] = 8;           // request size 
-    pBuffData[off++] = pX;           // response buffer
-    pBuffData[off++] = pY;           // response buffer
-    pBuffData[off++] = 0;           // end tag
-
-    pBuffData[0]=off*4; // Total message size
-
-    postman_send( 8, mem_v2p((unsigned int)pBuffData) );
-    postman_recv( 8, &respmsg);
-
-    if( pBuffData[1]!=0x80000000 )
-    {
-        return FB_ERROR;
-    }
-
-    return FB_SUCCESS;
-}

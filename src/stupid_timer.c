@@ -1,3 +1,4 @@
+#include "peri.h"
 #include "timer.h"
 #include "utils.h"
 
@@ -26,7 +27,7 @@ void timers_init()
 
 unsigned int time_microsec()
 {
-    return R32(0x20003004); // System Timer Lower 32 bits
+    return R32(TIMER_CLO); // System Timer Lower 32 bits
 }
 
 //  busy-wait a fixed amount of time in us.

@@ -26,12 +26,19 @@ typed will be automatically sent to raspi UART Tx0 (pin 8, GPIO 14).
 
 *UPDATE*: (2018 Nov. by F. Pierot) Added display modes, fonts, tabulation set... See [2018 Nov. modifications](README_ADD.md).
 
-*UPDATE*: (2020 by Ch. Lehner) Added new graphic features and configurable baudrate. Fixed some bugs.
+*UPDATE*: (2020 by Ch. Lehner) Added new graphic features and configurable baudrate. Fixed some bugs. Ported to Raspberry Pi 2 and 3.
 
 By now this is a work in progress with a minimum set of features implemented so
 expect that more functionalities will be added from time to time.
 
-PiGFX is tested on Raspberry Pi Zero and B+ V1.2. It certainly does not work an Raspberry 2/3/4. It does also seem to not work on Pi Zero W, although it probably should.
+PiGFX should be working on all Pi models from generation 1 to generation 3. It's tested on the following models:
+
+- Pi Zero
+- Pi Zero W (UART works quite bad)
+- Pi B
+- Pi B+
+- Pi 2B
+- Pi 3B
 
 
 Here is a preliminary TODO list of what I plan to add in the future:
@@ -40,23 +47,27 @@ Here is a preliminary TODO list of what I plan to add in the future:
 - ✔ Add some graphics primitives like lines
 - ✔ Add some more graphics primitives (circles, rectangles etc.)
 - ✔ Let the resolution being configurable without recompiling
+- ✔ Port to Raspberry Pi Generation 2/3
 - Implement some kind of sprite handling with collision detection
 - Implement double buffering
 - Load bitmap fonts directly from the SD card
-- Port to Raspberry Pi Generation 2/3/4
+- Load configuration from SD card
+- Implement a 8bit interface
 
-## How to run (At the moment only Raspi gen. 1 ist supported)
+## How to run
 
 1. Format an SD-card: you need one 1 GB partition using the FAT or FAT32 system. 
 Other formats won't boot, and a bigger size is useless. Avoid 64GB+ cards as 
 they tend to cause problems to PI. A 32GB or 16GB card is ok as long as you 
 format only 1 or 2 GB with FAT or FAT32.
 
-2. Copy ```bin/kernel.img``` to the root of the SD card along with the files
+2. Copy all ```bin/*.img``` to the root of the SD card along with the files
    ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
 the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot).
 
-3. Copy ```bin/config.txt``` to the root of the SD card. Edit the file and set your desired baudrate.
+3. Copy ```bin/config.txt``` to the root of the SD card. Edit the file and set your
+   desired baudrate. Unfortunately the baudrate for Pi Zero W and Pi 3 is fixed at
+   115200 baud until PiGFX learns to read a config file.
 
 4. Insert the card and reboot the Pi.
 
@@ -148,8 +159,7 @@ ensure that  ```arm-none-eabi-gcc```, ```arm-none-eabi-as```
 At this point, just run:
 
 ```
-$ make
-$ make kernel
+$ ./makeall
 ```
 
 in the PiGFX root directory.

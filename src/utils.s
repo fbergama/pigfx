@@ -13,19 +13,6 @@ disable_irq:
         cpsid i
         mov pc, lr
 
-;@ Wait for at least r0 cycles
-.global busywait
-busywait:
-        push {r1}
-        mov r0, r0, ASR #1
-bloop:  ;@ eor r1, r0, r1
-        subs r0,r0,#1
-        bne bloop
-        
-        ;@ quit
-        pop {r1}
-        bx lr   ;@ Return 
-
 
 
 ;@ W32( address, data ) 
@@ -42,17 +29,10 @@ R32:    ldr  r0, [r0]
         bx lr    
 
 
-;@ Get the CPU ID Code for getting the CPU type we are using RPI1/2/3/4
-.globl getcpuid
-getcpuid:
-    mrc p15,0,r0,c0,c0,0
-    bx lr
-
-
 ;@ performs a memory barrier
 ;@ http://infocenter.arm.com/help/topic/com.arm.doc.ddi0360f/I1014942.html
 ;@
-.global membarrier
+/*.global membarrier
 membarrier:
     push {r3}
     mov r3, #0                      ;@ The read register Should Be Zero before the call
@@ -61,7 +41,7 @@ membarrier:
     mcr p15, 0, r3, c7, c14, 0      ;@ Clean and Invalidate Entire Data Cache
     mcr p15, 0, r3, c7, c10, 4      ;@ Data Synchronization Barrier
     mcr p15, 0, r3, c7, c10, 5      ;@ Data Memory Barrier
-    bx lr
+    bx lr*/
 
 
 ;@ strlen
@@ -253,4 +233,7 @@ hex2byte:
     pop {r1,r2,lr}
     bx lr
 
+.globl dummy
+dummy:
+    bx lr
 

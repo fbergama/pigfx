@@ -4,11 +4,8 @@
 extern void enable_irq();
 extern void disable_irq();
 
-extern void busywait( unsigned int cycles );
 extern void W32( unsigned int addr, unsigned int data );
 extern unsigned int R32( unsigned int addr );
-extern void membarrier();
-extern unsigned int getcpuid(void);
 
 /**
  * String related
@@ -18,6 +15,7 @@ extern void byte2hexstr( unsigned char byte, char* outstr );
 extern void word2hexstr( unsigned int word, char* outstr );
 extern unsigned int strlen( char* str );
 extern int strcmp( char*s1, char* s2 );
+extern void dummy ( unsigned int );
 
 /**
  * Memory
@@ -39,8 +37,11 @@ inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
  *    have completed
  *    
  */
-#define dmb() asm volatile \
-                ("mcr p15, #0, %[zero], c7, c10, #5" : : [zero] "r" (0) )
+#if RPI==1
+#define dmb() asm volatile ("mcr p15, 0, %0, c7, c10, 5" : : "r" (0) : "memory")
+#else
+#define dmb() asm volatile ("dmb" ::: "memory")
+#endif
 
 
 /*
@@ -59,18 +60,6 @@ inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
  */
 #define flushcache() asm volatile \
                 ("mcr p15, #0, %[zero], c7, c14, #0" : : [zero] "r" (0) )
-
-
-
-#define mem_p2v(X) (X)
-#define mem_v2p(X) (X)
-//#define mem_2uncached(X) (X)
-//#define mem_2cached(X)   (X)
-
-//#define mem_p2v(X) ((((unsigned int)X)&0x0FFFFFFF)|0x40000000)
-//#define mem_v2p(X) ((((unsigned int)X)&0x0FFFFFFF))
-#define mem_2uncached(X) ((((unsigned int)X)&0x0FFFFFFF)|0x40000000)
-#define mem_2cached(X)   ((((unsigned int)X)&0x0FFFFFFF))
 
 
 

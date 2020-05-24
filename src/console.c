@@ -15,7 +15,7 @@ void cout( const char* str )
  */
 void cout_endl()
 {
-	cout("\x0D"); //cout("\n");
+	cout("\r\n"); //cout("\x0D"); //cout("\n");
 }
 
 /** Outputs a 32-bits integer to UART as hexadecimal 0xXXXXXXXXX string.
@@ -40,32 +40,20 @@ void cout_d( unsigned int val )
     char buffer[32]; // = {0}; // generates a call to memset, avoid
     unsigned int i = 0;
     unsigned int t;
-    for (i = 0 ; i < 32 ; i++) buffer[i]=0;
 
     if(val == 0)
     {
-        buffer[0] = '0';
-        buffer[1] = '\0';
-        cout(buffer);
+        uart_write('0');
         return;
     }   
-
-    cout( buffer );
 
     while(val!=0)
     {
         buffer[i++] = val%10+'0';
         val=val/10;
     }
-
-    buffer[i] = '\0';
-
-    for(t = 0; t < i/2; t++)
-    {
-        buffer[t] ^= buffer[i-t-1];
-        buffer[i-t-1] ^= buffer[t];
-        buffer[t] ^= buffer[i-t-1];
-    }
-
-    cout(buffer);
+    
+    // Reverse number
+    for (t=i;t>0;t--)
+        uart_write(buffer[t-1]);
 }

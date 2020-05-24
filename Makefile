@@ -1,9 +1,19 @@
 
+RPI ?= 1
+
 ARMGNU ?= arm-none-eabi
-CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard
+ifeq ($(strip $(RPI)),1)
+CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -march=armv6j -mtune=arm1176jzf-s -DRPI=1
+else ifeq ($(strip $(RPI)),2)
+CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -march=armv7-a -mtune=cortex-a7 -DRPI=2
+else ifeq ($(strip $(RPI)),3)
+CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -march=armv8-a -mtune=cortex-a53 -DRPI=3
+else
+CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -march=armv8-a -mtune=cortex-a53 -DRPI=4
+endif
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pigfx.o uart.o irq.o utils.o framebuffer.o postman.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o binary_assets.o
+OOB = asm.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o binary_assets.o
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -26,7 +36,16 @@ run: pigfx.elf
 	./launch_qemu.bash
 
 kernel: pigfx.img
-	cp pigfx.img bin/kernel.img
+	@if [ $(RPI) == 1 ]; then \
+		cp pigfx.img bin/kernel.img; \
+	elif [ $(RPI) == 2 ]; then \
+		cp pigfx.img bin/kernel7.img; \
+	elif [ $(RPI) == 3 ]; then \
+		cp pigfx.img bin/kernel8-32.img; \
+	else \
+		cp pigfx.img bin/kernel7l.img; \
+	fi;
+
 
 debug: pigfx.elf
 	cd JTAG && ./run_gdb.sh

@@ -2,6 +2,10 @@
 
 Versions and modifications.
 
+## Version 1.2.0 - 2020 May 19th
+
+* Working on all Raspberry Pi's generation 1, 2 and 3 including the PiZero and PiZero W
+
 ## Version 1.1.5 - 2020 May 9th
 
 * Reimplemented timer functions in c

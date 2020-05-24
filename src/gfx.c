@@ -5,8 +5,10 @@
 #include "console.h"
 #include "dma.h"
 #include "utils.h"
+#include "timer.h"
+#include "nmalloc.h"
 #include "ee_printf.h"
-#include <stdlib.h>
+#include "mbox.h"
 
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
@@ -37,7 +39,7 @@ typedef struct {
     unsigned int W;						/// Screen pixel width
     unsigned int H;						/// Screen pixel height
     unsigned int bpp;					/// Bits depth
-    unsigned int Pitch;					/// Number of bytes for one line (TODO:)
+    unsigned int Pitch;					/// Number of bytes for one line
     unsigned int size;					/// Number of bytes in the framebuffer
     unsigned char* pfb;					/// Framebuffer address
     DRAWING_MODE mode;					/// Drawing mode: normal, xor, transparent
@@ -210,11 +212,11 @@ void gfx_compute_font()
 	ctx.cursor_buffer_size = ctx.term.FONTWIDTH * ctx.term.FONTHEIGHT;
 	if (ctx.cursor_buffer)
 	{
-		free(ctx.cursor_buffer);
+		nmalloc_free((void**)&ctx.cursor_buffer);
 		ctx.cursor_buffer = 0;
 		ctx.cursor_buffer_ready = 0;
 	}
-	ctx.cursor_buffer = (unsigned char*)malloc(ctx.cursor_buffer_size);
+	ctx.cursor_buffer = (unsigned char*)nmalloc_malloc(ctx.cursor_buffer_size);
 	local_memset(ctx.cursor_buffer, 0, ctx.cursor_buffer_size);
 
 	// set logical terminal size
@@ -224,7 +226,7 @@ void gfx_compute_font()
 }
 
 /** Sets the display variables. This is called by initialize_framebuffer when setting mode.
- * Default to 8x8 font if no other font was selected before.
+ * Default to 8x16 font if no other font was selected before.
  * @param p_framebuffer Framebuffer address as given by DMA
  * @param width Pixel width
  * @param height Pixel height
@@ -235,8 +237,11 @@ void gfx_compute_font()
 void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, unsigned int bpp, unsigned int pitch, unsigned int size )
 {
     dma_init();
+    
+    // Set ctx memory to 0
+    local_memset(&ctx, 0, sizeof(ctx));
 
-    // set default font if needed
+    // set default font
     if (ctx.term.FONT == 0) {
     	gfx_term_set_font(8,16);
     }
@@ -259,6 +264,7 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     // set default colors
     gfx_set_fg(15);
     gfx_set_bg(0);
+    
     gfx_term_render_cursor();
 }
 
@@ -268,7 +274,7 @@ void gfx_set_bg( GFX_COL col )
     ctx.bg = col;
     // fill precomputed 4 bytes integer
     unsigned char* p = (unsigned char*)&ctx.bg32;
-    for (size_t i = 0 ; i < sizeof ctx.fg32 ; i++)
+    for (size_T i = 0 ; i < sizeof ctx.fg32 ; i++)
     	*(p++) = col;
 }
 
@@ -278,7 +284,7 @@ void gfx_set_fg( GFX_COL col )
     ctx.fg = col;
     // fill precomputed 4 bytes integer
     unsigned char* p = (unsigned char*)&ctx.fg32;
-    for (size_t i = 0 ; i < sizeof ctx.fg32 ; i++)
+    for (size_T i = 0 ; i < sizeof ctx.fg32 ; i++)
     	*(p++) = col;
 }
 
@@ -397,7 +403,7 @@ draw_putsprite_fun (*gfx_put_sprite) = gfx_put_sprite_NORMAL;
 void gfx_clear()
 {
 #if ENABLED(GFX_USE_DMA)
-    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    unsigned int* BG = (unsigned int*)mem_arm2vc( (unsigned int)mem_buff_dma );
     // Fill the 16 bytes of dma buffer with background color
     *BG = ctx.bg32;
     *(BG+1) = *BG;
@@ -423,7 +429,7 @@ void gfx_clear()
 /** TODO: */
 void gfx_scroll_down_dma( unsigned int npixels )
 {
-    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    unsigned int* BG = (unsigned int*)mem_arm2vc( (unsigned int)mem_buff_dma );
     const unsigned int bg = ctx.bg32;
     *BG = bg;
     *(BG+1) = bg;
@@ -486,10 +492,10 @@ void gfx_scroll_up( unsigned int npixels )
 /** TODO: comments */
 void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
-    unsigned int* FG = (unsigned int*)mem_2uncached( mem_buff_dma )+4;
+    unsigned int* FG = (unsigned int*)mem_arm2vc( (unsigned int)mem_buff_dma )+4;
     const unsigned int fg = ctx.fg32;
     unsigned int* PFG = FG;
-    for (size_t i = 0 ; i < sizeof ctx.fg32 ; i++)
+    for (size_T i = 0 ; i < sizeof ctx.fg32 ; i++)
     	*(PFG++) = fg;
 
     dma_enqueue_operation( FG, 
@@ -980,12 +986,17 @@ void gfx_term_save_cursor_content()
 */
 void gfx_term_render_cursor()
 {
+    
     unsigned char* pb = ctx.cursor_buffer;
+    //cout("pb: "); cout_h((unsigned int)pb);cout_endl();
     unsigned char* pfb = (unsigned char*)PFB(
     		ctx.term.cursor_col * ctx.term.FONTWIDTH,
     		ctx.term.cursor_row * ctx.term.FONTHEIGHT );
+    //cout("pfb: "); cout_h((unsigned int)pfb);cout_endl();
     const unsigned int byte_stride = ctx.Pitch - ctx.term.FONTWIDTH;//$$ adjust if not 8 width?
+    //cout("byte_stride: "); cout_d(byte_stride);  cout(" pitch: "); cout_d(ctx.Pitch); cout(" FONTWIDTH: "); cout_d(ctx.term.FONTWIDTH);cout_endl();
     unsigned int h = ctx.term.FONTHEIGHT;
+    //cout("h: "); cout_d(h);cout_endl();
 
     if( ctx.term.cursor_visible )
         while(h--)
@@ -1094,7 +1105,7 @@ void gfx_term_putstring( const char* str )
             gfx_restore_cursor_content();
             --ctx.term.cursor_row;
 
-            gfx_scroll_down_dma(ctx.term.FONTHEIGHT);
+            gfx_scroll_down(ctx.term.FONTHEIGHT);
             gfx_term_render_cursor_newline_dma();
             dma_execute_queue();
         }
@@ -1230,6 +1241,8 @@ void gfx_term_set_font(int width, int height)
 			gfx_compute_font();
 			break;
 		}
+		//cout("ctx.term.FONTWIDTH: ");cout_d(ctx.term.FONTWIDTH);cout_endl();
+        //cout("ctx.term.FONTHEIGHT: ");cout_d(ctx.term.FONTHEIGHT);cout_endl();
 	}
 }
 

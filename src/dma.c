@@ -1,8 +1,8 @@
 #include "dma.h"
 #include "utils.h"
+#include "mbox.h"
 
 
-#define DMA_BASE 0x20007000
 #define DMA_CS_OFFSET        0x00
 #define DMA_CONBLK_AD_OFFSET 0x01
 // https://www.raspberrypi.org/forums/viewtopic.php?f=72&t=10276
@@ -36,7 +36,7 @@ int dma_enqueue_operation( unsigned int* src, unsigned int *dst, unsigned int le
     if( curr_blk == 16 )
         return 0;
 
-    DMA_Control_Block* blk = (DMA_Control_Block*)mem_2uncached( &( ctr_blocks[ curr_blk ]) );
+    DMA_Control_Block* blk = (DMA_Control_Block*)mem_arm2vc( (unsigned int)&( ctr_blocks[ curr_blk ]) );
     blk->TI = TRANSFER_INFO;
     blk->SOURCE_AD = (unsigned int)src;
     blk->DEST_AD = (unsigned int)dst;
@@ -65,7 +65,7 @@ void dma_execute_queue()
 
     // Set the first control block
     unsigned int channel = 0;
-    *( (volatile unsigned int*)DMA_BASE + (channel << 6) + DMA_CONBLK_AD_OFFSET ) = mem_2uncached( &(ctr_blocks[0]) );
+    *( (volatile unsigned int*)DMA_BASE + (channel << 6) + DMA_CONBLK_AD_OFFSET ) = mem_arm2vc( (unsigned int)&(ctr_blocks[0]) );
 
     // Start the operation
     *( (volatile unsigned int*)DMA_BASE + (channel << 6) + DMA_CS_OFFSET  ) = 7;

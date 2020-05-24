@@ -18,17 +18,10 @@ FB_INVALID_PITCH          = 0x6
 extern FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w, unsigned int vrt_h,
                                unsigned int bpp, void** pp_fb, unsigned int* pfbsize, unsigned int* pPitch );
 extern FB_RETURN_TYPE fb_release();
+FB_RETURN_TYPE fb_get_phys_res(unsigned int* pRes_w, unsigned int* pRes_h);
 extern FB_RETURN_TYPE fb_set_grayscale_palette();
 extern FB_RETURN_TYPE fb_set_xterm_palette();
-extern FB_RETURN_TYPE fb_blank_screen( unsigned int blank );
-extern FB_RETURN_TYPE fb_get_pitch( unsigned int* pPitch );
-extern FB_RETURN_TYPE fb_set_depth( unsigned int* pDepth );
-extern FB_RETURN_TYPE fb_get_virtual_buffer_size( unsigned int* pVWidth, unsigned int* pVHeight );
-extern FB_RETURN_TYPE fb_get_phisical_buffer_size( unsigned int* pWidth, unsigned int* pHeight );
-extern FB_RETURN_TYPE fb_set_phisical_buffer_size( unsigned int* pWidth, unsigned int* pHeight );
-extern FB_RETURN_TYPE fb_set_virtual_offset( unsigned int pX, unsigned int pY );
-extern FB_RETURN_TYPE fb_set_virtual_buffer_size( unsigned int* pWidth, unsigned int* pHeight );
-extern FB_RETURN_TYPE fb_allocate_buffer( void** ppBuffer, unsigned int* pBufferSize );
+FB_RETURN_TYPE fb_get_pitch( unsigned int* pPitch );
 
 
 #endif

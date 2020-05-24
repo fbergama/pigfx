@@ -1,3 +1,4 @@
 [submodule "uspi"]
 	path = uspi
 	url = https://github.com/rsta2/uspi.git
+	branch = develop

@@ -23,7 +23,12 @@ BUILD_VERSION = $(shell git describe --all --long | cut -d "-" -f 3)
 OBJS=$(patsubst %.o,$(BUILD_DIR)/%.o,$(OOB))
 
 LIBGCC=$(shell $(ARMGNU)-gcc -print-libgcc-file-name)
+
+ifeq ($(strip $(RPI)),4)
+LIBUSPI=
+else
 LIBUSPI=uspi/lib/libuspi.a
+endif
 
 all: pigfx.elf pigfx.hex kernel 
 	ctags src/

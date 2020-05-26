@@ -45,6 +45,7 @@ volatile unsigned int last_backspace_t;
 #endif
 
 
+#if RPI<4
 static void _keypress_handler(const char* str )
 {
     const char* c = str;
@@ -97,6 +98,7 @@ static void _keypress_handler(const char* str )
     }
 
 }
+#endif
 
 
 static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
@@ -349,7 +351,9 @@ void term_main_loop()
     {
         //usleep(100000 );
         timer_poll();       // ActLed working while waiting for data
+#if RPI<4
         if (usbKeyboardFound) USPiKeyboardUpdateLEDs();
+#endif
     }
     /**/
 
@@ -387,7 +391,9 @@ void term_main_loop()
         
         timer_poll();
         
+#if RPI<4
         if (usbKeyboardFound) USPiKeyboardUpdateLEDs();
+#endif
     }
 
 }
@@ -419,13 +425,14 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
         uart_init(1);
     
     
-    
-    /*cout("Hello from the debug console\r\n");
+#if RPI==4
+    cout("Hello from the debug console\r\n");
     cout("Booting on Raspberry Pi ");
     cout(board_model(raspiBoard.model));
     cout(", ");
     cout(board_processor(raspiBoard.processor));
-    cout("\r\n");*/
+    cout("\r\n");
+#endif
     
     // Where is the Act LED?
     led_init(raspiBoard);
@@ -498,6 +505,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     ee_printf(board_processor(raspiBoard.processor));
     ee_printf("\n");
     
+#if RPI<4
     gfx_set_bg(BLUE);
     gfx_set_fg(YELLOW);
     ee_printf("Initializing USB:\n");
@@ -529,6 +537,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     	gfx_set_fg(RED);
     	ee_printf("USB initialization failed.\n");
     }
+#endif
 
 #if ENABLED(RC2014)
     gfx_set_drawing_mode(drawingTRANSPARENT);

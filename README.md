@@ -34,7 +34,7 @@ expect that more functionalities will be added from time to time.
 PiGFX should be working on all Pi models from generation 1 to generation 3. It's tested on the following models:
 
 - Pi Zero
-- Pi Zero W (UART works quite bad)
+- Pi Zero W
 - Pi B
 - Pi B+
 - Pi 2B
@@ -53,6 +53,8 @@ Here is a preliminary TODO list of what I plan to add in the future:
 - Load bitmap fonts directly from the SD card
 - Load configuration from SD card
 - Implement a 8bit interface
+- Support for PS/2 keyboard
+- Support for USB / PS/2 Mouse
 
 ## How to run
 
@@ -67,7 +69,8 @@ the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot).
 
 3. Copy ```bin/config.txt``` to the root of the SD card. Edit the file and set your
    desired baudrate. Unfortunately the baudrate for Pi Zero W and Pi 3 is fixed at
-   115200 baud until PiGFX learns to read a config file.
+   115200 baud until PiGFX learns to read a config file. The settings in config.txt
+   will have no effect on these models.
 
 4. Insert the card and reboot the Pi.
 

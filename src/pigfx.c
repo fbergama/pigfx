@@ -21,6 +21,7 @@
 
 
 unsigned int led_status = 0;
+unsigned char usbKeyboardFound = 0;
 volatile unsigned int* pUART0_DR;
 volatile unsigned int* pUART0_ICR;
 volatile unsigned int* pUART0_IMSC;
@@ -116,7 +117,7 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
 }
 
 
-void uart0_fill_queue( __attribute__((unused)) void* data )
+void uart_fill_queue( __attribute__((unused)) void* data )
 {
     while( !( *pUART0_FR & 0x10 ))
     {
@@ -137,58 +138,23 @@ void uart0_fill_queue( __attribute__((unused)) void* data )
     *pUART0_ICR = 0xFFFFFFFF;
 }
 
-void uart1_fill_queue( __attribute__((unused)) void* data )
-{
-    unsigned int rb,rc;
-    while(1)
-    {
-        rb = R32(AUX_MU_IIR_REG);
-        if ((rb & 1) == 1) break; //no more interrupts
-        if ((rb & 6) == 4)
-        {
-            //receiver holds a valid byte
-            rc=R32(AUX_MU_IO_REG); //read byte from rx fifo
-            *uart_buffer_end++ = rc&0xFF;
-            if( uart_buffer_end >= uart_buffer_limit )
-            uart_buffer_end = uart_buffer; 
-
-            if( uart_buffer_end == uart_buffer_start )
-            {
-                uart_buffer_start++;
-                if( uart_buffer_start >= uart_buffer_limit )
-                    uart_buffer_start = uart_buffer; 
-            }
-        }
-    }
-}
-
 
 void initialize_uart_irq()
 {
     uart_buffer_start = uart_buffer_end = uart_buffer;
     uart_buffer_limit = &( uart_buffer[ UART_BUFFER_SIZE ] );
 
-    if (actUart == 0)
-    {
-        pUART0_DR   = (volatile unsigned int*)UART0_DR;
-        pUART0_IMSC = (volatile unsigned int*)UART0_IMSC;
-        pUART0_ICR = (volatile unsigned int*)UART0_ICR;
-        pUART0_FR   = (volatile unsigned int*)UART0_FR;
+    pUART0_DR   = (volatile unsigned int*)UART0_DR;
+    pUART0_IMSC = (volatile unsigned int*)UART0_IMSC;
+    pUART0_ICR = (volatile unsigned int*)UART0_ICR;
+    pUART0_FR   = (volatile unsigned int*)UART0_FR;
 
-        *pUART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
-        *pUART0_ICR = 0xFFFFFFFF; // Clear UART0 interrupts
+    *pUART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
+    *pUART0_ICR = 0xFFFFFFFF; // Clear UART0 interrupts
 
-        pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
-        irq_attach_handler( 57, uart0_fill_queue, 0 );
-        enable_irq();
-    }
-    else
-    {
-        W32(AUX_MU_IER_REG,13);  // enable rx interrupts
-        pIRQController->Enable_IRQs_1 = RPI_AUX_INTERRUPT_IRQ;
-        irq_attach_handler( 29, uart1_fill_queue, 0 );
-        enable_irq();
-    }
+    pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
+    irq_attach_handler( 57, uart_fill_queue, 0 );
+    enable_irq();
 }
 
 
@@ -376,17 +342,14 @@ void video_line_test(int maxloops)
 
 void term_main_loop()
 {
-    if (actUart == 0)
-        ee_printf("Waiting for UART data (%d,8,N,1)\n",uart0_get_baudrate());
-    else
-        ee_printf("Waiting for UART data (115200,8,N,1)\n");
+    ee_printf("Waiting for UART data (%d,8,N,1)\n",uart_get_baudrate());
 
     /**/
     while( uart_buffer_start == uart_buffer_end )
     {
         //usleep(100000 );
         timer_poll();       // ActLed working while waiting for data
-        USPiKeyboardUpdateLEDs();
+        if (usbKeyboardFound) USPiKeyboardUpdateLEDs();
     }
     /**/
 
@@ -420,12 +383,11 @@ void term_main_loop()
             gfx_term_putstring( strb );
         }
 
-        if (actUart == 0) uart0_fill_queue(0);
-        else uart1_fill_queue(0);
+        uart_fill_queue(0);
         
         timer_poll();
         
-        USPiKeyboardUpdateLEDs();
+        if (usbKeyboardFound) USPiKeyboardUpdateLEDs();
     }
 
 }
@@ -449,14 +411,14 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     // Get informations about the board we are booting
     boardRevision = prop_revision();
     raspiBoard = board_info(boardRevision);
-    // Do we use UART0 or UART1?
-    // Newer Models with Bluetooth use Uart1 on the GPIOs because UART0 is used for Bluetooth
+    // Do we need to set UART speed?
+    // RPI Zero W and RPI3 cannot be set by config.txt
     if ((raspiBoard.model < BOARD_MODEL_3B) || (raspiBoard.model == BOARD_MODEL_ZERO))
-        actUart = 0;
+        uart_init(0);
     else
-        actUart = 1;
+        uart_init(1);
     
-    uart_init();
+    
     
     /*cout("Hello from the debug console\r\n");
     cout("Booting on Raspberry Pi ");
@@ -551,6 +513,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
         {
             USPiKeyboardRegisterKeyPressedHandler( _keypress_handler );
             gfx_set_fg(GREEN);
+            usbKeyboardFound = 1;
             ee_printf("Keyboard found.\n");
             gfx_set_fg(GRAY);
         }

@@ -4,70 +4,83 @@
 #include "console.h"
 #include "gpio.h"
 #include "uart.h"
+#include "ee_printf.h"
+#include "mbox.h"
 
-unsigned char actUart;
-
-// Loop <delay> times in a way that the compiler won't optimize away
-static inline void delay(unsigned int count)
-{
-	asm volatile("__delay_%=: subs %[count], %[count], #1; bne __delay_%=\n"
-		 : "=r"(count): [count]"0"(count) : "cc");
-}
-
-void uart_init(void)
+void uart_init(unsigned char configSpeed)
 {
     // set TX to use no resistor, RX to use pull-up resistor
     gpio_setpull(14, GPIO_PULL_OFF);    //set resistor state for pin 14 - TX -> no resistor
     gpio_setpull(15, GPIO_PULL_UP);     //set resistor state for pin 15 - RX -> pull up
     
-    if (actUart == 1)
+    W32(AUX_ENABLES,0);     // Disable Mini Uart
+        
+    gpio_select(14, GPIO_FUNCTION_0);       // Uart0
+    gpio_select(15, GPIO_FUNCTION_0);       // Uart0
+    
+    // Disable UART0:
+    // clear UART0_CR = UART0_BASE + 0x30;
+    W32(UART0_CR, 0);
+    
+    if (configSpeed == 1)
     {
-        // USE UART1, because Bluetooth uses UART0
-        W32(AUX_ENABLES,1);     // Enable Mini Uart
-        W32(AUX_MU_IER_REG,0);  // Clear FIFO interrupts
-        W32(AUX_MU_CNTL_REG,0); // Disable Extra control functions
-        W32(AUX_MU_LCR_REG,3);  // Set Uart to 8-bit mode
-        W32(AUX_MU_MCR_REG,0);
-        W32(AUX_MU_IIR_REG,0xC7);   // disable interrupts, reset FIFO
-        W32(AUX_MU_BAUD_REG,270);   // baudrate 115200 TODO cannot be set from config.txt for now       // baudrate = 250MHz / (8* (baud_reg + 1))
-        W32(AUX_MU_IER_REG,13);  // enable rx interrupts
+        typedef struct {
+            mbox_msgheader_t header;
+            mbox_tagheader_t tag;
         
-        gpio_select(14, GPIO_FUNCTION_5);
-        gpio_select(15, GPIO_FUNCTION_5);
+            union {
+                struct {
+                    unsigned int clock_id;
+                    unsigned int rate;  // hz
+                    unsigned int skip_turbo;
+                }
+                request;
+                struct {
+                    unsigned int clock_id;
+                    unsigned int rate;  // hz
+                }
+                response;
+            }
+            value;
+
+            mbox_msgfooter_t footer;
+        }
+        message_t;
+
+        message_t msg __attribute__((aligned(16)));
+
+        msg.header.size = sizeof(msg);
+        msg.header.code = 0;
+        msg.tag.id = MAILBOX_TAG_SET_CLOCK_RATE; // Get board serial.
+        msg.tag.size = sizeof(msg.value);
+        msg.tag.code = 0;
+        msg.value.request.clock_id = 2;     // UART Clock
+        msg.value.request.rate = 48000000;     // 48 MHz
+        msg.value.request.skip_turbo = 0;     // don't need this
+        msg.footer.end = 0;
+
+        if (mbox_send(&msg) != 0) {
+            // oops
+        }
         
-        W32(AUX_MU_CNTL_REG,3); // enable Tx, Rx
+        W32(UART0_IBRD, 26);    // 115200
+        W32(UART0_FBRD, 3);     // 115200
     }
-    else {
-        // Standard UART0 RPI1/2
-        // Disable UART0:
-        // clear UART0_CR = UART0_BASE + 0x30;
-        W32(UART0_CR, 0);
-        // Clear UART0 interrupts:
-        // clear UART0_ICR = UART0_BASE + 0x44;
-        W32(UART0_ICR, 0xFFFFFFFF);
-        // Set 8bit (bit 6-5=1), no parity (bit 7=0), FIFO enable (bit 4=1)
-        W32(UART0_LCRH, 0x70);
-        // Enable TX(bit9) RX(bit8) and UART0(bit0)
-        W32(UART0_CR, (1 << 0) | (1 << 8) | (1 << 9));
-    }
+
+    // Clear UART0 interrupts:
+    // clear UART0_ICR = UART0_BASE + 0x44;
+    W32(UART0_ICR, 0xFFFFFFFF);
+    // Set 8bit (bit 6-5=1), no parity (bit 7=0), FIFO enable (bit 4=1)
+    W32(UART0_LCRH, 0x70);
+    // Enable TX(bit9) RX(bit8) and UART0(bit0)
+    W32(UART0_CR, (1 << 0) | (1 << 8) | (1 << 9));
 }
 
 void uart_write(const char ch )
 {
     // Wait for UART to become ready to transmit.
-    if (actUart == 1)
-    {
-        while(1)
-        {
-            if(R32(AUX_MU_LSR_REG)&(1 << 5)) break;
-        }
-        W32(AUX_MU_IO_REG, ch);
-    }
-    else
-    {
-        while ( R32(UART0_FR) & (1 << 5) ) { }
-        W32(UART0_DR, ch);
-    }
+    while ( R32(UART0_FR) & (1 << 5) ) { }
+    W32(UART0_DR, ch);
 }
 
 void uart_write_str(const char* data)
@@ -115,7 +128,7 @@ void uart_dump_mem(unsigned char* start_addr, unsigned char* end_addr)
     uart_write_str("\r\n");
 }
 
-unsigned int uart0_get_baudrate()
+unsigned int uart_get_baudrate()
 {
     // This only works with a non Bluetooth model, so not for Pi Zero W, 3, 4
     // Default UART Clock is 48 MHz unless otherwise configured

@@ -2,6 +2,11 @@
 
 Versions and modifications.
 
+## Version 1.2.1 - 2020 May 26th
+
+* Always use UART0 for all models
+* Bugfix with keyboard LEDs (error if no keyboard found)
+
 ## Version 1.2.0 - 2020 May 19th
 
 * Working on all Raspberry Pi's generation 1, 2 and 3 including the PiZero and PiZero W

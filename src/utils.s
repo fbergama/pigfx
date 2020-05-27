@@ -44,6 +44,7 @@ membarrier:
     bx lr*/
 
 
+    /*
 ;@ strlen
 .global strlen
 strlen:
@@ -59,7 +60,7 @@ strlen:
     b 1b
 2:
     pop {r1,r2}
-    bx lr
+    bx lr*/
 
 
 ;@ strcmp
@@ -69,7 +70,7 @@ strlen:
 ;@  0 if the two strings are equal
 ;@    a negative number if s1<s2
 ;@    a positive number otherwise
-.global strcmp
+/*.global strcmp
 strcmp:
     push {r2,r3}
 
@@ -89,7 +90,7 @@ strcmp:
 1:
     sub r0, r2, r3
     pop {r2,r3}
-    bx lr
+    bx lr*/
 
 
 ;@ byte2hexstr

@@ -122,4 +122,9 @@
 // Interrupt Controller
 #define INTERRUPT_BASE     (PERIPHERAL_BASE+0xB200)    // 0x??00B200
 
+//
+// External Mass Media Controller (SD Card)
+//
+#define EMMC_BASE		(PERIPHERAL_BASE+0x300000)   // 0x??300000
+
 #endif      //PERI_H

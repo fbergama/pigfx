@@ -14,6 +14,7 @@
 #include "board.h"
 #include "mbox.h"
 #include "actled.h"
+#include "emmc.h"
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
@@ -546,6 +547,12 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     gfx_set_drawing_mode(drawingNORMAL);
     gfx_set_fg(GRAY);
+    
+    struct block_device *sd_dev = 0;
+    if(sd_card_init(&sd_dev) == 0)
+    {
+        ee_printf("SD card init ok.\n");
+    }
 
     term_main_loop();
 }

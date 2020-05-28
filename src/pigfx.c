@@ -2,6 +2,7 @@
 #include "pigfx_config.h"
 #include "uart.h"
 #include "utils.h"
+#include "c_utils.h"
 #include "timer.h"
 #include "console.h"
 #include "gfx.h"
@@ -15,6 +16,8 @@
 #include "mbox.h"
 #include "actled.h"
 #include "emmc.h"
+#include "mbr.h"
+#include "fat.h"
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
@@ -552,6 +555,56 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     if(sd_card_init(&sd_dev) == 0)
     {
         ee_printf("SD card init ok.\n");
+        if ((read_mbr(sd_dev, (void*)0, (void*)0)) == 0)
+        {
+            ee_printf("MBR read ok.\n");
+            struct fs * filesys = sd_dev->fs;
+            if (filesys == 0) ee_printf("Error reading filesystem\n");
+            else
+            {
+                // loading root dir
+                char* myfilename = 0;
+                //ee_printf("looking for %s\n", myfilename);
+                struct dirent *direntry = filesys->read_directory(filesys, &myfilename);
+                if (direntry == 0) ee_printf("Error reading root directory\n");
+                else
+                {
+                    struct dirent * configfileentry = 0;
+                    while(1)
+                    {
+                        // look for pigfx.txt
+                        if (pigfx_strcmp("pigfx.txt", direntry->name) == 0)
+                        {
+                            ee_printf("pigfx.txt found\n");
+                            configfileentry = direntry;
+                            break;
+                        }
+                        if (direntry->next) direntry = direntry->next;
+                        else break;
+                    }
+                    if (configfileentry == 0) ee_printf("pigfx.txt not found\n");
+                    else
+                    {
+                        // read config file
+                        FILE *configfile = filesys->fopen(filesys, configfileentry, "r");
+                        if (configfile == 0) ee_printf("error opening pigfx.txt\n");
+                        else
+                        {
+                            ee_printf("pigfx.txt is %d bytes\n", configfile->len);
+                            char* cfgfiledata = nmalloc_malloc(configfile->len+1);
+                            cfgfiledata[configfile->len] = 0;       // to be sure that this has a stringend somewhere
+                            if (filesys->fread(filesys, cfgfiledata, configfile->len, configfile))
+                            {
+                                ee_printf(cfgfiledata);
+                                ee_printf("\n");
+                            }
+                            
+                        }
+                    }
+
+                }
+            }
+        }
     }
 
     term_main_loop();

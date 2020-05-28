@@ -2,6 +2,7 @@
 #define _PIGFX_UTILS_H_
 
 #include <stdint.h>
+#include "block.h"
 
 extern void enable_irq();
 extern void disable_irq();
@@ -9,14 +10,14 @@ extern void disable_irq();
 extern void W32( unsigned int addr, unsigned int data );
 extern unsigned int R32( unsigned int addr );
 
+extern void *quick_memcpy(void *dest, void *src, size_t n);
+
 /**
  * String related
  */
 extern unsigned int hex2byte( unsigned char* addr );
 extern void byte2hexstr( unsigned char byte, char* outstr );
 extern void word2hexstr( unsigned int word, char* outstr );
-/*extern unsigned int strlen( char* str );
-extern int strcmp( char*s1, char* s2 );*/
 extern void dummy ( unsigned int );
 
 /*
@@ -67,6 +68,14 @@ static inline uint32_t read_word(const uint8_t *buf, int offset)
 	uint32_t b3 = buf[offset + 3] & 0xff;
 
 	return b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
+}
+
+static inline uint16_t read_halfword(uint8_t *buf, int offset)
+{
+	uint16_t b0 = buf[offset + 0] & 0xff;
+	uint16_t b1 = buf[offset + 1] & 0xff;
+
+	return b0 | (b1 << 8);
 }
 
 

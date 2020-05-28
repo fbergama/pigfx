@@ -18,6 +18,7 @@
 #include "emmc.h"
 #include "mbr.h"
 #include "fat.h"
+#include "config.h"
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
@@ -35,6 +36,8 @@ volatile char* uart_buffer;
 volatile char* uart_buffer_start;
 volatile char* uart_buffer_end;
 volatile char* uart_buffer_limit;
+
+tPiGfxConfig PiGfxConfig;
 
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
@@ -198,7 +201,6 @@ void initialize_framebuffer(unsigned int width, unsigned int height, unsigned in
 #endif
     }
 
-    //usleep(10000);
     gfx_set_env( p_fb, v_w, v_h, bpp, pitch, fbsize );
     gfx_set_drawing_mode(drawingNORMAL);
     gfx_term_set_tabulation(8);
@@ -421,22 +423,15 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     // Get informations about the board we are booting
     boardRevision = prop_revision();
     raspiBoard = board_info(boardRevision);
-    // Do we need to set UART speed?
-    // RPI Zero W and RPI3 cannot be set by config.txt
-    if ((raspiBoard.model < BOARD_MODEL_3B) || (raspiBoard.model == BOARD_MODEL_ZERO))
-        uart_init(0);
-    else
-        uart_init(1);
     
-    
-#if RPI==4
+/*#if RPI==4
     cout("Hello from the debug console\r\n");
     cout("Booting on Raspberry Pi ");
     cout(board_model(raspiBoard.model));
     cout(", ");
     cout(board_processor(raspiBoard.processor));
     cout("\r\n");
-#endif
+#endif*/
     
     // Where is the Act LED?
     led_init(raspiBoard);
@@ -457,8 +452,6 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(BLACK);
     gfx_set_fg(DARKGRAY);
-    
-    initialize_uart_irq();
 
     // draw possible colors:
     // 0-15 are primary colors
@@ -509,6 +502,25 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     ee_printf(board_processor(raspiBoard.processor));
     ee_printf("\n");
     
+    // Set default config
+    setDefaultConfig();
+    
+    gfx_set_bg(BLUE);
+    gfx_set_fg(YELLOW);
+    ee_printf("Initializing filesystem:\n");
+    gfx_set_bg(BLACK);
+    gfx_set_fg(GRAY);
+    // Try to load a config file
+    lookForConfigFile();
+    
+    // Do we need to set UART speed?
+    // RPI Zero W and RPI3 cannot be set by config.txt
+    if ((raspiBoard.model < BOARD_MODEL_3B) || (raspiBoard.model == BOARD_MODEL_ZERO))
+        uart_init(0);
+    else
+        uart_init(1);    
+    initialize_uart_irq();
+    
 #if RPI<4
     gfx_set_bg(BLUE);
     gfx_set_fg(YELLOW);
@@ -550,62 +562,6 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     gfx_set_drawing_mode(drawingNORMAL);
     gfx_set_fg(GRAY);
-    
-    struct block_device *sd_dev = 0;
-    if(sd_card_init(&sd_dev) == 0)
-    {
-        ee_printf("SD card init ok.\n");
-        if ((read_mbr(sd_dev, (void*)0, (void*)0)) == 0)
-        {
-            ee_printf("MBR read ok.\n");
-            struct fs * filesys = sd_dev->fs;
-            if (filesys == 0) ee_printf("Error reading filesystem\n");
-            else
-            {
-                // loading root dir
-                char* myfilename = 0;
-                //ee_printf("looking for %s\n", myfilename);
-                struct dirent *direntry = filesys->read_directory(filesys, &myfilename);
-                if (direntry == 0) ee_printf("Error reading root directory\n");
-                else
-                {
-                    struct dirent * configfileentry = 0;
-                    while(1)
-                    {
-                        // look for pigfx.txt
-                        if (pigfx_strcmp("pigfx.txt", direntry->name) == 0)
-                        {
-                            ee_printf("pigfx.txt found\n");
-                            configfileentry = direntry;
-                            break;
-                        }
-                        if (direntry->next) direntry = direntry->next;
-                        else break;
-                    }
-                    if (configfileentry == 0) ee_printf("pigfx.txt not found\n");
-                    else
-                    {
-                        // read config file
-                        FILE *configfile = filesys->fopen(filesys, configfileentry, "r");
-                        if (configfile == 0) ee_printf("error opening pigfx.txt\n");
-                        else
-                        {
-                            ee_printf("pigfx.txt is %d bytes\n", configfile->len);
-                            char* cfgfiledata = nmalloc_malloc(configfile->len+1);
-                            cfgfiledata[configfile->len] = 0;       // to be sure that this has a stringend somewhere
-                            if (filesys->fread(filesys, cfgfiledata, configfile->len, configfile))
-                            {
-                                ee_printf(cfgfiledata);
-                                ee_printf("\n");
-                            }
-                            
-                        }
-                    }
-
-                }
-            }
-        }
-    }
 
     term_main_loop();
 }

@@ -2,6 +2,9 @@
  * 
  * 
  * */
+#ifndef C_UTILS_H_
+#define C_UTILS_H_
+
 #include <stdint.h>
 #include "c_utils.h"
 #include "utils.h"
@@ -99,3 +102,4 @@ int pigfx_strcmp (const char *pString1, const char *pString2)
 	return 0;
 }
 
+#endif

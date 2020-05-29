@@ -102,4 +102,79 @@ int pigfx_strcmp (const char *pString1, const char *pString2)
 	return 0;
 }
 
+int isspace(int c)
+{
+	return (c == '\t' || c == '\n' ||
+	    c == '\v' || c == '\f' || c == '\r' || c == ' ' ? 1 : 0);
+}
+
+char *pigfx_strncpy (char *pDest, const char *pSrc, size_t nMaxLen)
+{
+	char *pResult = pDest;
+
+	while (nMaxLen > 0)
+	{
+		if (*pSrc == '\0')
+		{
+			break;
+		}
+
+		*pDest++ = *pSrc++;
+		nMaxLen--;
+	}
+
+	if (nMaxLen > 0)
+	{
+		*pDest = '\0';
+	}
+
+	return pResult;
+}
+
+char *strchr(const char *p, int ch)
+{
+	char c;
+
+	c = ch;
+	for (;; ++p) {
+		if (*p == c)
+			return ((char *)p);
+		if (*p == '\0')
+			return (0);
+	}
+	/* NOTREACHED */
+}
+
+int32_t atoi(const char *p)
+/* Copyright (c) 2000-2002 Opsycon AB  (www.opsycon.se) */
+{
+	int32_t digit, isneg;
+	int32_t value;
+
+	isneg = 0;
+	value = 0;
+	for (; isspace (*p); p++);	/* gobble up leading whitespace */
+
+	/* do I have a sign? */
+	if (*p == '-') {
+		isneg = 1;
+		p++;
+	}
+	else if (*p == '+')
+		p++;
+
+	for (; *p; p++) {
+		if (*p >= '0' && *p <= '9')
+			digit = *p - '0';
+		else
+			break;
+		value *= 10;
+		value += digit;
+	}
+
+	if (isneg)
+		value = 0 - value;
+	return (value);
+}
+
 #endif

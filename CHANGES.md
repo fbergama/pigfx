@@ -2,6 +2,11 @@
 
 Versions and modifications.
 
+## Version 1.3.0 - 2020 May 29th
+
+* Read a config file (no more compiling for your needs)
+* Baudrate can be set now for all Pi's before generation 4
+
 ## Version 1.2.1 - 2020 May 26th
 
 * Always use UART0 for all models

@@ -23,6 +23,8 @@
 #include <stdint.h>
 //#include <stddef.h>
 
+#define NULL 0
+
 typedef unsigned long	size_t;
 
 struct fs;

@@ -1,0 +1,16 @@
+;; This is the config file for PiGFX. Please don't delete any parameters or add new, unknown ones.
+
+[UART]
+baudrate = 9600             ; Baudrate for the UART interface, should work fine between 300 and 115200 baud
+
+[Input]
+useUsbKeyboard = 1          ; With this disabled, PiGFX will not load the uspi and look for a connected keyboard on any USB port
+sendCRLF = 0                ; With this enabled, the enter key on the connected keyboard will generate CRLF instead of LF only. CR has value 0x0D, LF has value 0x0A.
+replaceLFwithCR = 0         ; With this enabled, the enter key sends CR instead of LF. You should disable the sendCRLF option if you use this, otherwise it will send 2*CR.
+backspaceEcho = 0           ; Auto-echo the backspace char
+skipBackspaceEcho = 0       ; Skip the next incoming character after a backspace from keyboard
+swapDelWithBackspace = 1    ; Substitute DEL (0x7F) with BACKSPACE (0x08)
+
+[General]
+showRC2014Logo = 0          ; Show the RC2014 logo at startup
+ 

@@ -26,7 +26,7 @@ typed will be automatically sent to raspi UART Tx0 (pin 8, GPIO 14).
 
 *UPDATE*: (2018 Nov. by F. Pierot) Added display modes, fonts, tabulation set... See [2018 Nov. modifications](README_ADD.md).
 
-*UPDATE*: (2020 by Ch. Lehner) Added new graphic features and configurable baudrate. Fixed some bugs. Ported to Raspberry Pi 2 and 3.
+*UPDATE*: (2020 by Ch. Lehner) Added new graphic features and configurable baudrate. Fixed some bugs. Ported to Raspberry Pi 2 and 3. Also included the ability to read a config file ond the SC card.
 
 By now this is a work in progress with a minimum set of features implemented so
 expect that more functionalities will be added from time to time.
@@ -48,10 +48,10 @@ Here is a preliminary TODO list of what I plan to add in the future:
 - ✔ Add some more graphics primitives (circles, rectangles etc.)
 - ✔ Let the resolution being configurable without recompiling
 - ✔ Port to Raspberry Pi Generation 2/3
+- ✔ Load configuration from SD card
 - Implement some kind of sprite handling with collision detection
 - Implement double buffering
 - Load bitmap fonts directly from the SD card
-- Load configuration from SD card
 - Implement a 8bit interface
 - Support for PS/2 keyboard
 - Support for USB / PS/2 Mouse
@@ -67,10 +67,8 @@ format only 1 or 2 GB with FAT or FAT32.
    ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
 the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot).
 
-3. Copy ```bin/config.txt``` to the root of the SD card. Edit the file and set your
-   desired baudrate. Unfortunately the baudrate for Pi Zero W and Pi 3 is fixed at
-   115200 baud until PiGFX learns to read a config file. The settings in config.txt
-   will have no effect on these models.
+3. Copy ```bin/pigfx.txt``` to the root of the SD card. Edit the file for your
+   needs. If you have a config.txt on the SC card, delete it.
 
 4. Insert the card and reboot the Pi.
 
@@ -165,7 +163,8 @@ At this point, just run:
 $ ./makeall
 ```
 
-in the PiGFX root directory.
+in the PiGFX root directory. The project should compile with the 2019 version
+of the toolchain.
 
 
 
@@ -173,7 +172,7 @@ in the PiGFX root directory.
 
 The MIT License (MIT)
 
-Copyright (c) 2016 Filippo Bergamasco.
+Copyright (c) 2016-2020 Filippo Bergamasco.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

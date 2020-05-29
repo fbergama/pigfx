@@ -7,8 +7,11 @@
 #include "ee_printf.h"
 #include "mbox.h"
 
-void uart_init(unsigned char configSpeed)
+void uart_init(unsigned int baudrate)
 {
+    unsigned int ibrd = 0;
+    unsigned int fbrd = 0;
+    
     // set TX to use no resistor, RX to use pull-up resistor
     gpio_setpull(14, GPIO_PULL_OFF);    //set resistor state for pin 14 - TX -> no resistor
     gpio_setpull(15, GPIO_PULL_UP);     //set resistor state for pin 15 - RX -> pull up
@@ -22,50 +25,56 @@ void uart_init(unsigned char configSpeed)
     // clear UART0_CR = UART0_BASE + 0x30;
     W32(UART0_CR, 0);
     
-    if (configSpeed == 1)
-    {
-        typedef struct {
-            mbox_msgheader_t header;
-            mbox_tagheader_t tag;
-        
-            union {
-                struct {
-                    unsigned int clock_id;
-                    unsigned int rate;  // hz
-                    unsigned int skip_turbo;
-                }
-                request;
-                struct {
-                    unsigned int clock_id;
-                    unsigned int rate;  // hz
-                }
-                response;
+    // Set UART Clock to 48MHz
+    typedef struct {
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
+    
+        union {
+            struct {
+                unsigned int clock_id;
+                unsigned int rate;  // hz
+                unsigned int skip_turbo;
             }
-            value;
-
-            mbox_msgfooter_t footer;
+            request;
+            struct {
+                unsigned int clock_id;
+                unsigned int rate;  // hz
+            }
+            response;
         }
-        message_t;
+        value;
 
-        message_t msg __attribute__((aligned(16)));
-
-        msg.header.size = sizeof(msg);
-        msg.header.code = 0;
-        msg.tag.id = MAILBOX_TAG_SET_CLOCK_RATE; // Get board serial.
-        msg.tag.size = sizeof(msg.value);
-        msg.tag.code = 0;
-        msg.value.request.clock_id = 2;     // UART Clock
-        msg.value.request.rate = 48000000;     // 48 MHz
-        msg.value.request.skip_turbo = 0;     // don't need this
-        msg.footer.end = 0;
-
-        if (mbox_send(&msg) != 0) {
-            // oops
-        }
-        
-        W32(UART0_IBRD, 26);    // 115200
-        W32(UART0_FBRD, 3);     // 115200
+        mbox_msgfooter_t footer;
     }
+    message_t;
+
+    message_t msg __attribute__((aligned(16)));
+
+    msg.header.size = sizeof(msg);
+    msg.header.code = 0;
+    msg.tag.id = MAILBOX_TAG_SET_CLOCK_RATE; // Get board serial.
+    msg.tag.size = sizeof(msg.value);
+    msg.tag.code = 0;
+    msg.value.request.clock_id = 2;     // UART Clock
+    msg.value.request.rate = 48000000;     // 48 MHz
+    msg.value.request.skip_turbo = 0;     // don't need this
+    msg.footer.end = 0;
+
+    if (mbox_send(&msg) != 0) {
+        // oops
+    }
+    
+    // Divider ibrd example for 48MHZ and 9600 = 48000000 / (16 * 9600) = 312.5 = ~312.
+    // Fractional part register example for 48MHZ and 9600 = (.500 * 64) + 0.5 = 32.5 = ~32.
+    ibrd = msg.value.response.rate * 10/ (16*(baudrate/100));
+    fbrd = ibrd % 1000;
+    fbrd = (fbrd * 64 + 500) / 1000;
+    ibrd = ibrd / 1000;
+    
+    // Set baudrate
+    W32(UART0_IBRD, (unsigned int)ibrd);
+    W32(UART0_FBRD, fbrd);
 
     // Clear UART0 interrupts:
     // clear UART0_ICR = UART0_BASE + 0x44;
@@ -126,29 +135,4 @@ void uart_dump_mem(unsigned char* start_addr, unsigned char* end_addr)
         
     } while (start_addr<=end_addr);
     uart_write_str("\r\n");
-}
-
-unsigned int uart_get_baudrate()
-{
-    // This only works with a non Bluetooth model, so not for Pi Zero W, 3, 4
-    // Default UART Clock is 48 MHz unless otherwise configured
-    unsigned int ibrd = R32(UART0_IBRD);        // Divisor
-    unsigned int fbrd = R32(UART0_FBRD);        // Fractional part
-    unsigned int divider, baudrate;
-    unsigned int baud, multi;
-    
-    // Uart clock gets divided by 16. This is the base for further division
-    // 48 MHz divided by 16 is 3 MHz
-    // For example with a baudrate of 115200 the divider is 26, the fractional is 3. This is 26 + 3/64 = 26.046875
-    // divider = ibrd + fbrd / 64;
-    // as we don't want to use float, we multiply by 64
-    divider = ibrd*64 + fbrd;
-    baudrate = 3000000*64 / divider;
-    // this is the real baudrate (115176)
-    // now we add 150 for beeing able to calculate the configured baudrate by rounding down to the lower 300 step
-    baudrate += 150;
-    multi = (unsigned int)baudrate / 300;
-    baud = 300 * multi;     //115200*/
-    
-    return baud;
 }

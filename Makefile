@@ -13,7 +13,7 @@ CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreesta
 endif
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o binary_assets.o
+OOB = asm.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o block.o emmc.o c_utils.o mbr.o fat.o config.o ini.o binary_assets.o
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -23,7 +23,12 @@ BUILD_VERSION = $(shell git describe --all --long | cut -d "-" -f 3)
 OBJS=$(patsubst %.o,$(BUILD_DIR)/%.o,$(OOB))
 
 LIBGCC=$(shell $(ARMGNU)-gcc -print-libgcc-file-name)
+
+ifeq ($(strip $(RPI)),4)
+LIBUSPI=
+else
 LIBUSPI=uspi/lib/libuspi.a
+endif
 
 all: pigfx.elf pigfx.hex kernel 
 	ctags src/

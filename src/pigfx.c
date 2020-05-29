@@ -2,6 +2,7 @@
 #include "pigfx_config.h"
 #include "uart.h"
 #include "utils.h"
+#include "c_utils.h"
 #include "timer.h"
 #include "console.h"
 #include "gfx.h"
@@ -14,6 +15,10 @@
 #include "board.h"
 #include "mbox.h"
 #include "actled.h"
+#include "emmc.h"
+#include "mbr.h"
+#include "fat.h"
+#include "config.h"
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
@@ -32,71 +37,58 @@ volatile char* uart_buffer_start;
 volatile char* uart_buffer_end;
 volatile char* uart_buffer_limit;
 
+tPiGfxConfig PiGfxConfig;
+
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
 
-#if ENABLED(RC2014)
 extern unsigned char G_STARTUP_LOGO;
-#endif
 
-#if ENABLED(SKIP_BACKSPACE_ECHO)
 volatile unsigned int backspace_n_skip;
 volatile unsigned int last_backspace_t;
-#endif
 
 
+#if RPI<4
 static void _keypress_handler(const char* str )
 {
     const char* c = str;
-#if ENABLED(SEND_CR_LF)
     char CR = 13;
-#endif
 
     while( *c )
     {
-         char ch = *c;
-         //ee_printf("CHAR 0x%x\n",ch );
+        char ch = *c;
 
-#if ENABLED(SEND_CR_LF)
-        if( ch == 10 )
+        if ((PiGfxConfig.sendCRLF) && (ch == 10))
         {
             // Send CR first
             uart_write( CR );
-
         }
-#endif
 
-#if ENABLED(SEND_CR_ONLY)
-	if( ch == 10 )
-	{
-		ch = 13;
-	}
-#endif
+        if ((PiGfxConfig.replaceLFwithCR) && (ch == 10))
+        {
+            ch = CR;
+        }
 
-#if ENABLED( SWAP_DEL_WITH_BACKSPACE )
-        if( ch == 0x7F ) 
+        if ((PiGfxConfig.swapDelWithBackspace) && (ch == 0x7F))
         {
             ch = 0x8;
         }
-#endif
 
-#if ENABLED( BACKSPACE_ECHO )
-        if( ch == 0x8 )
+        if ((PiGfxConfig.backspaceEcho) && (ch == 0x8))
             gfx_term_putstring( "\x7F" );
-#endif
 
-#if ENABLED(SKIP_BACKSPACE_ECHO)
-        if( ch == 0x7F )
+        if ((PiGfxConfig.skipBackspaceEcho) && (ch == 0x7F))
         {
             backspace_n_skip = 2;
             last_backspace_t = time_microsec();
         }
-#endif
+        
         uart_write( ch ); 
         ++c;
     }
 
 }
+#endif
 
 
 static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
@@ -192,7 +184,6 @@ void initialize_framebuffer(unsigned int width, unsigned int height, unsigned in
 #endif
     }
 
-    //usleep(10000);
     gfx_set_env( p_fb, v_w, v_h, bpp, pitch, fbsize );
     gfx_set_drawing_mode(drawingNORMAL);
     gfx_term_set_tabulation(8);
@@ -342,14 +333,15 @@ void video_line_test(int maxloops)
 
 void term_main_loop()
 {
-    ee_printf("Waiting for UART data (%d,8,N,1)\n",uart_get_baudrate());
+    ee_printf("Waiting for UART data (%d,8,N,1)\n",PiGfxConfig.uartBaudrate);
 
     /**/
     while( uart_buffer_start == uart_buffer_end )
     {
-        //usleep(100000 );
         timer_poll();       // ActLed working while waiting for data
+#if RPI<4
         if (usbKeyboardFound) USPiKeyboardUpdateLEDs();
+#endif
     }
     /**/
 
@@ -366,19 +358,20 @@ void term_main_loop()
                 uart_buffer_start = uart_buffer;
 
             
-#if ENABLED(SKIP_BACKSPACE_ECHO)
-            if( time_microsec()-last_backspace_t > 50000 )
-                backspace_n_skip=0;
-
-            if( backspace_n_skip  > 0 )
+            if (PiGfxConfig.skipBackspaceEcho)
             {
-                //ee_printf("Skip %c",strb[0]);
-                strb[0]=0; // Skip this char
-                backspace_n_skip--;
-                if( backspace_n_skip == 0)
-                    strb[0]=0x7F; // Add backspace instead
+                if( time_microsec()-last_backspace_t > 50000 )
+                    backspace_n_skip=0;
+
+                if( backspace_n_skip  > 0 )
+                {
+                    //ee_printf("Skip %c",strb[0]);
+                    strb[0]=0; // Skip this char
+                    backspace_n_skip--;
+                    if( backspace_n_skip == 0)
+                        strb[0]=0x7F; // Add backspace instead
+                }
             }
-#endif
 
             gfx_term_putstring( strb );
         }
@@ -387,7 +380,9 @@ void term_main_loop()
         
         timer_poll();
         
+#if RPI<4
         if (usbKeyboardFound) USPiKeyboardUpdateLEDs();
+#endif
     }
 
 }
@@ -411,21 +406,15 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     // Get informations about the board we are booting
     boardRevision = prop_revision();
     raspiBoard = board_info(boardRevision);
-    // Do we need to set UART speed?
-    // RPI Zero W and RPI3 cannot be set by config.txt
-    if ((raspiBoard.model < BOARD_MODEL_3B) || (raspiBoard.model == BOARD_MODEL_ZERO))
-        uart_init(0);
-    else
-        uart_init(1);
     
-    
-    
-    /*cout("Hello from the debug console\r\n");
+/*#if RPI==4
+    cout("Hello from the debug console\r\n");
     cout("Booting on Raspberry Pi ");
     cout(board_model(raspiBoard.model));
     cout(", ");
     cout(board_processor(raspiBoard.processor));
-    cout("\r\n");*/
+    cout("\r\n");
+#endif*/
     
     // Where is the Act LED?
     led_init(raspiBoard);
@@ -446,8 +435,6 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
     gfx_set_bg(BLACK);
     gfx_set_fg(DARKGRAY);
-    
-    initialize_uart_irq();
 
     // draw possible colors:
     // 0-15 are primary colors
@@ -498,42 +485,62 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     ee_printf(board_processor(raspiBoard.processor));
     ee_printf("\n");
     
+    // Set default config
+    setDefaultConfig();
+    
     gfx_set_bg(BLUE);
     gfx_set_fg(YELLOW);
-    ee_printf("Initializing USB:\n");
+    ee_printf("Initializing filesystem:\n");
     gfx_set_bg(BLACK);
     gfx_set_fg(GRAY);
-
-    if( USPiInitialize() )
+    // Try to load a config file
+    lookForConfigFile();
+    
+    uart_init(PiGfxConfig.uartBaudrate);
+    initialize_uart_irq();
+    
+#if RPI<4
+    if (PiGfxConfig.useUsbKeyboard)
     {
-    	ee_printf("Initialization OK!\n");
-        ee_printf("Checking for keyboards: ");
+        gfx_set_bg(BLUE);
+        gfx_set_fg(YELLOW);
+        ee_printf("Initializing USB:\n");
+        gfx_set_bg(BLACK);
+        gfx_set_fg(GRAY);
 
-        if ( USPiKeyboardAvailable () )
+        if( USPiInitialize() )
         {
-            USPiKeyboardRegisterKeyPressedHandler( _keypress_handler );
-            gfx_set_fg(GREEN);
-            usbKeyboardFound = 1;
-            ee_printf("Keyboard found.\n");
-            gfx_set_fg(GRAY);
+            ee_printf("Initialization OK!\n");
+            ee_printf("Checking for keyboards: ");
+
+            if ( USPiKeyboardAvailable () )
+            {
+                USPiKeyboardRegisterKeyPressedHandler( _keypress_handler );
+                gfx_set_fg(GREEN);
+                usbKeyboardFound = 1;
+                ee_printf("Keyboard found.\n");
+                gfx_set_fg(GRAY);
+            }
+            else
+            {
+                gfx_set_fg(RED);
+                ee_printf("No keyboard found.\n");
+                gfx_set_fg(GRAY);
+            }
         }
         else
         {
             gfx_set_fg(RED);
-            ee_printf("No keyboard found.\n");
-            gfx_set_fg(GRAY);
+            ee_printf("USB initialization failed.\n");
         }
     }
-    else
-    {
-    	gfx_set_fg(RED);
-    	ee_printf("USB initialization failed.\n");
-    }
-
-#if ENABLED(RC2014)
-    gfx_set_drawing_mode(drawingTRANSPARENT);
-    gfx_put_sprite( (unsigned char*)&G_STARTUP_LOGO, 0, 42 );
 #endif
+
+    if (PiGfxConfig.showRC2014Logo)
+    {
+        gfx_set_drawing_mode(drawingTRANSPARENT);
+        gfx_put_sprite( (unsigned char*)&G_STARTUP_LOGO, 0, 42 );
+    }
 
     gfx_set_drawing_mode(drawingNORMAL);
     gfx_set_fg(GRAY);

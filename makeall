@@ -10,3 +10,6 @@ do
     make clean
     make RPI=$i
 done
+
+make clean
+make RPI=4

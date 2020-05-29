@@ -27,6 +27,22 @@ W32:    str  r1, [r0]
 .global R32
 R32:    ldr  r0, [r0]
         bx lr    
+        
+        
+.global quick_memcpy
+quick_memcpy:
+	push 	{r4-r9}
+	mov	r4, r0
+	mov	r5, r1
+
+.loopb:
+	ldmia	r5!, {r6-r9}
+	stmia	r4!, {r6-r9}
+	subs	r2, #16
+	bhi	.loopb
+
+	pop	{r4-r9}
+	mov	pc, lr
 
 
 ;@ performs a memory barrier
@@ -42,54 +58,6 @@ membarrier:
     mcr p15, 0, r3, c7, c10, 4      ;@ Data Synchronization Barrier
     mcr p15, 0, r3, c7, c10, 5      ;@ Data Memory Barrier
     bx lr*/
-
-
-;@ strlen
-.global strlen
-strlen:
-    push {r1,r2}
-    mov r1, r0 
-    mov r0, #0
-1:
-    ldrb r2, [r1]
-    cmp r2,#0
-    beq 2f
-    add r0, #1
-    add r1, #1
-    b 1b
-2:
-    pop {r1,r2}
-    bx lr
-
-
-;@ strcmp
-;@  r0: string 1 address
-;@  r1: string 2 address
-;@  output (r0):
-;@  0 if the two strings are equal
-;@    a negative number if s1<s2
-;@    a positive number otherwise
-.global strcmp
-strcmp:
-    push {r2,r3}
-
-1:
-    ldrb r2, [r0]
-    ldrb r3, [r1]  
-    add r0,r0,#1
-    add r1,r1,#1
-
-    cmp r2, #0
-    beq 1f
-    cmp r3, #0
-    beq 1f
-    
-    cmp r2, r3
-    beq 1b
-1:
-    sub r0, r2, r3
-    pop {r2,r3}
-    bx lr
 
 
 ;@ byte2hexstr

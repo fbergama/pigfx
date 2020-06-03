@@ -48,6 +48,10 @@ static void set_29(const int on) {
   gpio_set(29, on);
 }
 
+static void set_42(const int on) {
+  gpio_set(42, on);
+}
+
 static void set_none(const int on) {
   (void)on;
 }
@@ -83,9 +87,14 @@ int led_init(board_t board)
     gpio_setpull(29, GPIO_PULL_OFF);
     led_set = set_29;
   }
-  else if (board.model == BOARD_MODEL_CM1 || board.model == BOARD_MODEL_CM3) {
+  else if (board.model == BOARD_MODEL_CM1 || board.model == BOARD_MODEL_CM3 || board.model == BOARD_MODEL_CM3_PLUS) {
     // These boards don't feature an activity LED.
     led_set = set_none;
+  }
+  else if (board.model == BOARD_MODEL_4B) {
+    gpio_select(42, GPIO_OUTPUT);
+    gpio_setpull(42, GPIO_PULL_OFF);
+    led_set = set_42;
   }
   else {
     gpio_select(47, GPIO_OUTPUT);

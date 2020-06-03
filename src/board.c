@@ -70,7 +70,7 @@ board_t board_info(const uint32_t revision) {
 const char* board_model(const board_model_t model) {
   static char const* models[] = {
     "A", "B", "A+", "B+", "2B", "Alpha", "CM1", NULL,
-    "3B", "Zero", "CM3", NULL, "Zero W", "3B+", "3A+"
+    "3B", "Zero", "CM3", NULL, "Zero W", "3B+", "3A+", NULL, "CM3+", "4B"
   };
 
   return models[model];
@@ -78,7 +78,7 @@ const char* board_model(const board_model_t model) {
 
 const char* board_processor(const board_processor_t processor) {
   static char const* processors[] = {
-    "BCM2835", "BCM2836", "BCM2837"
+    "BCM2835", "BCM2836", "BCM2837", "BCM2711"
   };
 
   return processors[processor];

@@ -1,6 +1,8 @@
 #ifndef C_UTILS_H__
 #define C_UTILS_H__ 
 
+#include <stdint.h>
+
 typedef unsigned long	size_t;
 
 void *pigfx_memset (void *pBuffer, int nValue, size_t nLength);

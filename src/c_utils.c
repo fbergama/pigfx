@@ -5,7 +5,6 @@
 #ifndef C_UTILS_H_
 #define C_UTILS_H_
 
-#include <stdint.h>
 #include "c_utils.h"
 #include "utils.h"
 

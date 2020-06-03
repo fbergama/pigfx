@@ -60,6 +60,10 @@ int inihandler(void* user, const char* section, const char* name, const char* va
         tmpValue = atoi(value);
         if ((tmpValue == 0) || (tmpValue == 1)) PiGfxConfig.showRC2014Logo = tmpValue;
     }
+    else if (pigfx_strcmp(name, "keyboardLayout") == 0)
+    {
+        pigfx_strncpy(PiGfxConfig.keyboardLayout, value, sizeof(PiGfxConfig.keyboardLayout));
+    }
     return 0;
 }
 
@@ -75,6 +79,7 @@ void setDefaultConfig()
     PiGfxConfig.skipBackspaceEcho = 0;
     PiGfxConfig.swapDelWithBackspace = 1;
     PiGfxConfig.showRC2014Logo = 0;
+    pigfx_strcpy(PiGfxConfig.keyboardLayout, "us");
 }
 
 unsigned char lookForConfigFile()

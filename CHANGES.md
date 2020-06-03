@@ -2,6 +2,11 @@
 
 Versions and modifications.
 
+## Version 1.4.0 - 2020 June 3th
+
+* Keyboard layout can now be configured in pigfx.txt
+* Pressed keys repeat the key
+
 ## Version 1.3.0 - 2020 May 29th
 
 * Read a config file (no more compiling for your needs)

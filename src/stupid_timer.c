@@ -14,12 +14,12 @@ typedef struct {
 
 
 #define N_TIMERS 20
-static TimerUnit timers[ N_TIMERS ];
+static TimerUnit timers[ N_TIMERS+1 ];
 
 void timers_init()
 {
     int i;
-    for( i=0; i<N_TIMERS; ++i )
+    for( i=0; i<=N_TIMERS; ++i )
     {
         timers[i].handler = 0;
     }
@@ -46,7 +46,7 @@ unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam
     // The value hz is really in unit hz. So 1 hz is 1 second delay.
     unsigned hnd;
     if (hz == 0) return 0;
-    for( hnd=0; hnd<N_TIMERS; ++hnd )
+    for( hnd=1; hnd<=N_TIMERS; ++hnd )
     {
         if( timers[hnd].handler == 0 )
         {
@@ -59,8 +59,14 @@ unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam
         }
     }
 
-    return N_TIMERS+1;
+    return 0;
 
+}
+
+void remove_timer(unsigned hnd)
+{
+    if (hnd <=N_TIMERS)
+        timers[hnd].handler = 0;
 }
 
 void timer_poll()

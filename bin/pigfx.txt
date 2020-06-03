@@ -5,6 +5,7 @@ baudrate = 9600             ; Baudrate for the UART interface, should work fine 
 
 [Input]
 useUsbKeyboard = 1          ; With this disabled, PiGFX will not load the uspi and look for a connected keyboard on any USB port
+keyboardLayout = us         ; Keyboard layout to be used. These are supported: us, uk, it, fr, es, de, sg
 sendCRLF = 0                ; With this enabled, the enter key on the connected keyboard will generate CRLF instead of LF only. CR has value 0x0D, LF has value 0x0A.
 replaceLFwithCR = 0         ; With this enabled, the enter key sends CR instead of LF. You should disable the sendCRLF option if you use this, otherwise it will send 2*CR.
 backspaceEcho = 0           ; Auto-echo the backspace char

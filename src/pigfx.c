@@ -19,6 +19,7 @@
 #include "mbr.h"
 #include "fat.h"
 #include "config.h"
+#include "keyboard.h"
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
@@ -43,52 +44,6 @@ extern unsigned int pheap_space;
 extern unsigned int heap_sz;
 
 extern unsigned char G_STARTUP_LOGO;
-
-volatile unsigned int backspace_n_skip;
-volatile unsigned int last_backspace_t;
-
-
-#if RPI<4
-static void _keypress_handler(const char* str )
-{
-    const char* c = str;
-    char CR = 13;
-
-    while( *c )
-    {
-        char ch = *c;
-
-        if ((PiGfxConfig.sendCRLF) && (ch == 10))
-        {
-            // Send CR first
-            uart_write( CR );
-        }
-
-        if ((PiGfxConfig.replaceLFwithCR) && (ch == 10))
-        {
-            ch = CR;
-        }
-
-        if ((PiGfxConfig.swapDelWithBackspace) && (ch == 0x7F))
-        {
-            ch = 0x8;
-        }
-
-        if ((PiGfxConfig.backspaceEcho) && (ch == 0x8))
-            gfx_term_putstring( "\x7F" );
-
-        if ((PiGfxConfig.skipBackspaceEcho) && (ch == 0x7F))
-        {
-            backspace_n_skip = 2;
-            last_backspace_t = time_microsec();
-        }
-        
-        uart_write( ch ); 
-        ++c;
-    }
-
-}
-#endif
 
 
 static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
@@ -340,7 +295,7 @@ void term_main_loop()
     {
         timer_poll();       // ActLed working while waiting for data
 #if RPI<4
-        if (usbKeyboardFound) USPiKeyboardUpdateLEDs();
+        if (usbKeyboardFound) fUpdateKeyboardLeds();
 #endif
     }
     /**/
@@ -381,7 +336,7 @@ void term_main_loop()
         timer_poll();
         
 #if RPI<4
-        if (usbKeyboardFound) USPiKeyboardUpdateLEDs();
+        if (usbKeyboardFound) fUpdateKeyboardLeds();
 #endif
     }
 
@@ -515,7 +470,8 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
             if ( USPiKeyboardAvailable () )
             {
-                USPiKeyboardRegisterKeyPressedHandler( _keypress_handler );
+                fInitUsbKeyboard(PiGfxConfig.keyboardLayout);
+                USPiKeyboardRegisterKeyStatusHandlerRaw(KeyStatusHandlerRaw);
                 gfx_set_fg(GREEN);
                 usbKeyboardFound = 1;
                 ee_printf("Keyboard found.\n");

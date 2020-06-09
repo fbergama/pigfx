@@ -20,6 +20,7 @@
 #include "fat.h"
 #include "config.h"
 #include "keyboard.h"
+#include "ps2.h"
 #include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
@@ -28,6 +29,7 @@
 
 unsigned int led_status = 0;
 unsigned char usbKeyboardFound = 0;
+unsigned char ps2KeyboardFound = 0;
 volatile unsigned int* pUART0_DR;
 volatile unsigned int* pUART0_ICR;
 volatile unsigned int* pUART0_IMSC;
@@ -294,9 +296,12 @@ void term_main_loop()
     while( uart_buffer_start == uart_buffer_end )
     {
         timer_poll();       // ActLed working while waiting for data
-#if RPI<4
-        if (usbKeyboardFound) fUpdateKeyboardLeds();
-#endif
+        if (ps2KeyboardFound)
+        {
+            PS2KeyboardHandler();
+            fUpdateKeyboardLeds(0);
+        }
+        else if (usbKeyboardFound) fUpdateKeyboardLeds(1);
     }
     /**/
 
@@ -335,9 +340,12 @@ void term_main_loop()
         
         timer_poll();
         
-#if RPI<4
-        if (usbKeyboardFound) fUpdateKeyboardLeds();
-#endif
+        if (ps2KeyboardFound)
+        {
+            PS2KeyboardHandler();
+            fUpdateKeyboardLeds(0);
+        }
+        else if (usbKeyboardFound) fUpdateKeyboardLeds(1);
     }
 
 }
@@ -357,6 +365,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     // UART buffer allocation
     uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE );
+    uart_init(9600);
     
     // Get informations about the board we are booting
     boardRevision = prop_revision();
@@ -379,7 +388,6 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
     
     initialize_framebuffer(640, 480, 8);
-    
 
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
     gfx_set_bg(BLUE);
@@ -454,8 +462,19 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     uart_init(PiGfxConfig.uartBaudrate);
     initialize_uart_irq();
     
+    gfx_set_bg(BLUE);
+    gfx_set_fg(YELLOW);
+    ee_printf("Initializing PS/2:\n");
+    gfx_set_bg(BLACK);
+    gfx_set_fg(GRAY);
+    if (initPS2() == 0)
+    {
+        ps2KeyboardFound = 1;
+        fInitKeyboard(PiGfxConfig.keyboardLayout);
+    }
+    
 #if RPI<4
-    if (PiGfxConfig.useUsbKeyboard)
+    if ((PiGfxConfig.useUsbKeyboard) && (ps2KeyboardFound == 0))
     {
         gfx_set_bg(BLUE);
         gfx_set_fg(YELLOW);
@@ -470,7 +489,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
             if ( USPiKeyboardAvailable () )
             {
-                fInitUsbKeyboard(PiGfxConfig.keyboardLayout);
+                fInitKeyboard(PiGfxConfig.keyboardLayout);
                 USPiKeyboardRegisterKeyStatusHandlerRaw(KeyStatusHandlerRaw);
                 gfx_set_fg(GREEN);
                 usbKeyboardFound = 1;

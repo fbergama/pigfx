@@ -2,7 +2,7 @@
 ## Raspberry Pi graphics card / ANSI terminal emulator
 
 
-<img src="doc/scr1.png" width="40%" /> <img src="doc/scr2.png" width="40%" />
+<img src="doc/scr1.jpg" width="40%" />
 
 PiGFX is a bare metal kernel for the Raspberry Pi that implements a basic ANSI
 terminal emulator with the additional support of some primitive graphics
@@ -26,7 +26,7 @@ typed will be automatically sent to raspi UART Tx0 (pin 8, GPIO 14).
 
 *UPDATE*: (2018 Nov. by F. Pierot) Added display modes, fonts, tabulation set... See [2018 Nov. modifications](README_ADD.md).
 
-*UPDATE*: (2020 by Ch. Lehner) Added new graphic features and configurable baudrate. Fixed some bugs. Ported to Raspberry Pi 2 and 3. Also included the ability to read a config file ond the SC card.
+*UPDATE*: (2020 by Ch. Lehner) Added new graphic features and configurable baudrate. Fixed some bugs. Ported to Raspberry Pi 2 and 3. Also included the ability to read a config file ond the SC card. Also added support for PS/2 keyboards.
 
 By now this is a work in progress with a minimum set of features implemented so
 expect that more functionalities will be added from time to time.
@@ -49,11 +49,11 @@ Here is a preliminary TODO list of what I plan to add in the future:
 - ✔ Let the resolution being configurable without recompiling
 - ✔ Port to Raspberry Pi Generation 2/3
 - ✔ Load configuration from SD card
+- ✔ Support for PS/2 keyboard
 - Implement some kind of sprite handling with collision detection
 - Implement double buffering
 - Load bitmap fonts directly from the SD card
 - Implement a 8bit interface
-- Support for PS/2 keyboard
 - Support for USB / PS/2 Mouse
 
 ## How to run
@@ -106,6 +106,23 @@ in the PiGFX root folder.
 UART communication expects the baudrate configured in config.txt, 8 bit data, 1 bit
 stop and no parity.
 
+
+## PS/2 keyboard
+Be aware that USB support is disabled, if a PS/2 keyboard is detected during boot. This increases boot time a lot.
+This is the male connector at the keyboard cable.
+
+<img src="doc/ps2.jpg" width="40%" /><img src="doc/gpio.png" width="40%" />
+
+### Physical connection to the Pi
+
+Most keyboard seem to work if powered with 3.3V. However if your keyboard needs 5V make sure you use a bidirectional level shifter between the Raspberry Pi and your keyboard on data and clock. If you bring 5V to the GPIO you will destroy the Pi.
+
+|PS/2 Pin |Pi Pin | Function
+|-------  |-----  |---------
+|1        |3      | PS/2 Data
+|3        |9      | Ground
+|4        |1      | Power to keyboard
+|5        |5      | PS/2 Clock
 
 ## Terminal ANSI Codes
 

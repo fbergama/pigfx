@@ -23,8 +23,15 @@ void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata )
 
 void __attribute__((interrupt("IRQ"))) irq_handler_(void)
 {
+    // Bit 17 on pending 2 means IRQ 49 is pending.
+    if (pIRQController->IRQ_pending_2 & RPI_GPIO0_INTERRUPT_IRQ && _irq_handlers[49])
+    {
+        // IRQ 49
+        IntHandler* hnd = _irq_handlers[49];
+        hnd( _irq_handlers_data[49] );
+    }
     // Bit 19 on basic means IRQ 57 is pending. This would actually be bit 25 in IRQ_pending_2
-    if( pIRQController->IRQ_basic_pending & (1<<19) &&
+    else if( pIRQController->IRQ_basic_pending & (1<<19) &&
         _irq_handlers[57] )
     {
         // IRQ 57

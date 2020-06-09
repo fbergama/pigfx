@@ -36,6 +36,10 @@ typedef struct {
 #define RPI_BASIC_ACCESS_ERROR_0_IRQ    (1 << 7)
 
 #define RPI_AUX_INTERRUPT_IRQ           (1 << 29) /* 29 for IRQ register 1 means IRQ 29 in the table */
+#define RPI_GPIO0_INTERRUPT_IRQ         (1 << 17) /* 17 for IRQ register 2 means IRQ 49 in the table */
+#define RPI_GPIO1_INTERRUPT_IRQ         (1 << 18) /* 18 for IRQ register 2 means IRQ 50 in the table */
+#define RPI_GPIO2_INTERRUPT_IRQ         (1 << 19) /* 19 for IRQ register 2 means IRQ 51 in the table */
+#define RPI_GPIO3_INTERRUPT_IRQ         (1 << 20) /* 20 for IRQ register 2 means IRQ 52 in the table */
 #define RPI_UART_INTERRUPT_IRQ          (1 << 25) /* 25 for IRQ register 2 means IRQ 57 in the table */
 #define RPI_BASIC_ARM_TIMER_IRQ         (1 << 0)
 #define RPI_SYSTEM_TIMER_3_IRQ          (1 << 3)

@@ -41,6 +41,25 @@ void gpio_set(const unsigned pin, const int high) {
   }
 }
 
+unsigned char gpio_get(const unsigned pin)
+{
+    const unsigned index = pin >> 5;
+    const uint32_t bit = UINT32_C(1) << (pin & 31);
+    
+    unsigned int gpio_state;
+    
+    if (index)
+    {
+        gpio_state = R32(GPIO_GPLEV1);
+    }
+    else
+    {
+        gpio_state = R32(GPIO_GPLEV0);
+    }
+    
+    return ((gpio_state & bit) != 0);
+}
+
 static void wait(unsigned count) {
   // Spend CPU cycles.
   while (count-- != 0) {
@@ -72,5 +91,59 @@ void gpio_setpull(const unsigned pin, const gpio_pull_t pull) {
     wait(150);
     W32(GPIO_PUDCLK1, 0);
   }
+}
+
+void gpio_clear_irq(const unsigned pin)
+{
+  const unsigned index = pin >> 5;
+  const uint32_t bit = UINT32_C(1) << (pin & 31);
+  unsigned int GPEDS = GPIO_GPEDS0 + index*4;
+  unsigned int regVal;
+  
+  // clear pending flag for this pin
+  regVal = R32(GPEDS);
+  regVal = regVal | bit;
+  W32(GPEDS, regVal);
+}
+
+void gpio_setedgedetect(const unsigned pin, const unsigned char edgedetect)
+{
+  const unsigned index = pin >> 5;
+  const uint32_t bit = UINT32_C(1) << (pin & 31);
+  unsigned int offset = index*4;
+  
+  unsigned int GPREN = GPIO_GPREN0 + offset;
+  unsigned int GPFEN = GPIO_GPFEN0 + offset;
+  unsigned int GPAREN = GPIO_GPAREN0 + offset;
+  unsigned int GPAFEN = GPIO_GPAFEN0 + offset;
+  
+  unsigned int regVal;
+  
+  // set rising edge
+  regVal = R32(GPREN);
+  if (edgedetect & GPIO_EDGE_DETECT_RISING) regVal = regVal | bit;
+  else regVal = regVal & ~bit;
+  W32(GPREN, regVal);
+  
+  // set falling edge
+  regVal = R32(GPFEN);
+  if (edgedetect & GPIO_EDGE_DETECT_FALLING) regVal = regVal | bit;
+  else regVal = regVal & ~bit;
+  W32(GPFEN, regVal);
+  
+  // set async rising edge
+  regVal = R32(GPAREN);
+  if (edgedetect & GPIO_EDGE_DETECT_ASYNC_RISING) regVal = regVal | bit;
+  else regVal = regVal & ~bit;
+  W32(GPAREN, regVal);
+  
+  // set async falling edge
+  regVal = R32(GPAFEN);
+  if (edgedetect & GPIO_EDGE_DETECT_ASYNC_FALLING) regVal = regVal | bit;
+  else regVal = regVal & ~bit;
+  W32(GPAFEN, regVal);
+  
+  // clear pending flag for this pin
+  gpio_clear_irq(pin);
 }
  

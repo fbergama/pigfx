@@ -2,6 +2,10 @@
 
 Versions and modifications.
 
+## Version 1.5.0 - 2020 June 9th
+
+* PS/2 keyboard support
+
 ## Version 1.4.0 - 2020 June 3th
 
 * Keyboard layout can now be configured in pigfx.txt

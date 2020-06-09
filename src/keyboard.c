@@ -9,7 +9,7 @@
 #include "uart.h"
 #include "gfx.h"
 #include "timer.h"
-#include "console.h"
+#include "ps2.h"
 
 // order must match TSpecialKey beginning at KeySpace
 static const char *s_KeyStrings[KeyMaxCode-KeySpace] =
@@ -76,18 +76,19 @@ void fSetKbdLeds(TKeyboardLeds* leds)
     leds->CombinedState = (leds->m_bNumLock << 0) | (leds->m_bCapsLock << 1) | (leds->m_bScrollLock << 2);
 }
 
-void fUpdateKeyboardLeds()
+void fUpdateKeyboardLeds(unsigned char useUSB)
 {
     if (actKeyMap.leds.CombinedState != actKeyMap.leds.LastCombinedState)
     {
         actKeyMap.leds.LastCombinedState = actKeyMap.leds.CombinedState;
+        if (useUSB == 0) setPS2Leds(actKeyMap.leds.m_bScrollLock, actKeyMap.leds.m_bNumLock, actKeyMap.leds.m_bCapsLock);
 #if RPI<4
-        USPiKeyboardSetLEDs(actKeyMap.leds.CombinedState);
+        else USPiKeyboardSetLEDs(actKeyMap.leds.CombinedState);
 #endif
     }
 }
 
-void fInitUsbKeyboard(char* layout)
+void fInitKeyboard(char* layout)
 {
     backspace_n_skip = 0;
     last_backspace_t = 0;

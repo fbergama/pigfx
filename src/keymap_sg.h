@@ -50,7 +50,7 @@
 {'^',		'`',		'~',	    KeyNone},	// 0x2E
 {C('ü'),	C('è'),		'[',        KeyNone},	// 0x2F
 {'-',		'!',		']',		KeyNone},	// 0x30
-{KeyNone,	KeyNone,	KeyNone,	KeyNone},	// 0x31
+{C('$'),	C('£'),		'}',        KeyNone},	// 0x31
 {C('$'),	C('£'),		'}',        KeyNone},	// 0x32
 {C('ö'),	C('é'),		KeyNone,	KeyNone},	// 0x33
 {C('ä'),	C('à'),		'{',        KeyNone},	// 0x34

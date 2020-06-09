@@ -54,6 +54,21 @@
 #define GPIO_SET1    (GPIO_BASE+0x20) // 0x??200020
 #define GPIO_CLR0    (GPIO_BASE+0x28) // 0x??200028
 #define GPIO_CLR1    (GPIO_BASE+0x2C) // 0x??20002C
+// levels
+#define GPIO_GPLEV0  (GPIO_BASE+0x34)     // GPIO Pin Level 0
+#define GPIO_GPLEV1  (GPIO_BASE+0x38)     // GPIO Pin Level 1
+// events
+#define GPIO_GPEDS0  (GPIO_BASE+0x40)     // GPIO Pin Event Detect Status 0
+#define GPIO_GPEDS1  (GPIO_BASE+0x44)     // GPIO Pin Event Detect Status 1
+// edge detection
+#define GPIO_GPREN0  (GPIO_BASE+0x4C)     // GPIO Pin Rising Edge Detect Enable 0
+#define GPIO_GPREN1  (GPIO_BASE+0x50)     // GPIO Pin Rising Edge Detect Enable 1
+#define GPIO_GPFEN0  (GPIO_BASE+0x58)     // GPIO Pin Falling Edge Detect Enable 0
+#define GPIO_GPFEN1  (GPIO_BASE+0x5C)     // GPIO Pin Falling Edge Detect Enable 1
+#define GPIO_GPAREN0 (GPIO_BASE+0x7C)     // GPIO Pin Async. Rising Edge Detect 0
+#define GPIO_GPAREN1 (GPIO_BASE+0x80)     // GPIO Pin Async. Rising Edge Detect 1
+#define GPIO_GPAFEN0 (GPIO_BASE+0x88)     // GPIO Pin Async. Falling Edge Detect 0
+#define GPIO_GPAFEN1 (GPIO_BASE+0x8C)     // GPIO Pin Async. Falling Edge Detect 1
 // Controls actuation of pull up/down to ALL GPIO pins.
 #define GPIO_PUD     (GPIO_BASE+0x94) // 0x??200094
 // Controls actuation of pull up/down for specific GPIO pin.

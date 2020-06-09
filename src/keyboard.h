@@ -150,7 +150,8 @@ extern unsigned int backspace_n_skip;
 extern unsigned int last_backspace_t;
 
 void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys[6]);
-void fInitUsbKeyboard(char* layout);
-void fUpdateKeyboardLeds();
+void fInitKeyboard(char* layout);
+void fUpdateKeyboardLeds(unsigned char useUSB);
+void KeyEvent(unsigned short ucKeyCode, unsigned char ucModifiers);
 
 #endif

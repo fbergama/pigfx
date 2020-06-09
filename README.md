@@ -2,7 +2,7 @@
 ## Raspberry Pi graphics card / ANSI terminal emulator
 
 
-<img src="doc/scr1.jpg" width="40%" />
+<img src="doc/scr1.jpg" width="80%" />
 
 PiGFX is a bare metal kernel for the Raspberry Pi that implements a basic ANSI
 terminal emulator with the additional support of some primitive graphics
@@ -109,20 +109,20 @@ stop and no parity.
 
 ## PS/2 keyboard
 Be aware that USB support is disabled, if a PS/2 keyboard is detected during boot. This increases boot time a lot.
-This is the male connector at the keyboard cable.
-
-<img src="doc/ps2.jpg" width="40%" /><img src="doc/gpio.png" width="40%" />
 
 ### Physical connection to the Pi
+This is the male connector at the keyboard cable.
+<img src="doc/ps2.jpg" width="30%" />
+<img src="doc/gpio.png" width="80%" />
 
-Most keyboard seem to work if powered with 3.3V. However if your keyboard needs 5V make sure you use a bidirectional level shifter between the Raspberry Pi and your keyboard on data and clock. If you bring 5V to the GPIO you will destroy the Pi.
+Most keyboard seem to work if powered with 3.3V. However if your keyboard does not and needs 5V, make sure you use a bidirectional level shifter between the Raspberry Pi and your keyboard on data and clock. If you bring 5V to the GPIO you will destroy the Pi.
 
 |PS/2 Pin |Pi Pin | Function
 |-------  |-----  |---------
-|1        |3      | PS/2 Data
+|1        |3      | PS/2 Data (GPIO 2)
 |3        |9      | Ground
 |4        |1      | Power to keyboard
-|5        |5      | PS/2 Clock
+|5        |5      | PS/2 Clock (GPIO 3)
 
 ## Terminal ANSI Codes
 

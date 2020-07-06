@@ -258,10 +258,6 @@ unsigned char initPS2()
     
     irq_attach_handler(49, handlePS2ClockEvent, 0);
     
-    pIRQController->Enable_IRQs_2 = RPI_GPIO0_INTERRUPT_IRQ;        // Within the first 32 GPIO
-    
-    enable_irq();
-    
     inout.readPos = 0;
     inout.writePos = 0;
     inout.bit_cnt = 0;

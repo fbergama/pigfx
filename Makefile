@@ -48,7 +48,7 @@ kernel: pigfx.img
 	elif [ $(RPI) == 3 ]; then \
 		cp pigfx.img bin/kernel8-32.img; \
 	else \
-		cp pigfx.img bin/kernel7l.img; \
+		cp pigfx.img bin/recovery7l.img; \
 	fi;
 
 

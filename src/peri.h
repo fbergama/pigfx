@@ -12,7 +12,7 @@
 #else
 #if RPI==4
 #define PERIPHERAL_BASE     0xFE000000
-#define BUSALIAS            0xC0000000      // THIS IS MOST LIKELY WRONG // TODO
+#define BUSALIAS            0xC0000000
 
 #else       // RPI2&3
 #define PERIPHERAL_BASE     0x3F000000
@@ -74,6 +74,11 @@
 // Controls actuation of pull up/down for specific GPIO pin.
 #define GPIO_PUDCLK0 (GPIO_BASE+0x98) // 0x??200098
 #define GPIO_PUDCLK1 (GPIO_BASE+0x9C) // 0x??20009C
+// New Pull Up / Pull Down Registers for the RPI4
+#define GPIO_PUP_PDN_CNTRL_REG0 (GPIO_BASE+0xE4) // 0x??2000E4
+#define GPIO_PUP_PDN_CNTRL_REG1 (GPIO_BASE+0xE8) // 0x??2000E8
+#define GPIO_PUP_PDN_CNTRL_REG2 (GPIO_BASE+0xEC) // 0x??2000EC
+#define GPIO_PUP_PDN_CNTRL_REG3 (GPIO_BASE+0xF0) // 0x??2000F0
 
 ///////////////////////////
 // Define UART Addresses //

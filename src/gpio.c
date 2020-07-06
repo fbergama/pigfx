@@ -3,6 +3,7 @@
 #include "gpio.h"
 #include "peri.h"
 #include "utils.h"
+#include "ee_printf.h"
 
 void gpio_select(const unsigned pin, const gpio_function_t mode) {
   // The register index starting at GPFSEL0.
@@ -60,14 +61,15 @@ unsigned char gpio_get(const unsigned pin)
     return ((gpio_state & bit) != 0);
 }
 
-static void wait(unsigned count) {
-  // Spend CPU cycles.
-  while (count-- != 0) {
-    // Empty.
-  }
-}
-
 void gpio_setpull(const unsigned pin, const gpio_pull_t pull) {
+#if RPI<4
+  void wait(unsigned count) {
+    // Spend CPU cycles.
+    while (count-- != 0) {
+      // Empty.
+    }
+  }
+    
   const unsigned index = pin >> 5;
   const uint32_t bit = UINT32_C(1) << (pin & 31);
 
@@ -91,6 +93,21 @@ void gpio_setpull(const unsigned pin, const gpio_pull_t pull) {
     wait(150);
     W32(GPIO_PUDCLK1, 0);
   }
+#else
+  // handling changed for PI4
+  // One Register holds 16 GPIO, 2 bits per GPIO define Up/Down
+  const unsigned index = pin >> 4;
+  const unsigned int UpDnReg = GPIO_PUP_PDN_CNTRL_REG0 + index*4;
+  unsigned shift = (pin % 16) * 2;
+  
+  //ee_printf("set %d GPIO %d at reg %08x\n", pull, pin, UpDnReg);
+  
+  unsigned int actValue = R32(UpDnReg);
+  actValue &= ~(3 << shift);
+  actValue |= pull << shift;
+  W32(UpDnReg, actValue);
+  //ee_printf("set pullup/down regval %08x\n", actValue);
+#endif
 }
 
 void gpio_clear_irq(const unsigned pin)

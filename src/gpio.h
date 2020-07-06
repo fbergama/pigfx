@@ -17,8 +17,14 @@ gpio_function_t;
 
 typedef enum {
   GPIO_PULL_OFF  = 0,
+#if RPI<4
   GPIO_PULL_DOWN = 1,
   GPIO_PULL_UP   = 2
+#else
+  // they must have been on drugs when designing this for the PI4
+  GPIO_PULL_UP   = 1,
+  GPIO_PULL_DOWN = 2
+#endif
 }
 gpio_pull_t;
 

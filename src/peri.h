@@ -75,6 +75,7 @@
 #define GPIO_PUDCLK0 (GPIO_BASE+0x98) // 0x??200098
 #define GPIO_PUDCLK1 (GPIO_BASE+0x9C) // 0x??20009C
 // New Pull Up / Pull Down Registers for the RPI4
+#define GPIO_GPPINMUXSD	        (GPIO_BASE+0xD0) // 0x??2000D0
 #define GPIO_PUP_PDN_CNTRL_REG0 (GPIO_BASE+0xE4) // 0x??2000E4
 #define GPIO_PUP_PDN_CNTRL_REG1 (GPIO_BASE+0xE8) // 0x??2000E8
 #define GPIO_PUP_PDN_CNTRL_REG2 (GPIO_BASE+0xEC) // 0x??2000EC
@@ -146,5 +147,6 @@
 // External Mass Media Controller (SD Card)
 //
 #define EMMC_BASE		(PERIPHERAL_BASE+0x300000)   // 0x??300000
+#define EMMC2_BASE		(PERIPHERAL_BASE+0x340000)   // 0x??340000
 
 #endif      //PERI_H

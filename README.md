@@ -104,7 +104,7 @@ in the PiGFX root folder.
 
 ***Note: Please be aware that all Raspberry Pi models accept levels between 0 and 3v3. Be sure to provide an appropriate level shifter to match your output***
 
-UART communication expects the baudrate configured in config.txt, 8 bit data, 1 bit
+UART communication expects the baudrate configured in pigfx.txt, 8 bit data, 1 bit
 stop and no parity.
 
 
@@ -116,7 +116,7 @@ This is the male connector at the keyboard cable.
 <img src="doc/ps2.jpg" width="30%" />
 <img src="doc/gpio.png" width="80%" />
 
-Most keyboard seem to work if powered with 3.3V. However if your keyboard does not and needs 5V, make sure you use a bidirectional level shifter between the Raspberry Pi and your keyboard on data and clock. If you bring 5V to the GPIO you will destroy the Pi.
+Most keyboards seem to work if powered with 3.3V. However if your keyboard does not and needs 5V, make sure you use a bidirectional level shifter between the Raspberry Pi and your keyboard on data and clock. If you bring 5V to the GPIO you will destroy the Pi.
 
 |PS/2 Pin |Pi Pin | Function
 |-------  |-----  |---------

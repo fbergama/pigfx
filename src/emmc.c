@@ -59,6 +59,9 @@
 #define SD_CLOCK_100        100000000
 #define SD_CLOCK_208        208000000
 
+#define CLOCK_ID_EMMC		 1
+#define CLOCK_ID_EMMC2		12
+
 // Enable SDXC maximum performance mode
 // Requires 150 mA power so disabled on the RPi for now
 //#define SDXC_MAXIMUM_PERFORMANCE
@@ -255,12 +258,11 @@ struct emmc_block_dev
 #define SD_VER_3            4
 #define SD_VER_4            5
 
+#if RPI<4
 static uint32_t emmc_base = EMMC_BASE;
-
-void emmc_set_base(uint32_t base)
-{
-	emmc_base = base;
-}
+#else
+static uint32_t emmc_base = EMMC2_BASE;
+#endif
 
 static char *sd_versions[] = { "unknown", "1.0 and 1.01", "1.10",
     "2.00", "3.0x", "4.xx" };
@@ -513,7 +515,11 @@ static uint32_t sd_get_base_clock_hz()
     msg.tag.id = MAILBOX_TAG_GET_CLOCK_RATE;
     msg.tag.size = sizeof(msg.value);
     msg.tag.code = 0;
-    msg.value.request.clockId = 1;      // EMMC
+#if RPI<4
+    msg.value.request.clockId = CLOCK_ID_EMMC;      // EMMC
+#else
+    msg.value.request.clockId = CLOCK_ID_EMMC2;     // EMMC2
+#endif
     msg.footer.end = 0;
 
     if (mbox_send(&msg) != 0) {
@@ -521,7 +527,7 @@ static uint32_t sd_get_base_clock_hz()
 	    return 0;
     }
 
-	if(msg.value.response.clockId != 0x1)
+	if(msg.value.response.clockId != msg.value.request.clockId)
 	{
 	    ee_printf("EMMC: property mailbox did not return a valid clock id.\n");
 	    return 0;
@@ -1309,7 +1315,7 @@ static void sd_issue_command(struct emmc_block_dev *dev, uint32_t command, uint3
                 if(dev->last_error & (1 << (i + 16)))
                 {
                     ee_printf(err_irpts[i]);
-                    printf(" ");
+                    ee_printf(" ");
                 }
             }
         }
@@ -1396,6 +1402,14 @@ int sd_card_init(struct block_device **dev)
 	capabilities_1 = R32(emmc_base + EMMC_CAPABILITIES_1);
 #ifdef EMMC_DEBUG
 	ee_printf("EMMC: capabilities: %08x%08x\n", capabilities_1, capabilities_0);
+#endif
+    
+#if RPI >= 4
+	// Enable SD Bus Power VDD1 at 3.3V
+	uint32_t control0 = R32(emmc_base + EMMC_CONTROL0);
+	control0 |= 0x0F << 8;
+	W32(emmc_base + EMMC_CONTROL0, control0);
+	usleep(2000);
 #endif
 
 	// Check for a valid card

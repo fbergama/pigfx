@@ -101,9 +101,7 @@ void initialize_uart_irq()
     *pUART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
     *pUART0_ICR = 0xFFFFFFFF; // Clear UART0 interrupts
 
-    pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
     irq_attach_handler( 57, uart_fill_queue, 0 );
-    enable_irq();
 }
 
 
@@ -370,15 +368,6 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     // Get informations about the board we are booting
     boardRevision = prop_revision();
     raspiBoard = board_info(boardRevision);
-    
-/*#if RPI==4
-    cout("Hello from the debug console\r\n");
-    cout("Booting on Raspberry Pi ");
-    cout(board_model(raspiBoard.model));
-    cout(", ");
-    cout(board_processor(raspiBoard.processor));
-    cout("\r\n");
-#endif*/
     
     // Where is the Act LED?
     led_init(raspiBoard);

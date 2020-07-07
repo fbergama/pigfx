@@ -4,7 +4,6 @@
 #include "console.h"
 #include "gpio.h"
 #include "uart.h"
-#include "ee_printf.h"
 #include "mbox.h"
 
 void uart_init(unsigned int baudrate)

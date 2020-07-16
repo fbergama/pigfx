@@ -348,7 +348,7 @@ int fat_init(struct block_device *parent, struct fs **fs)
 	if(ret->fat_type == FAT32)
 	{
 		// FAT32
-		pigfx_strcpy(ret->vol_label, bs->ext.fat32.volume_label);
+		pigfx_strncpy(ret->vol_label, bs->ext.fat32.volume_label, 11);
 		ret->vol_label[11] = 0;
 		ee_printf("FAT: volume label: %s\n", ret->vol_label);
 
@@ -370,7 +370,7 @@ int fat_init(struct block_device *parent, struct fs **fs)
 	{	
 		// FAT12/16
 
-		pigfx_strcpy(ret->vol_label, bs->ext.fat16.volume_label);
+		pigfx_strncpy(ret->vol_label, bs->ext.fat16.volume_label, 11);
 		ret->vol_label[11] = 0;
 #ifdef FAT_DEBUG
 		ee_printf("FAT: volume label: %s\n", ret->vol_label);

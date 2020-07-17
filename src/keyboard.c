@@ -324,7 +324,7 @@ void RepeatKey( unsigned hnd, void* pParam, void *pContext )
     if (p->ucLastPhyCode != 0)
     {
         KeyEvent(p->ucLastPhyCode, p->ucModifiers);
-        p->repeatTimerHnd = attach_timer_handler(REPEAT_FREQ, RepeatKey, p, 0);       // 200ms interval
+        p->repeatTimerHnd = attach_timer_handler(REPEAT_FREQ, RepeatKey, p, 0);       // 100ms interval
     }
 }
 

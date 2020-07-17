@@ -340,6 +340,11 @@ void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys
             break;
         }
     }
+    if (ucKeyCode == 1)
+    {
+        // too many keys pressed
+        return;
+    }
     
     if (ucKeyCode == actKeyMap.ucLastPhyCode) ucKeyCode = 0;
     else actKeyMap.ucLastPhyCode = ucKeyCode;
@@ -356,7 +361,10 @@ void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys
     }
     else
     {
-        if (actKeyMap.repeatTimerHnd) remove_timer(actKeyMap.repeatTimerHnd);
+        if (actKeyMap.repeatTimerHnd) {
+            remove_timer(actKeyMap.repeatTimerHnd);
+            actKeyMap.repeatTimerHnd = 0;
+        }
     }
     
 }

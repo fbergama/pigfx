@@ -82,8 +82,8 @@ void timer_poll()
             (actTicks-timers[hnd].last_tick) > timers[hnd].microsec_interval )
         {
             _TimerHandler* handler = timers[hnd].handler;
-            timers[hnd].handler = 0;
             handler( hnd, timers[hnd].pParam, timers[hnd].pContext );
+            timers[hnd].handler = 0;
         }
     }
 }

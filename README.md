@@ -169,7 +169,7 @@ See [Here](https://en.wikipedia.org/wiki/File:Xterm_256color_chart.svg) for a
 reference of the provided xterm color palette.
 
 
-## Compiling
+## Compiling on Mac / Linux
 
 To compile you will need to install a GNU ARM cross compiler toolchain and
 ensure that  ```arm-none-eabi-gcc```, ```arm-none-eabi-as```
@@ -185,6 +185,19 @@ in the PiGFX root directory. The project should compile with the 2019 version
 of the toolchain.
 
 
+## Compiling on Windows
+
+To compile you will need to install a [GNU ARM cross compiler toolchain](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads) and
+ensure that  ```arm-none-eabi-gcc```, ```arm-none-eabi-as```
+```arm-none-eabi-ld``` and ```arm-none-eabi-objcopy``` are in your PATH.
+
+You'll also need the [git executable git.exe](https://git-scm.com/download/win) in your PATH.
+
+At this point, just run:
+
+```
+> makeall
+```
 
 ## License
 

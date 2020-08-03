@@ -14,6 +14,9 @@
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
 #define PFB( X, Y ) ( ctx.pfb + (Y) * ctx.Pitch + (X) )
 
+#define MAXBITMAPS 128
+#define MAXSPRITES 256
+
 void __swap__( int* a, int* b )
 {
     int aux = *a;
@@ -44,6 +47,18 @@ typedef struct {
     unsigned char* pfb;					/// Framebuffer address
     DRAWING_MODE mode;					/// Drawing mode: normal, xor, transparent
     unsigned char transparentcolor;		/// For transparent drawing mode
+    
+    // bitmap handling
+    struct
+    {
+        unsigned char  loading;
+        unsigned char  relCompressed;
+        unsigned char  index;
+        unsigned char  chars;
+        unsigned int   pixels;
+        unsigned int   actPos;
+        char*          pBitmap[MAXBITMAPS];
+    } bitmap;
 
     // Terminal variables
     struct
@@ -336,7 +351,12 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
 	{
 		for( j=0; j<width; ++j )
 		{
-			*pf++ = *pspr++;
+            if (pf < (ctx.pfb+ctx.size)) *pf++ = *pspr++;
+            else
+            {
+                pf++;
+                pspr++;
+            }
 		}
 		pf += ctx.Pitch - width;
 	}
@@ -364,7 +384,7 @@ void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y
 		{
 			unsigned char bkg = *pf;
 			unsigned char pix = *pspr++;
-			*pf++ = pix ^ bkg ;
+			if (pf < (ctx.pfb+ctx.size)) *pf++ = pix ^ bkg ;
 		}
 		pf += ctx.Pitch - width;
 	}
@@ -388,7 +408,7 @@ void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsign
 		{
 			unsigned char pix = *pspr++;
 			if (pix != ctx.transparentcolor)
-				*pf = pix;
+				if (pf < (ctx.pfb+ctx.size)) *pf = pix;
 			pf++;
 		}
 		pf += ctx.Pitch - width;
@@ -1038,6 +1058,55 @@ void gfx_term_render_cursor_newline_dma()
         gfx_fill_rect_dma( ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
 }
 
+// check if loading bitmap
+unsigned char gfx_term_loading_bitmap()
+{
+    return ctx.bitmap.loading;
+}
+
+// load bitmap data from serial
+void gfx_term_load_bitmap(char pixel)
+{
+    char* dest = 0;
+    unsigned char nbPixels, i;
+
+    dest = ctx.bitmap.pBitmap[ctx.bitmap.index]+8+ctx.bitmap.actPos;
+    if (ctx.bitmap.relCompressed)
+    {
+        if ((ctx.bitmap.chars & 1) == 0)    // pixel info
+        {
+            *dest = pixel;
+        }
+        else    // repeat
+        {
+            nbPixels = pixel;
+            pixel = *dest;
+            for (i=0;i<nbPixels;i++)
+            {
+                *dest++ = pixel;
+                ctx.bitmap.actPos++;
+                if (ctx.bitmap.actPos >= ctx.bitmap.pixels)
+                {
+                    // finished
+                    ctx.bitmap.loading = 0;
+                    break;
+                }
+            }
+        }
+        ctx.bitmap.chars++;
+    }
+    else
+    {
+        *dest = pixel;
+        ctx.bitmap.actPos++;
+        if (ctx.bitmap.actPos >= ctx.bitmap.pixels)
+        {
+            // finished
+            ctx.bitmap.loading = 0;
+        }
+    }
+}
+
 /** Draws a character string and handle control characters. */
 void gfx_term_putstring( const char* str )
 {
@@ -1332,6 +1401,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 }
                 retval = 0;
             goto back_to_normal;
+            break;
             case 'T':
                 /* render a triangle */
                 if (state->cmd_params_size == 6)
@@ -1339,6 +1409,54 @@ int state_fun_final_letter( char ch, scn_state *state )
                     gfx_line( state->cmd_params[0], state->cmd_params[1], state->cmd_params[2], state->cmd_params[3] );
                     gfx_line( state->cmd_params[2], state->cmd_params[3], state->cmd_params[4], state->cmd_params[5] );
                     gfx_line( state->cmd_params[4], state->cmd_params[5], state->cmd_params[0], state->cmd_params[1] );
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+            
+            case 'b':
+            case 'B':
+                // load a bitmap
+                // expects bitmap index, x size, y size
+                // followed by x*y bytes with color indexes for pixels
+                // B is REL compressed
+                if (state->cmd_params_size == 3)
+                {
+                    if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]))
+                    {
+                        // release old data
+                        if (ctx.bitmap.pBitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap.pBitmap[state->cmd_params[0]]);
+                        
+                        // alloc mem
+                        ctx.bitmap.pBitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
+                        if (ctx.bitmap.pBitmap[state->cmd_params[0]])
+                        {
+                            ctx.bitmap.loading = 1;
+                            uint32_t* px = (uint32_t*)ctx.bitmap.pBitmap[state->cmd_params[0]];
+                            uint32_t* py = px+1;
+                            *px = state->cmd_params[1];
+                            *py = state->cmd_params[2];
+                            ctx.bitmap.pixels = state->cmd_params[1]*state->cmd_params[2];
+                            ctx.bitmap.actPos = 0;
+                            ctx.bitmap.index = state->cmd_params[0];
+                            if (ch == 'B') ctx.bitmap.relCompressed = 1; else ctx.bitmap.relCompressed = 0;
+                            ctx.bitmap.chars = 0;
+                        }
+                    }
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+            
+            case 'd':
+                /* draw a bitmap */
+                if (state->cmd_params_size == 3)
+                {
+                    // expects bitmap index, x, y
+                    if (state->cmd_params[0] < MAXBITMAPS)
+                    {
+                        gfx_put_sprite((unsigned char*)ctx.bitmap.pBitmap[state->cmd_params[0]], state->cmd_params[1], state->cmd_params[2]);
+                    }
                 }
                 retval = 0;
             goto back_to_normal;
@@ -1543,6 +1661,7 @@ int state_fun_final_letter( char ch, scn_state *state )
             {
                 gfx_set_bg(0);
                 gfx_set_fg(15);
+                gfx_set_transparent_color( 0 );
                 goto back_to_normal;
             }
             if( state->cmd_params_size == 3 &&
@@ -1557,6 +1676,13 @@ int state_fun_final_letter( char ch, scn_state *state )
                 state->cmd_params[1]==5 )
             {
                 gfx_set_bg( state->cmd_params[2] );
+                goto back_to_normal;
+            }
+            if( state->cmd_params_size == 3 &&
+                state->cmd_params[0]==58    &&
+                state->cmd_params[1]==5 )
+            {
+                gfx_set_transparent_color( state->cmd_params[2] );
                 goto back_to_normal;
             }
             goto back_to_normal;

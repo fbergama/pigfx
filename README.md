@@ -175,7 +175,9 @@ See [terminal_codes](doc/terminal_codes.txt) for the specific commands.
 
 There are 2 examples for loading bitmaps: [load bitmap](shapes/load_bitmap_sample.bin), [load REL bitmap](shapes/load_rel_bitmap_sample.bin).
 
-The Xterm palette is used.
+The Xterm palette is used. A RGB pixel can be converted to this palette by the following formula.
+
+Pixel = 16 + (round(R / 255 * 5) * 36) + (round(G / 255 * 5) * 6) + round(B / 255 * 5)
 
 ## Compiling on Mac / Linux
 

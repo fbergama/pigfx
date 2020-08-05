@@ -73,4 +73,8 @@ extern void gfx_term_clear_screen_to_here();
 extern void gfx_term_set_font(int width, int height);
 extern void gfx_term_set_tabulation(int width);
 
+// bitmap handling
+extern unsigned char gfx_term_loading_bitmap();
+extern void gfx_term_load_bitmap(char pixel);
+
 #endif

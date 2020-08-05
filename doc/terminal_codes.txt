@@ -32,12 +32,19 @@ Graphics
 <ESC>[#<x0>;<y0>;<r>c                    Fill a circle with center at <x0>,<y0> and radius <r>
 <ESC>[#<x0>;<y0>;<r>C                    Draw a circle with center at <x0>,<y0> and radius <r>
 <ESC>[#<x0>;<y0>;<x1>;<y1>;<x2>;<y2>T    Draw a triangle from <x0>,<y0> to <x1>,<y1> to <x2>,<y2>
+<ESC>[#<idx>;<x>;<y>b                    Load raw bitmap to index 0-127 with width x and height y pixels. Expects x*y pixel bytes sent after this command.
+<ESC>[#<idx>;<x>;<y>B                    Load RLE compressed bitmap to index 0-127 with width x and height y pixels. Expects RLE compressed pixel data after this command, e.g. 0x10 0x20 draws color 16 for the next 32 pixels.
+<ESC>[#<idx>;<x>;<y>d                    Draw bitmap with index 0-127 at position x, y.
+<ESC>[#<idx>;<ref>;<x>;<y>s              Draw a sprite with index 0-255 from bitmap <ref> at position <x>, <y>.
+<ESC>[#<idx>;x                           Remove sprite with index 0-255, restore background.
+<ESC>[#<idx>;<x>;<y>m                    Move sprite with index 0-255 to x,y, restore background.
  
 Settings
 
-<ESC>[m             Reset color attributes (white on black) 
-<ESC>[38;5;<n>m     Set foreground color to <n> (0-255) 
-<ESC>[48;5;<n>m     Set background color to <n> (0-255) 
+<ESC>[m             Reset color attributes (white on black)
+<ESC>[38;5;<n>m     Set foreground color to <n> (0-255)
+<ESC>[48;5;<n>m     Set background color to <n> (0-255)
+<ESC>[58;5;<n>m     Set transparent color to <n> (0-255)
 <ESC>[=0m           Reset color attributes (white on black) and sets normal drawing (sprites and characters)
 <ESC>[=1m           Set XOR drawing (sprites and characters)
 <ESC>[=2m           Set transparent drawing (sprites and characters)

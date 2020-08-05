@@ -168,6 +168,31 @@ See [terminal_codes](doc/terminal_codes.txt) for a complete list of supported co
 See [Here](https://en.wikipedia.org/wiki/File:Xterm_256color_chart.svg) for a
 reference of the provided xterm color palette.
 
+## Bitmap handling
+A maximum of 128 bitmaps can be loaded to the PiGFX, either as list of pixels, or RLE compressed. Loaded bitmaps can then be put onto the background. A transparent color can be specified, these pixels won't be drawn. RLE compression expects a list of 2 byte values: first byte is the pixel color, second byte is the number of pixels to draw with this color.
+
+See [terminal_codes](doc/terminal_codes.txt) for the specific commands.
+
+There are 3 examples for loading bitmaps: [load bitmap](shapes/load_bitmap_sample.bin), [load RLE bitmap](shapes/load_rle_bitmap_sample.bin), [load 10 RLE dinosaur bitmaps](shapes/load_dinos.bin).
+
+The Xterm palette is used. A RGB pixel can be converted to this palette by the following formula:
+
+Pixel = 16 + (round(R / 255 * 5) * 36) + (round(G / 255 * 5) * 6) + round(B / 255 * 5)
+
+## Sprite handling
+
+Once a bitmap is loaded, it can be used to draw a maximum of 256 sprites. A sprite is a object which is movable over the background. If a sprite is moved or removed, the previous background gets restored. If the sprite is manipulated by a bitmap or a different sprite, this condition stays until it gets moved or removed. The sprite is then redrawn and the previous background restored. Moving a sprites, which is overlaped by another leads to artefacts.
+
+Sprites can be drawn solid or with a transparent color. A drawn sprite keeps its settings (solid/transparent) until it gets removed.
+
+Once a sprite is active, you should not manipulate or reload its bitmap source, otherwise the sprite changes to this new bitmap source if it gets moved.
+
+Animations could be realized by redefining the sprite with a different bitmap source.
+
+There's a [example](shapes/anim_dinos.bin) for a moving dinosaur (after first loading them).
+
+There is no collision detection yet.
+
 
 ## Compiling on Mac / Linux
 

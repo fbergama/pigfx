@@ -32,6 +32,20 @@ int __abs__( int a )
 /** Function type to compute a glyph address in a font. */
 typedef unsigned char* font_fun(unsigned int c);
 
+// Sprites
+typedef struct
+{
+    unsigned char active;
+    unsigned char bitmapRef;
+    unsigned int width;
+    unsigned int height;
+    DRAWING_MODE mode;
+    unsigned char transparentcolor;
+    unsigned int x;
+    unsigned int y;
+    unsigned char* pBackground;
+} tSprite;
+
 /** Display properties.
  *  Holds relevant properties for the display routines. Members in this
  *  structure are updated when setting display mode or font or by getting
@@ -52,13 +66,15 @@ typedef struct {
     struct
     {
         unsigned char  loading;
-        unsigned char  relCompressed;
+        unsigned char  rleCompressed;
         unsigned char  index;
         unsigned char  chars;
         unsigned int   pixels;
         unsigned int   actPos;
-        char*          pBitmap[MAXBITMAPS];
+        unsigned char* pBitmap[MAXBITMAPS];
     } bitmap;
+    
+    tSprite sprite[MAXSPRITES];
 
     // Terminal variables
     struct
@@ -413,6 +429,52 @@ void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsign
 		}
 		pf += ctx.Pitch - width;
 	}
+}
+
+// remove a sprite and restore previous background
+void gfx_remove_sprite(unsigned char idx)
+{
+    if (ctx.sprite[idx].active == 0) return;
+    if (ctx.sprite[idx].pBackground == 0) return;
+    gfx_put_sprite_NORMAL(ctx.sprite[idx].pBackground, ctx.sprite[idx].x, ctx.sprite[idx].y);
+    nmalloc_free((void**)&ctx.sprite[idx].pBackground);
+    ctx.sprite[idx].pBackground = 0;
+    ctx.sprite[idx].active = 0;
+}
+
+// save background data before a sprite is drawn
+void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int x, unsigned int y)
+{
+    // Get width and height
+    uint32_t* pW = (uint32_t*)pBitmap;
+    uint32_t* pH = pW+1;
+    pSprite->width = *pW;
+    pSprite->height = *pH;
+    // Alloc mem
+    pSprite->pBackground = nmalloc_malloc(8+(*pW)*(*pH));    // Header 8 bytes for x and y, then data
+    pW = (uint32_t*)pSprite->pBackground;
+    pH = pW+1;
+    // Write width and height to saved background
+    *pW = pSprite->width;
+    *pH = pSprite->height;
+    // Write pixel data to saved background
+    unsigned char* pScreen = PFB(x,y);
+    unsigned int i,j;
+    unsigned char* pSave = pSprite->pBackground+8;
+    for( i=0; i<*pH; ++i )
+    {
+        for( j=0; j<*pW; ++j )
+        {
+            if (pScreen < (ctx.pfb+ctx.size)) *pSave++ = *pScreen++;
+            else
+            {
+                *pSave = 0;
+                pSave++;
+                pScreen++;
+            }
+        }
+        pScreen += ctx.Pitch - *pW;
+    }
 }
 
 /** Draw a sprite inthe current drawing mode.
@@ -1070,8 +1132,8 @@ void gfx_term_load_bitmap(char pixel)
     char* dest = 0;
     unsigned char nbPixels, i;
 
-    dest = ctx.bitmap.pBitmap[ctx.bitmap.index]+8+ctx.bitmap.actPos;
-    if (ctx.bitmap.relCompressed)
+    dest = (char*)ctx.bitmap.pBitmap[ctx.bitmap.index]+8+ctx.bitmap.actPos;
+    if (ctx.bitmap.rleCompressed)
     {
         if ((ctx.bitmap.chars & 1) == 0)    // pixel info
         {
@@ -1419,7 +1481,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 // load a bitmap
                 // expects bitmap index, x size, y size
                 // followed by x*y bytes with color indexes for pixels
-                // B is REL compressed
+                // B is RLE compressed
                 if (state->cmd_params_size == 3)
                 {
                     if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]))
@@ -1439,7 +1501,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                             ctx.bitmap.pixels = state->cmd_params[1]*state->cmd_params[2];
                             ctx.bitmap.actPos = 0;
                             ctx.bitmap.index = state->cmd_params[0];
-                            if (ch == 'B') ctx.bitmap.relCompressed = 1; else ctx.bitmap.relCompressed = 0;
+                            if (ch == 'B') ctx.bitmap.rleCompressed = 1; else ctx.bitmap.rleCompressed = 0;
                             ctx.bitmap.chars = 0;
                         }
                     }
@@ -1456,6 +1518,78 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if (state->cmd_params[0] < MAXBITMAPS)
                     {
                         gfx_put_sprite((unsigned char*)ctx.bitmap.pBitmap[state->cmd_params[0]], state->cmd_params[1], state->cmd_params[2]);
+                    }
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+            
+            case 's':
+                /* draw a sprite */
+                if (state->cmd_params_size == 4)
+                {
+                    // expects sprite index, bitmap ref, x, y
+                    if ((state->cmd_params[0] < MAXSPRITES) && (state->cmd_params[1] < MAXBITMAPS))
+                    {
+                        // If the sprite is active we must restore the background
+                        gfx_remove_sprite(state->cmd_params[0]);
+                        
+                        // Is the referenced bitmap available?
+                        if (ctx.bitmap.pBitmap[state->cmd_params[1]])
+                        {
+                            gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap.pBitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
+
+                            // Save drawing mode and transparentcolor
+                            ctx.sprite[state->cmd_params[0]].transparentcolor = ctx.transparentcolor;
+                            ctx.sprite[state->cmd_params[0]].mode = ctx.mode;
+                            
+                            // Draw sprite
+                            ctx.sprite[state->cmd_params[0]].active = 1;
+                            ctx.sprite[state->cmd_params[0]].bitmapRef = state->cmd_params[1];
+                            ctx.sprite[state->cmd_params[0]].x = state->cmd_params[2];
+                            ctx.sprite[state->cmd_params[0]].y = state->cmd_params[3];
+                            gfx_put_sprite((unsigned char*)ctx.bitmap.pBitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
+                        }
+                    }
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+            
+            case 'x':
+                /* remove a sprite */
+                if (state->cmd_params_size == 1)
+                {
+                    // expects sprite index
+                    if (state->cmd_params[0] < MAXBITMAPS)
+                    {
+                        gfx_remove_sprite(state->cmd_params[0]);
+                    }
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+            
+            case 'm':
+                /* move a sprite to a new position */
+                if (state->cmd_params_size == 3)
+                {
+                    // expects sprite index, x, y
+                    if (state->cmd_params[0] < MAXSPRITES)
+                    {
+                        gfx_remove_sprite(state->cmd_params[0]);
+                        
+                        gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                        
+                        ctx.sprite[state->cmd_params[0]].active = 1;
+                        ctx.sprite[state->cmd_params[0]].x = state->cmd_params[1];
+                        ctx.sprite[state->cmd_params[0]].y = state->cmd_params[2];
+                        if (ctx.sprite[state->cmd_params[0]].mode == drawingNORMAL)
+                            gfx_put_sprite_NORMAL((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                        else if (ctx.sprite[state->cmd_params[0]].mode == drawingXOR)
+                            gfx_put_sprite_XOR((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                        else
+                            gfx_put_sprite_TRANSPARENT((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
                     }
                 }
                 retval = 0;
@@ -1661,7 +1795,6 @@ int state_fun_final_letter( char ch, scn_state *state )
             {
                 gfx_set_bg(0);
                 gfx_set_fg(15);
-                gfx_set_transparent_color( 0 );
                 goto back_to_normal;
             }
             if( state->cmd_params_size == 3 &&

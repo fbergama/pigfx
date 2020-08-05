@@ -315,23 +315,29 @@ void term_main_loop()
             if( uart_buffer_start >= uart_buffer_limit )
                 uart_buffer_start = uart_buffer;
 
-            
-            if (PiGfxConfig.skipBackspaceEcho)
+            if (gfx_term_loading_bitmap())
             {
-                if( time_microsec()-last_backspace_t > 50000 )
-                    backspace_n_skip=0;
-
-                if( backspace_n_skip  > 0 )
-                {
-                    //ee_printf("Skip %c",strb[0]);
-                    strb[0]=0; // Skip this char
-                    backspace_n_skip--;
-                    if( backspace_n_skip == 0)
-                        strb[0]=0x7F; // Add backspace instead
-                }
+                gfx_term_load_bitmap(strb[0]);
             }
+            else
+            {
+                if (PiGfxConfig.skipBackspaceEcho)
+                {
+                    if( time_microsec()-last_backspace_t > 50000 )
+                        backspace_n_skip=0;
 
-            gfx_term_putstring( strb );
+                    if( backspace_n_skip  > 0 )
+                    {
+                        //ee_printf("Skip %c",strb[0]);
+                        strb[0]=0; // Skip this char
+                        backspace_n_skip--;
+                        if( backspace_n_skip == 0)
+                            strb[0]=0x7F; // Add backspace instead
+                    }
+                }
+
+                gfx_term_putstring( strb );
+            }
         }
 
         uart_fill_queue(0);

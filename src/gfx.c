@@ -355,6 +355,12 @@ void gfx_set_transparent_color( GFX_COL color )
  */
 void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned int y )
 {
+    // Check Nul pointer
+    if (p_sprite == 0) return;
+    // Check start
+    if (x >= ctx.W || y >= ctx.H) return;
+    
+    // Get framebuffer address and bitmap size
     unsigned char* pf = PFB(x,y);
     unsigned int *p_spr_32 = (unsigned int*)p_sprite;
     unsigned int width  = *p_spr_32; p_spr_32++;
@@ -362,20 +368,21 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
 
     unsigned int i,j;
     unsigned char* pspr = (unsigned char*)p_spr_32;
+    
+    // limit bitmap size to screen
+    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    unsigned int usedwidth = width;
+    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
 
-	for( i=0; i<height; ++i )
-	{
-		for( j=0; j<width; ++j )
-		{
-            if (pf < (ctx.pfb+ctx.size)) *pf++ = *pspr++;
-            else
-            {
-                pf++;
-                pspr++;
-            }
-		}
-		pf += ctx.Pitch - width;
-	}
+    for( i=0; i<height; ++i )
+    {
+        for( j=0; j<usedwidth; ++j )
+        {
+            *pf++ = *pspr++;
+        }
+        pf += ctx.Pitch - usedwidth;
+        pspr += width - usedwidth;
+    }
 }
 /** Draw a sprite in normal mode.
  * The sprite pixels are XORed with the existing background.
@@ -386,6 +393,11 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
  */
 void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y )
 {
+    // Check Nul pointer
+    if (p_sprite == 0) return;
+    // Check start
+    if (x >= ctx.W || y >= ctx.H) return;
+    
     unsigned char* pf = PFB(x,y);
     unsigned int *p_spr_32 = (unsigned int*)p_sprite;
     unsigned int width  = *p_spr_32; p_spr_32++;
@@ -393,23 +405,34 @@ void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y
 
     unsigned int i,j;
     unsigned char* pspr = (unsigned char*)p_spr_32;
+    
+    // limit bitmap size to screen
+    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    unsigned int usedwidth = width;
+    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
 
-	for( i=0; i<height; ++i )
-	{
-		for( j=0; j<width; ++j )
-		{
-			unsigned char bkg = *pf;
-			unsigned char pix = *pspr++;
-			if (pf < (ctx.pfb+ctx.size)) *pf++ = pix ^ bkg ;
-		}
-		pf += ctx.Pitch - width;
-	}
+    for( i=0; i<height; ++i )
+    {
+        for( j=0; j<usedwidth; ++j )
+        {
+            unsigned char bkg = *pf;
+            unsigned char pix = *pspr++;
+            *pf++ = pix ^ bkg ;
+        }
+        pf += ctx.Pitch - usedwidth;
+        pspr += width - usedwidth;
+    }
 }
 /** Draw a transparent sprite. Pixels with the transparent color are not drawn,
  * leaving the existing background visible. By default, 00 is the transparent color.
  */
 void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsigned int y )
 {
+    // Check Nul pointer
+    if (p_sprite == 0) return;
+    // Check start
+    if (x >= ctx.W || y >= ctx.H) return;
+    
     unsigned char* pf = PFB(x,y);
     unsigned int *p_spr_32 = (unsigned int*)p_sprite;
     unsigned int width  = *p_spr_32; p_spr_32++;
@@ -417,18 +440,23 @@ void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsign
 
     unsigned int i,j;
     unsigned char* pspr = (unsigned char*)p_spr_32;
+    
+    // limit bitmap size to screen
+    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    unsigned int usedwidth = width;
+    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
 
-	for( i=0; i<height; ++i )
-	{
-		for( j=0; j<width; ++j )
-		{
-			unsigned char pix = *pspr++;
-			if (pix != ctx.transparentcolor)
-				if (pf < (ctx.pfb+ctx.size)) *pf = pix;
-			pf++;
-		}
-		pf += ctx.Pitch - width;
-	}
+    for( i=0; i<height; ++i )
+    {
+        for( j=0; j<usedwidth; ++j )
+        {
+            unsigned char pix = *pspr++;
+            if (pix != ctx.transparentcolor) *pf = pix;
+            pf++;
+        }
+        pf += ctx.Pitch - usedwidth;
+        pspr += width - usedwidth;
+    }
 }
 
 // remove a sprite and restore previous background
@@ -445,6 +473,11 @@ void gfx_remove_sprite(unsigned char idx)
 // save background data before a sprite is drawn
 void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int x, unsigned int y)
 {
+    // Check Nul pointer
+    if ((pSprite == 0) || (pBitmap == 0))  return;
+    // Check start
+    if (x >= ctx.W || y >= ctx.H) return;
+    
     // Get width and height
     uint32_t* pW = (uint32_t*)pBitmap;
     uint32_t* pH = pW+1;
@@ -461,19 +494,22 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     unsigned char* pScreen = PFB(x,y);
     unsigned int i,j;
     unsigned char* pSave = pSprite->pBackground+8;
-    for( i=0; i<*pH; ++i )
+    unsigned int height = *pH;
+    unsigned int width = *pW;
+    
+    // limit bitmap size to screen
+    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    unsigned int usedwidth = width;
+    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
+    
+    for( i=0; i<height; ++i )
     {
-        for( j=0; j<*pW; ++j )
+        for( j=0; j<usedwidth; ++j )
         {
-            if (pScreen < (ctx.pfb+ctx.size)) *pSave++ = *pScreen++;
-            else
-            {
-                *pSave = 0;
-                pSave++;
-                pScreen++;
-            }
+            *pSave++ = *pScreen++;
         }
-        pScreen += ctx.Pitch - *pW;
+        pScreen += ctx.Pitch - usedwidth;
+        pSave += width - usedwidth;
     }
 }
 
@@ -1538,6 +1574,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                         if (ctx.bitmap.pBitmap[state->cmd_params[1]])
                         {
                             gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap.pBitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
+                            gfx_put_sprite((unsigned char*)ctx.bitmap.pBitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
 
                             // Save drawing mode and transparentcolor
                             ctx.sprite[state->cmd_params[0]].transparentcolor = ctx.transparentcolor;
@@ -1548,7 +1585,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                             ctx.sprite[state->cmd_params[0]].bitmapRef = state->cmd_params[1];
                             ctx.sprite[state->cmd_params[0]].x = state->cmd_params[2];
                             ctx.sprite[state->cmd_params[0]].y = state->cmd_params[3];
-                            gfx_put_sprite((unsigned char*)ctx.bitmap.pBitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
+                            
                         }
                     }
                 }
@@ -1575,21 +1612,22 @@ int state_fun_final_letter( char ch, scn_state *state )
                 if (state->cmd_params_size == 3)
                 {
                     // expects sprite index, x, y
-                    if (state->cmd_params[0] < MAXSPRITES)
+                    if ((state->cmd_params[0] < MAXSPRITES) && (ctx.sprite[state->cmd_params[0]].active))
                     {
                         gfx_remove_sprite(state->cmd_params[0]);
                         
                         gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
                         
-                        ctx.sprite[state->cmd_params[0]].active = 1;
-                        ctx.sprite[state->cmd_params[0]].x = state->cmd_params[1];
-                        ctx.sprite[state->cmd_params[0]].y = state->cmd_params[2];
                         if (ctx.sprite[state->cmd_params[0]].mode == drawingNORMAL)
                             gfx_put_sprite_NORMAL((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
                         else if (ctx.sprite[state->cmd_params[0]].mode == drawingXOR)
                             gfx_put_sprite_XOR((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
                         else
                             gfx_put_sprite_TRANSPARENT((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                        
+                        ctx.sprite[state->cmd_params[0]].active = 1;
+                        ctx.sprite[state->cmd_params[0]].x = state->cmd_params[1];
+                        ctx.sprite[state->cmd_params[0]].y = state->cmd_params[2];
                     }
                 }
                 retval = 0;

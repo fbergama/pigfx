@@ -32,6 +32,50 @@ void *qmemcpy(void *dest, void *src, size_t n)
 		return pigfx_memcpy(dest, src, n);
 }
 
+void veryfastmemcpy(void *dest, void* src, unsigned int n)
+{
+    //ee_printf("veryfast\n");
+    if ((((unsigned int)dest & 0x3) == 0) && (((unsigned int)src & 0x3) == 0))
+    {
+        // both 4 byte aligned
+        int single = n & 0x3;
+        int singpos = n - single;
+        int quad = singpos / 4;
+        unsigned int* qdest = dest;
+        unsigned int* qsrc = src;
+        unsigned char* sdest = (unsigned char*)dest+singpos;
+        unsigned char* ssrc = (unsigned char*)src+singpos;
+        for (int q=0; q<quad; q++)
+        {
+            qdest[q] = qsrc[q];
+        }
+        for (int s=0; s<single; s++)
+        {
+            sdest[s] = ssrc[s];
+        }
+    }
+    else if ((((unsigned int)dest & 0x1) == 0) && (((unsigned int)src & 0x1) == 0))
+    {
+        // both 2 byte aligned
+        int single = n & 0x1;
+        int singpos = n - single;
+        int dbl = singpos / 2;
+        unsigned short int* ddest = dest;
+        unsigned short int* dsrc = src;
+        unsigned char* sdest = (unsigned char*)dest + singpos;
+        unsigned char* ssrc = (unsigned char*)src + singpos;
+        for (int d=0; d<dbl; d++)
+        {
+            ddest[d] = dsrc[d];
+        }
+        if (single) *sdest = *ssrc;
+    }
+    else
+    {
+        pigfx_memcpy(dest, src, n);
+    }
+}
+
 void *pigfx_memcpy (void *pDest, const void *pSrc, size_t nLength)
 {
 	char *pd = (char *) pDest;

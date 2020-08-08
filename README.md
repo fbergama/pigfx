@@ -193,6 +193,20 @@ There's a [example](shapes/anim_dinos.bin) for a moving dinosaur (after first lo
 
 There is no collision detection yet.
 
+## Graphics performance
+
+If you want to do graphics, get a Pi Zero. Multi core Pi's like the models 2 - 4 are much slower if only one core is used like PiGFX does.
+
+Graphics which are drawn on a multiple of 4 pixels x-position draw much faster than on a multiple of 2 or 1. You will also get more speed if your image has a width of a multiple of 4. Drawing solid is faster than drawing transparent.
+
+This is a table that shows the time for drawing a 400x300 pixel image on different x-positions.
+
+|Pi Gen.  |Aligned 4 px |Aligned 2 px |unaligned
+|-------  |------------ |------------ |---------
+|1 (zero) |20.8ms       |40.4ms       |53.0ms
+|2        |46.9ms       |90.8ms       |114.5ms
+|3        |50.1ms       |93.9ms       |122.1ms
+|4        |33.4ms       |64.9ms       |144.4ms
 
 ## Compiling on Mac / Linux
 

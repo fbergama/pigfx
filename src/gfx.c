@@ -5,6 +5,7 @@
 #include "console.h"
 #include "dma.h"
 #include "utils.h"
+#include "c_utils.h"
 #include "timer.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
@@ -177,21 +178,10 @@ state_fun state_fun_ignore_digit;
 #include "framebuffer.h"
 
 // Global static to store the screen variables.
-/*static*/ FRAMEBUFFER_CTX ctx;
+FRAMEBUFFER_CTX ctx;
 
 // DMA communication and command buffer
 unsigned int __attribute__((aligned(0x100))) mem_buff_dma[16];
-
-// local memset
-void local_memset (void *pBuffer, int nValue, unsigned int nLength)
-{
-	char *p = (char *) pBuffer;
-
-	while (nLength--)
-	{
-		*p++ = (char) nValue;
-	}
-}
 
 // Forward declarations
 void gfx_term_render_cursor();
@@ -248,7 +238,7 @@ void gfx_compute_font()
 		ctx.cursor_buffer_ready = 0;
 	}
 	ctx.cursor_buffer = (unsigned char*)nmalloc_malloc(ctx.cursor_buffer_size);
-	local_memset(ctx.cursor_buffer, 0, ctx.cursor_buffer_size);
+	pigfx_memset(ctx.cursor_buffer, 0, ctx.cursor_buffer_size);
 
 	// set logical terminal size
     ctx.term.WIDTH = ctx.W / ctx.term.FONTWIDTH;
@@ -270,7 +260,7 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     dma_init();
     
     // Set ctx memory to 0
-    local_memset(&ctx, 0, sizeof(ctx));
+    pigfx_memset(&ctx, 0, sizeof(ctx));
 
     // set default font
     if (ctx.term.FONT == 0) {
@@ -366,7 +356,7 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
     unsigned int width  = *p_spr_32; p_spr_32++;
     unsigned int height = *p_spr_32; p_spr_32++;
 
-    unsigned int i,j;
+    unsigned int i;
     unsigned char* pspr = (unsigned char*)p_spr_32;
     
     // limit bitmap size to screen
@@ -376,12 +366,9 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
 
     for( i=0; i<height; ++i )
     {
-        for( j=0; j<usedwidth; ++j )
-        {
-            *pf++ = *pspr++;
-        }
-        pf += ctx.Pitch - usedwidth;
-        pspr += width - usedwidth;
+        veryfastmemcpy(pf, pspr, usedwidth);
+        pf += ctx.Pitch;
+        pspr += width;
     }
 }
 /** Draw a sprite in normal mode.
@@ -492,7 +479,7 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     *pH = pSprite->height;
     // Write pixel data to saved background
     unsigned char* pScreen = PFB(x,y);
-    unsigned int i,j;
+    unsigned int i/*, j*/;
     unsigned char* pSave = pSprite->pBackground+8;
     unsigned int height = *pH;
     unsigned int width = *pW;
@@ -504,12 +491,9 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     
     for( i=0; i<height; ++i )
     {
-        for( j=0; j<usedwidth; ++j )
-        {
-            *pSave++ = *pScreen++;
-        }
-        pScreen += ctx.Pitch - usedwidth;
-        pSave += width - usedwidth;
+        veryfastmemcpy(pSave, pScreen, usedwidth);
+        pScreen += ctx.Pitch;
+        pSave += width;
     }
 }
 
@@ -537,10 +521,11 @@ void gfx_clear()
     dma_execute_queue();
     while( DMA_CHAN0_BUSY ); // Busy wait for DMA
 #else
-    unsigned char* pf = ctx.pfb;
-    unsigned char* pfb_end = pf + ctx.size;
-    while(pf < pfb_end)
-        *pf++ = ctx.bg;
+    unsigned int* pf = (unsigned int*)ctx.pfb;
+    for (unsigned int i=0; i< ctx.size/4; i++)
+    {
+        pf[i] = ctx.bg32;
+    }
 #endif
 }
 
@@ -802,7 +787,6 @@ void gfx_draw_hor_line(int x0, int y0, unsigned int width)
     for (i=0;i<width;i++)
     {
         *pfb++ = ctx.fg;
-        //pfb++;
     }
 }
 
@@ -831,12 +815,10 @@ void gfx_draw_filled_circle(unsigned int x0, unsigned int y0, unsigned int rad)
         balance += xoff+xoff+1;
         xoff++;
 
-        //if ((balance += xoff++ + xoff)>= 0)
         if (balance>= 0)
         {
             yoff--;
             balance -= yoff+yoff;
-            //balance-=--yoff+yoff;
         }
     }
 }
@@ -1141,7 +1123,7 @@ void gfx_term_render_cursor()
 
 /** Fill cursor buffer with the current background and framebuffer with fg.
  */
-void gfx_term_render_cursor_newline_dma()
+void gfx_term_render_cursor_newline()
 {
     //
     const unsigned int BG = ctx.bg32; // 4 pixels
@@ -1153,7 +1135,7 @@ void gfx_term_render_cursor_newline_dma()
     }
 
     if( ctx.term.cursor_visible )
-        gfx_fill_rect_dma( ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
+        gfx_fill_rect( ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
 }
 
 // check if loading bitmap
@@ -1210,8 +1192,9 @@ void gfx_term_putstring( const char* str )
 {
     while( *str )
     {
+#if ENABLED(GFX_USE_DMA)
         while( DMA_CHAN0_BUSY ); // Busy wait for DMA
-
+#endif
         int checkscroll = 1;
         switch( *str )
         {
@@ -1273,8 +1256,10 @@ void gfx_term_putstring( const char* str )
             --ctx.term.cursor_row;
 
             gfx_scroll_down(ctx.term.FONTHEIGHT);
-            gfx_term_render_cursor_newline_dma();
+            gfx_term_render_cursor_newline();
+#if ENABLED(GFX_USE_DMA)
             dma_execute_queue();
+#endif
         }
 
         ++str;

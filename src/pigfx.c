@@ -309,7 +309,7 @@ void term_main_loop()
 
     while(1)
     {
-        if( !DMA_CHAN0_BUSY && uart_buffer_start != uart_buffer_end )
+        if( uart_buffer_start != uart_buffer_end )
         {
             strb[0] = *uart_buffer_start++;
             if( uart_buffer_start >= uart_buffer_limit )

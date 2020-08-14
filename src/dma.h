@@ -15,12 +15,9 @@
 
 
 void dma_init();
-int dma_enqueue_operation( unsigned int* src, unsigned int *dst, unsigned int len, unsigned int stride, unsigned int TRANSFER_INFO );   
+int dma_enqueue_operation( void* src, void* dst, unsigned int len, unsigned int stride, unsigned int TRANSFER_INFO );   
 void dma_execute_queue();
-void dma_memcpy_32( unsigned int* src, unsigned int *dst, unsigned int size );
+void dma_memcpy_32( void* src, void *dst, unsigned int size );
 int dma_running();
-
-
-#define DMA_CHAN0_BUSY (*( (volatile unsigned int*)DMA_BASE + (0 << 6) + 0x00/*dma_cs_offset*/  ) &  0x1)
 
 #endif

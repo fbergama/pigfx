@@ -10,6 +10,7 @@
 #include "nmalloc.h"
 #include "ee_printf.h"
 #include "mbox.h"
+#include "config.h"
 
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
@@ -180,9 +181,6 @@ state_fun state_fun_ignore_digit;
 // Global static to store the screen variables.
 FRAMEBUFFER_CTX ctx;
 
-// DMA communication and command buffer
-unsigned int __attribute__((aligned(0x100))) mem_buff_dma[16];
-
 // Forward declarations
 void gfx_term_render_cursor();
 void gfx_term_save_cursor_content();
@@ -295,7 +293,7 @@ void gfx_set_bg( GFX_COL col )
     ctx.bg = col;
     // fill precomputed 4 bytes integer
     unsigned char* p = (unsigned char*)&ctx.bg32;
-    for (size_T i = 0 ; i < sizeof ctx.fg32 ; i++)
+    for (size_T i = 0 ; i < sizeof(ctx.bg32) ; i++)
     	*(p++) = col;
 }
 
@@ -305,7 +303,7 @@ void gfx_set_fg( GFX_COL col )
     ctx.fg = col;
     // fill precomputed 4 bytes integer
     unsigned char* p = (unsigned char*)&ctx.fg32;
-    for (size_T i = 0 ; i < sizeof ctx.fg32 ; i++)
+    for (size_T i = 0 ; i < sizeof(ctx.fg32) ; i++)
     	*(p++) = col;
 }
 
@@ -350,13 +348,14 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
     // Check start
     if (x >= ctx.W || y >= ctx.H) return;
     
+    //unsigned int tact = time_microsec();
+    
     // Get framebuffer address and bitmap size
     unsigned char* pf = PFB(x,y);
     unsigned int *p_spr_32 = (unsigned int*)p_sprite;
     unsigned int width  = *p_spr_32; p_spr_32++;
     unsigned int height = *p_spr_32; p_spr_32++;
 
-    unsigned int i;
     unsigned char* pspr = (unsigned char*)p_spr_32;
     
     // limit bitmap size to screen
@@ -364,14 +363,27 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
     unsigned int usedwidth = width;
     if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
 
-    for( i=0; i<height; ++i )
+    if (PiGfxConfig.disableGfxDMA)
     {
-        veryfastmemcpy(pf, pspr, usedwidth);
-        pf += ctx.Pitch;
-        pspr += width;
+        for(unsigned int i=0; i<height; ++i )
+        {
+            veryfastmemcpy(pf, pspr, usedwidth);
+            pf += ctx.Pitch;
+            pspr += width;
+        }
     }
+    else
+    {
+        dma_enqueue_operation( p_spr_32, 
+                            pf, 
+                            (((height-1) & 0xFFFF )<<16) | (usedwidth & 0xFFFF ),
+                            (((ctx.Pitch-usedwidth) & 0xFFFF)<<16 | ((width-usedwidth) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                            DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+        dma_execute_queue();
+    }
+    //cout("gfx_put_sprite_NORMAL took ");cout_d(time_microsec()- tact);cout(" DisableDMA=");cout_d(PiGfxConfig.disableGfxDMA);cout_endl();
 }
-/** Draw a sprite in normal mode.
+/** Draw a sprite in XOR mode.
  * The sprite pixels are XORed with the existing background.
  * Interesting side effects:
  * - sprite pixel drawn over a black background (color 00) keep the original sprite color
@@ -384,6 +396,8 @@ void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y
     if (p_sprite == 0) return;
     // Check start
     if (x >= ctx.W || y >= ctx.H) return;
+    
+    //unsigned int tact = time_microsec();
     
     unsigned char* pf = PFB(x,y);
     unsigned int *p_spr_32 = (unsigned int*)p_sprite;
@@ -409,6 +423,7 @@ void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y
         pf += ctx.Pitch - usedwidth;
         pspr += width - usedwidth;
     }
+    //cout("gfx_put_sprite_XOR took ");cout_d(time_microsec()- tact);cout("DisableDMA=");cout_d(PiGfxConfig.disableGfxDMA);cout_endl();
 }
 /** Draw a transparent sprite. Pixels with the transparent color are not drawn,
  * leaving the existing background visible. By default, 00 is the transparent color.
@@ -419,6 +434,8 @@ void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsign
     if (p_sprite == 0) return;
     // Check start
     if (x >= ctx.W || y >= ctx.H) return;
+    
+    //unsigned int tact = time_microsec();
     
     unsigned char* pf = PFB(x,y);
     unsigned int *p_spr_32 = (unsigned int*)p_sprite;
@@ -444,6 +461,7 @@ void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsign
         pf += ctx.Pitch - usedwidth;
         pspr += width - usedwidth;
     }
+    //cout("gfx_put_sprite_TRANSPARENT took ");cout_d(time_microsec()- tact);cout(" DisableDMA=");cout_d(PiGfxConfig.disableGfxDMA);cout_endl();
 }
 
 // remove a sprite and restore previous background
@@ -464,6 +482,8 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     if ((pSprite == 0) || (pBitmap == 0))  return;
     // Check start
     if (x >= ctx.W || y >= ctx.H) return;
+    
+    //unsigned int tact = time_microsec();
     
     // Get width and height
     uint32_t* pW = (uint32_t*)pBitmap;
@@ -489,12 +509,26 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     unsigned int usedwidth = width;
     if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
     
-    for( i=0; i<height; ++i )
+    if (PiGfxConfig.disableGfxDMA)
     {
-        veryfastmemcpy(pSave, pScreen, usedwidth);
-        pScreen += ctx.Pitch;
-        pSave += width;
+        for( i=0; i<height; ++i )
+        {
+            veryfastmemcpy(pSave, pScreen, usedwidth);
+            pScreen += ctx.Pitch;
+            pSave += width;
+        }
     }
+    else
+    {
+        dma_enqueue_operation( pScreen, 
+                            pSave, 
+                            (((height-1) & 0xFFFF )<<16) | (usedwidth & 0xFFFF ),
+                            (((width-usedwidth) & 0xFFFF)<<16 | ((ctx.Pitch-usedwidth) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                            DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+        dma_execute_queue();
+    }
+    
+    //cout("gfx_save_background took ");cout_d(time_microsec()- tact);cout(" DisableDMA=");cout_d(PiGfxConfig.disableGfxDMA);cout_endl();
 }
 
 /** Draw a sprite inthe current drawing mode.
@@ -504,76 +538,55 @@ draw_putsprite_fun (*gfx_put_sprite) = gfx_put_sprite_NORMAL;
 /** Sets the whole display to background color. */
 void gfx_clear()
 {
-#if ENABLED(GFX_USE_DMA)
-    unsigned int* BG = (unsigned int*)mem_arm2vc( (unsigned int)mem_buff_dma );
-    // Fill the 16 bytes of dma buffer with background color
-    *BG = ctx.bg32;
-    *(BG+1) = *BG;
-    *(BG+2) = *BG;
-    *(BG+3) = *BG;
-
-    dma_enqueue_operation( BG, 
-            (unsigned int *)( ctx.pfb ), 
-            ctx.size,
-            0,
-            DMA_TI_DEST_INC );
-
-    dma_execute_queue();
-    while( DMA_CHAN0_BUSY ); // Busy wait for DMA
-#else
-    unsigned int* pf = (unsigned int*)ctx.pfb;
-    for (unsigned int i=0; i< ctx.size/4; i++)
+    if (PiGfxConfig.disableGfxDMA)
     {
-        pf[i] = ctx.bg32;
+        unsigned int* pf = (unsigned int*)ctx.pfb;
+        for (unsigned int i=0; i< ctx.size/4; i++)
+        {
+            pf[i] = ctx.bg32;
+        }
     }
-#endif
-}
-
-/** TODO: */
-void gfx_scroll_down_dma( unsigned int npixels )
-{
-    unsigned int* BG = (unsigned int*)mem_arm2vc( (unsigned int)mem_buff_dma );
-    const unsigned int bg = ctx.bg32;
-    *BG = bg;
-    *(BG+1) = bg;
-    *(BG+2) = bg;
-    *(BG+3) = bg;
-    unsigned int line_height = ctx.Pitch * npixels;
-
-    
-    dma_enqueue_operation( (unsigned int *)( ctx.pfb + line_height ), 
-                           (unsigned int *)( ctx.pfb ), 
-                           (ctx.size - line_height),
-                           0,
-                           DMA_TI_SRC_INC | DMA_TI_DEST_INC );
-
-    dma_enqueue_operation( BG, 
-                           (unsigned int *)( ctx.pfb + ctx.size -line_height ), 
-                           line_height,
-                           0,
-                           DMA_TI_DEST_INC );
+    else
+    {
+        // Somehow a simple memfill is not working with DMA. So we fill the first line on the screen and then use 2D mode to copy it to the rest of the screen
+        unsigned int* fillScreen = (unsigned int*)ctx.pfb;
+        for (unsigned int i=0; i<ctx.Pitch/4; i++)
+        {
+            fillScreen[i] = ctx.bg32;
+        }
+        dma_enqueue_operation( ctx.pfb, 
+                            ctx.pfb+ctx.Pitch, 
+                            (((ctx.H-2) & 0xFFFF )<<16) | (ctx.Pitch & 0xFFFF ), // y len << 16 | xlen
+                            (-ctx.Pitch & 0xFFFF), // bits 31:16 destination stride, 15:0 source stride 
+                            DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+        dma_execute_queue();
+    }
 }
 
 /** TODO: */
 void gfx_scroll_down( unsigned int npixels )
 {
-#if ENABLED(GFX_USE_DMA)
-    gfx_scroll_down_dma( npixels );
-    dma_execute_queue();
-#else
     unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.Pitch*npixels);
     unsigned int* pf_dst = (unsigned int*)ctx.pfb;
     const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb + ctx.size );
 
-    while( pf_src < pfb_end )
-        *pf_dst++ = *pf_src++;
+    if (PiGfxConfig.disableGfxDMA)
+    {
+        while( pf_src < pfb_end )
+            *pf_dst++ = *pf_src++;
+    }
+    else
+    {
+        unsigned int line_height = ctx.Pitch * npixels;
+        unsigned int pixelstocopy = ctx.size - line_height;
+        
+        dma_memcpy_32(ctx.pfb + line_height, ctx.pfb, pixelstocopy);
+        pf_dst += pixelstocopy/4;
+    }
 
     // Fill with bg at the bottom
-    const unsigned int BG = ctx.bg32;
     while( pf_dst < pfb_end )
-        *pf_dst++ = BG;
-
-#endif
+        *pf_dst++ = ctx.bg32;
 }
 
 /** TODO: comments */
@@ -587,25 +600,8 @@ void gfx_scroll_up( unsigned int npixels )
         *pf_dst-- = *pf_src--;
     
     // Fill with bg at the top
-    const unsigned int BG = ctx.bg32;
     while( pf_dst >= pfb_end )
-        *pf_dst-- = BG;
-}
-
-/** TODO: comments */
-void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
-{
-    unsigned int* FG = (unsigned int*)mem_arm2vc( (unsigned int)mem_buff_dma )+4;
-    const unsigned int fg = ctx.fg32;
-    unsigned int* PFG = FG;
-    for (size_T i = 0 ; i < sizeof ctx.fg32 ; i++)
-    	*(PFG++) = fg;
-
-    dma_enqueue_operation( FG, 
-                           (unsigned int *)( PFB(x,y) ), 
-                           (((height-1) & 0xFFFF )<<16) | (width & 0xFFFF ),
-                           ((ctx.Pitch-width) & 0xFFFF)<<16, /* bits 31:16 destination stride, 15:0 source stride */
-                           DMA_TI_DEST_INC | DMA_TI_2DMODE );
+        *pf_dst-- = ctx.bg32;
 }
 
 /** TODO: */
@@ -620,10 +616,6 @@ void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned
     if( y+height > ctx.H )
         height = ctx.H-y;
 
-#if ENABLED(GFX_USE_DMA)
-    gfx_fill_rect_dma( x, y, width, height );
-    dma_execute_queue();
-#else
     while( height-- )
     {
         unsigned char* pf = PFB(x,y);
@@ -631,10 +623,8 @@ void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned
 
         while( pf < pfb_end )
             *pf++ = ctx.fg;
-
         ++y;
     }
-#endif
 }
 
 /** TODO */
@@ -826,10 +816,9 @@ void gfx_draw_filled_circle(unsigned int x0, unsigned int y0, unsigned int rad)
 /** TODO: */
 void gfx_clear_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
-    GFX_COL curr_fg = ctx.fg;
-    ctx.fg = ctx.bg;
+    gfx_swap_fg_bg();
     gfx_fill_rect(x,y,width,height);
-    ctx.fg = curr_fg;
+    gfx_swap_fg_bg();
 }
 
 /** TODO: */
@@ -1192,9 +1181,6 @@ void gfx_term_putstring( const char* str )
 {
     while( *str )
     {
-#if ENABLED(GFX_USE_DMA)
-        while( DMA_CHAN0_BUSY ); // Busy wait for DMA
-#endif
         int checkscroll = 1;
         switch( *str )
         {
@@ -1257,9 +1243,6 @@ void gfx_term_putstring( const char* str )
 
             gfx_scroll_down(ctx.term.FONTHEIGHT);
             gfx_term_render_cursor_newline();
-#if ENABLED(GFX_USE_DMA)
-            dma_execute_queue();
-#endif
         }
 
         ++str;

@@ -201,12 +201,12 @@ Graphics which are drawn on a multiple of 4 pixels x-position draw much faster t
 
 This is a table that shows the time for drawing a 400x300 pixel image on different x-positions.
 
-|Pi Gen.  |Aligned 4 px |Aligned 2 px |unaligned
-|-------  |------------ |------------ |---------
-|1 (zero) |20.8ms       |40.4ms       |53.0ms
-|2        |46.9ms       |90.8ms       |114.5ms
-|3        |50.1ms       |93.9ms       |122.1ms
-|4        |33.4ms       |64.9ms       |144.4ms
+|Pi Gen.  |Aligned 4 px |Aligned 2 px |unaligned |DMA enabled
+|-------  |------------ |------------ |--------- |-----------
+|1 (zero) |20.8ms       |40.4ms       |53.0ms    |12.5ms
+|2        |46.9ms       |90.8ms       |114.5ms   |14.2ms
+|3        |50.1ms       |93.9ms       |122.1ms   |14.1ms
+|4        |33.4ms       |64.9ms       |144.4ms   |5.4ms
 
 ## Compiling on Mac / Linux
 

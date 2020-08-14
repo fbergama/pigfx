@@ -1,6 +1,7 @@
 #include "dma.h"
 #include "utils.h"
 #include "mbox.h"
+#include "console.h"
 
 
 #define DMA_CS_OFFSET        0x00
@@ -25,21 +26,29 @@ typedef struct _DMA_Ctrl_Block
 DMA_Control_Block __attribute__((aligned(0x100))) ctr_blocks[16];
 unsigned int curr_blk;
 
+unsigned int channel;
+
 void dma_init()
 {
     curr_blk = 0;
+    channel = 0;
+    // Enable DMA on used channel
+    unsigned int actEnable = R32(DMA_ENABLE);
+    actEnable |= (1 << channel);
+    W32(DMA_ENABLE, actEnable);
 }
 
 
-int dma_enqueue_operation( unsigned int* src, unsigned int *dst, unsigned int len, unsigned int stride, unsigned int TRANSFER_INFO )
+int dma_enqueue_operation( void* src, void* dst, unsigned int len, unsigned int stride, unsigned int TRANSFER_INFO )
 {
+    // Y length in 2D mode is limited to 16384 as the 2 top bits are reserved
     if( curr_blk == 16 )
         return 0;
 
-    DMA_Control_Block* blk = (DMA_Control_Block*)mem_arm2vc( (unsigned int)&( ctr_blocks[ curr_blk ]) );
+    DMA_Control_Block* blk = &( ctr_blocks[ curr_blk ]);
     blk->TI = TRANSFER_INFO;
-    blk->SOURCE_AD = (unsigned int)src;
-    blk->DEST_AD = (unsigned int)dst;
+    blk->SOURCE_AD = mem_arm2vc((unsigned int)src);
+    blk->DEST_AD = mem_arm2vc((unsigned int)dst);
     blk->TXFR_LEN = len;
     blk->STRIDE = stride;
     blk->NEXTCONBK = 0;
@@ -59,30 +68,30 @@ int dma_enqueue_operation( unsigned int* src, unsigned int *dst, unsigned int le
 
 void dma_execute_queue()
 {
-
-    // Enable DMA on channel 0
-    *( (volatile unsigned int*)( DMA_BASE + 0xFF0) ) = 1;
-
     // Set the first control block
-    unsigned int channel = 0;
-    *( (volatile unsigned int*)DMA_BASE + (channel << 6) + DMA_CONBLK_AD_OFFSET ) = mem_arm2vc( (unsigned int)&(ctr_blocks[0]) );
+    *( (volatile unsigned int*)DMA_BASE + (channel << 6) + DMA_CONBLK_AD_OFFSET ) = mem_arm2vc((unsigned int)ctr_blocks);
 
     // Start the operation
     *( (volatile unsigned int*)DMA_BASE + (channel << 6) + DMA_CS_OFFSET  ) = 7;
 
     // reset the queue
     curr_blk=0;
+    
+    // wait for DMA to finish
+    while( dma_running() )
+    {
+        ;// Busy wait for DMA
+    }
 }
 
 
 int dma_running()
 {
-    unsigned int channel = 0;
     return *( (volatile unsigned int*)DMA_BASE + (channel << 6) + DMA_CS_OFFSET  ) &  0x1;
 }
 
 
-void dma_memcpy_32( unsigned int* src, unsigned int *dst, unsigned int size )
+void dma_memcpy_32( void* src, void *dst, unsigned int size )
 {
     dma_enqueue_operation( src, dst, size, 0, DMA_TI_SRC_INC | DMA_TI_DEST_INC ); 
     dma_execute_queue();

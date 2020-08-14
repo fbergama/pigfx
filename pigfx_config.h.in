@@ -4,13 +4,12 @@
 #include "globaldefs.h"
 
 #define PIGFX_VERSION           "$VERSION$"
-#define GFX_USE_DMA             OFF             /* Graphics functions use DMA when possible (faster, but buggy and occupy DMA channel 0). Don't expect to work. */
 #define FRAMEBUFFER_DEBUG       OFF             /* Log framebuffer operations to UART */
 #define HEARTBEAT_FREQUENCY     1               /* Status led blink frequency in Hz */
 
 #define PIGFX_MAJVERSION        1               /* Major version number */
 #define PIGFX_MINVERSION        7               /* Minor version number */
-#define PIGFX_BUILDVERSION      2               /* Build version. */
+#define PIGFX_BUILDVERSION      3               /* Build version. */
 
 /** Versions:
 	

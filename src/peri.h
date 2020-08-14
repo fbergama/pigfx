@@ -139,6 +139,24 @@
 
 // DMA
 #define DMA_BASE     (PERIPHERAL_BASE+0x7000)    // 0x??007000
+#define DMA0_BASE    (DMA_BASE + 0x000)          // 0x??007000 DMA Channel 0 Register Set
+#define DMA1_BASE    (DMA_BASE + 0x100)          // 0x??007100 DMA Channel 1 Register Set
+#define DMA2_BASE    (DMA_BASE + 0x200)          // 0x??007200 DMA Channel 2 Register Set
+#define DMA3_BASE    (DMA_BASE + 0x300)          // 0x??007300 DMA Channel 3 Register Set
+#define DMA4_BASE    (DMA_BASE + 0x400)          // 0x??007400 DMA Channel 4 Register Set
+#define DMA5_BASE    (DMA_BASE + 0x500)          // 0x??007500 DMA Channel 5 Register Set
+#define DMA6_BASE    (DMA_BASE + 0x600)          // 0x??007600 DMA Channel 6 Register Set
+#define DMA7_BASE    (DMA_BASE + 0x700)          // 0x??007700 DMA Channel 7 Register Set
+#define DMA8_BASE    (DMA_BASE + 0x800)          // 0x??007800 DMA Channel 8 Register Set
+#define DMA9_BASE    (DMA_BASE + 0x900)          // 0x??007900 DMA Channel 9 Register Set
+#define DMA10_BASE   (DMA_BASE + 0xA00)          // 0x??007A00 DMA Channel 10 Register Set
+#define DMA11_BASE   (DMA_BASE + 0xB00)          // 0x??007B00 DMA Channel 11 Register Set
+#define DMA12_BASE   (DMA_BASE + 0xC00)          // 0x??007C00 DMA Channel 12 Register Set
+#define DMA13_BASE   (DMA_BASE + 0xD00)          // 0x??007D00 DMA Channel 13 Register Set
+#define DMA14_BASE   (DMA_BASE + 0xE00)          // 0x??007E00 DMA Channel 14 Register Set
+#define DMA_INT_STATUS  (DMA_BASE + 0xFE0)       // 0x??007FE0 Interrupt Status of each DMA Channel
+#define DMA_ENABLE   (DMA_BASE + 0xFF0)          // 0x??007FF0 Global Enable bits for each DMA Channel */
+#define DMA15_BASE   (PERIPHERAL_BASE+0xE05000)  // 0x??E05000 DMA Channel 15 Register Set */
 
 // Interrupt Controller
 #define INTERRUPT_BASE     (PERIPHERAL_BASE+0xB200)    // 0x??00B200

@@ -769,7 +769,7 @@ void gfx_draw_hor_line(int x0, int y0, unsigned int width)
     }
     if (x0+width >= ctx.W)
     {
-        width-=ctx.W-x0;
+        width = ctx.W-x0-1;
     }
     
     unsigned int i;

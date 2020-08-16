@@ -68,6 +68,10 @@ typedef struct {
     struct
     {
         unsigned char  loading;
+        unsigned char  asciiMode;
+        unsigned char  asciiByte;
+        unsigned char  asciiBase;
+        unsigned short asciiRepeat;
         unsigned char  rleCompressed;
         unsigned char  index;
         unsigned char  chars;
@@ -1138,7 +1142,42 @@ void gfx_term_load_bitmap(char pixel)
 {
     char* dest = 0;
     unsigned char nbPixels, i;
-
+    
+    if (ctx.bitmap.asciiMode)
+    {
+        // Convert data to binary
+        if (pixel == ';')
+        {
+            // process binary data
+            pixel = ctx.bitmap.asciiByte;
+            ctx.bitmap.asciiByte = 0;
+        }
+        else if ((ctx.bitmap.asciiBase == 10) && (pixel >= '0') && (pixel <= '9'))
+        {
+            ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 10 + pixel - '0';
+            return;
+        }
+        else if (ctx.bitmap.asciiBase == 16)
+        {
+            if ((pixel >= '0') && (pixel <= '9')) ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 16 + pixel - '0';
+            else if ((pixel >= 'A') && (pixel <= 'F')) ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 16 + pixel - 'A' + 10;
+            else if ((pixel >= 'a') && (pixel <= 'f')) ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 16 + pixel - 'a' + 10;
+            else
+            {
+                // syntax error
+                ctx.bitmap.loading = 0;
+            }
+            return;
+        }
+        else
+        {
+            // syntax error
+            ctx.bitmap.loading = 0;
+            return;
+        }
+        
+    }
+    
     dest = (char*)ctx.bitmap.pBitmap[ctx.bitmap.index]+8+ctx.bitmap.actPos;
     if (ctx.bitmap.rleCompressed)
     {
@@ -1150,6 +1189,7 @@ void gfx_term_load_bitmap(char pixel)
         {
             nbPixels = pixel;
             pixel = *dest;
+            
             for (i=0;i<nbPixels;i++)
             {
                 *dest++ = pixel;
@@ -1480,6 +1520,43 @@ int state_fun_final_letter( char ch, scn_state *state )
             goto back_to_normal;
             break;
             
+            case 'a':
+            case 'A':
+                // load a bitmap ASCII encoded
+                // expects bitmap index, x size, y size, encoding base (10 or 16)
+                // followed by x*y ASCII encoded color indexes for pixels (decimal or hex)
+                // A is RLE compressed
+                if (state->cmd_params_size == 4)
+                {
+                    if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]) && ((state->cmd_params[3] == 10) || (state->cmd_params[3] == 16)))
+                    {
+                        // release old data
+                        if (ctx.bitmap.pBitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap.pBitmap[state->cmd_params[0]]);
+                        
+                        // alloc mem
+                        ctx.bitmap.pBitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
+                        if (ctx.bitmap.pBitmap[state->cmd_params[0]])
+                        {
+                            ctx.bitmap.loading = 1;
+                            uint32_t* px = (uint32_t*)ctx.bitmap.pBitmap[state->cmd_params[0]];
+                            uint32_t* py = px+1;
+                            *px = state->cmd_params[1];
+                            *py = state->cmd_params[2];
+                            ctx.bitmap.pixels = state->cmd_params[1]*state->cmd_params[2];
+                            ctx.bitmap.actPos = 0;
+                            ctx.bitmap.index = state->cmd_params[0];
+                            if (ch == 'A') ctx.bitmap.rleCompressed = 1; else ctx.bitmap.rleCompressed = 0;
+                            ctx.bitmap.chars = 0;
+                            ctx.bitmap.asciiByte = 0;
+                            ctx.bitmap.asciiMode = 1;
+                            ctx.bitmap.asciiBase = state->cmd_params[3];
+                        }
+                    }
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+            
             case 'b':
             case 'B':
                 // load a bitmap
@@ -1507,6 +1584,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                             ctx.bitmap.index = state->cmd_params[0];
                             if (ch == 'B') ctx.bitmap.rleCompressed = 1; else ctx.bitmap.rleCompressed = 0;
                             ctx.bitmap.chars = 0;
+                            ctx.bitmap.asciiMode = 0;
                         }
                     }
                 }

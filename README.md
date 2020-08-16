@@ -169,11 +169,11 @@ See [Here](https://en.wikipedia.org/wiki/File:Xterm_256color_chart.svg) for a
 reference of the provided xterm color palette.
 
 ## Bitmap handling
-A maximum of 128 bitmaps can be loaded to the PiGFX, either as list of pixels, or RLE compressed. Loaded bitmaps can then be put onto the background. A transparent color can be specified, these pixels won't be drawn. RLE compression expects a list of 2 byte values: first byte is the pixel color, second byte is the number of pixels to draw with this color.
+A maximum of 128 bitmaps can be loaded to the PiGFX, either as list of binary pixels, list of ASCII decimal encoded pixels or list of ASCII hex encoded pixels. All of these can be RLE compressed. Loaded bitmaps can then be put onto the background. A transparent color can be specified, these pixels won't be drawn. RLE compression expects a list of 2 values: first one is the pixel color, second one is the number of pixels to draw with this color.
 
 See [terminal_codes](doc/terminal_codes.txt) for the specific commands.
 
-There are 3 examples for loading bitmaps: [load bitmap](shapes/load_bitmap_sample.bin), [load RLE bitmap](shapes/load_rle_bitmap_sample.bin), [load 10 RLE dinosaur bitmaps](shapes/load_dinos.bin).
+There are a few examples in [this directory](sprite/sample). 
 
 The Xterm palette is used. A RGB pixel can be converted to this palette by the following formula:
 
@@ -189,7 +189,7 @@ Once a sprite is active, you should not manipulate or reload its bitmap source, 
 
 Animations could be realized by redefining the sprite with a different bitmap source.
 
-There's a [example](shapes/anim_dinos.bin) for a moving dinosaur (after first loading them).
+There's a [example](shapes/sample/anim_dinos.txt) for a moving dinosaur (after first loading them in hex or binary).
 
 There is no collision detection yet.
 

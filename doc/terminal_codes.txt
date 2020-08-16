@@ -32,8 +32,16 @@ Graphics
 <ESC>[#<x0>;<y0>;<r>c                    Fill a circle with center at <x0>,<y0> and radius <r>
 <ESC>[#<x0>;<y0>;<r>C                    Draw a circle with center at <x0>,<y0> and radius <r>
 <ESC>[#<x0>;<y0>;<x1>;<y1>;<x2>;<y2>T    Draw a triangle from <x0>,<y0> to <x1>,<y1> to <x2>,<y2>
-<ESC>[#<idx>;<x>;<y>b                    Load raw bitmap to index 0-127 with width x and height y pixels. Expects x*y pixel bytes sent after this command.
-<ESC>[#<idx>;<x>;<y>B                    Load RLE compressed bitmap to index 0-127 with width x and height y pixels. Expects RLE compressed pixel data after this command, e.g. 0x10 0x20 draws color 16 for the next 32 pixels.
+<ESC>[#<idx>;<x>;<y>;<b>a                Load ASCII encoded bitmap to index 0-127 with width x and height y pixels, base=10 for decimal, 16 for hex.
+                                         Expects x*y semicolon separated pixels of ASCII encoded colors, e.g. 12;23;44;44;130;130; or for hex C;17;2C;2C;82;82;
+                                         A semicolon after the last pixel needs to be sent.
+<ESC>[#<idx>;<x>;<y>;<b>A                Load RLE compressed ASCII encoded bitmap to index 0-127 with width x and height y pixels, base=10 for decimal, 16 for hex.
+                                         Expects RLE compressed ASCII encoded semicolon separated pixel data after this command,
+                                         e.g. 16;32; or with hex 10;20; draws color 16 for the next 32 pixels.
+                                         Repeat values must be between 1 and 255, of 1 and FF for hex.
+                                         A semicolon after the last repeat value needs to be sent.
+<ESC>[#<idx>;<x>;<y>b                    Load raw bitmap to index 0-127 with width x and height y pixels. Expects x*y binary pixel bytes sent after this command.
+<ESC>[#<idx>;<x>;<y>B                    Load RLE compressed bitmap to index 0-127 with width x and height y pixels. Expects RLE compressed binary pixel data after this command, e.g. 0x10 0x20 draws color 16 for the next 32 pixels.
 <ESC>[#<idx>;<x>;<y>d                    Draw bitmap with index 0-127 at position x, y.
 <ESC>[#<idx>;<ref>;<x>;<y>s              Draw a sprite with index 0-255 from bitmap <ref> at position <x>, <y>.
 <ESC>[#<idx>;x                           Remove sprite with index 0-255, restore background.

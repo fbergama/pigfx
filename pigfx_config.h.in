@@ -9,7 +9,7 @@
 
 #define PIGFX_MAJVERSION        1               /* Major version number */
 #define PIGFX_MINVERSION        7               /* Minor version number */
-#define PIGFX_BUILDVERSION      3               /* Build version. */
+#define PIGFX_BUILDVERSION      4               /* Build version. */
 
 /** Versions:
 	

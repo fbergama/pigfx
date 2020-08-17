@@ -19,13 +19,6 @@
 #define MAXBITMAPS 128
 #define MAXSPRITES 256
 
-void __swap__( int* a, int* b )
-{
-    int aux = *a;
-    *a = *b;
-    *b = aux;
-}
-
 int __abs__( int a )
 {
     return a<0?-a:a;
@@ -42,11 +35,26 @@ typedef struct
     unsigned int width;
     unsigned int height;
     DRAWING_MODE mode;
-    unsigned char transparentcolor;
     unsigned int x;
     unsigned int y;
     unsigned char* pBackground;
 } tSprite;
+
+// Bitmaps
+typedef struct
+{
+    unsigned char  transparentcolor;
+    struct
+    {
+        // this is offset of top left bitmap index
+        // for transparent bitmaps, the transparent area is subtracted
+        unsigned int   top;
+        unsigned int   bottom;
+        unsigned int   left;
+        unsigned int   right;
+    } transbox;
+    unsigned char* data;
+} tBitmap;
 
 /** Display properties.
  *  Holds relevant properties for the display routines. Members in this
@@ -77,8 +85,9 @@ typedef struct {
         unsigned char  chars;
         unsigned int   pixels;
         unsigned int   actPos;
-        unsigned char* pBitmap[MAXBITMAPS];
-    } bitmap;
+    } bitmaploader;
+    
+    tBitmap bitmap[MAXBITMAPS];
     
     tSprite sprite[MAXSPRITES];
 
@@ -1134,7 +1143,7 @@ void gfx_term_render_cursor_newline()
 // check if loading bitmap
 unsigned char gfx_term_loading_bitmap()
 {
-    return ctx.bitmap.loading;
+    return ctx.bitmaploader.loading;
 }
 
 // load bitmap data from serial
@@ -1143,45 +1152,45 @@ void gfx_term_load_bitmap(char pixel)
     char* dest = 0;
     unsigned char nbPixels, i;
     
-    if (ctx.bitmap.asciiMode)
+    if (ctx.bitmaploader.asciiMode)
     {
         // Convert data to binary
         if (pixel == ';')
         {
             // process binary data
-            pixel = ctx.bitmap.asciiByte;
-            ctx.bitmap.asciiByte = 0;
+            pixel = ctx.bitmaploader.asciiByte;
+            ctx.bitmaploader.asciiByte = 0;
         }
-        else if ((ctx.bitmap.asciiBase == 10) && (pixel >= '0') && (pixel <= '9'))
+        else if ((ctx.bitmaploader.asciiBase == 10) && (pixel >= '0') && (pixel <= '9'))
         {
-            ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 10 + pixel - '0';
+            ctx.bitmaploader.asciiByte = ctx.bitmaploader.asciiByte * 10 + pixel - '0';
             return;
         }
-        else if (ctx.bitmap.asciiBase == 16)
+        else if (ctx.bitmaploader.asciiBase == 16)
         {
-            if ((pixel >= '0') && (pixel <= '9')) ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 16 + pixel - '0';
-            else if ((pixel >= 'A') && (pixel <= 'F')) ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 16 + pixel - 'A' + 10;
-            else if ((pixel >= 'a') && (pixel <= 'f')) ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 16 + pixel - 'a' + 10;
+            if ((pixel >= '0') && (pixel <= '9')) ctx.bitmaploader.asciiByte = ctx.bitmaploader.asciiByte * 16 + pixel - '0';
+            else if ((pixel >= 'A') && (pixel <= 'F')) ctx.bitmaploader.asciiByte = ctx.bitmaploader.asciiByte * 16 + pixel - 'A' + 10;
+            else if ((pixel >= 'a') && (pixel <= 'f')) ctx.bitmaploader.asciiByte = ctx.bitmaploader.asciiByte * 16 + pixel - 'a' + 10;
             else
             {
                 // syntax error
-                ctx.bitmap.loading = 0;
+                ctx.bitmaploader.loading = 0;
             }
             return;
         }
         else
         {
             // syntax error
-            ctx.bitmap.loading = 0;
+            ctx.bitmaploader.loading = 0;
             return;
         }
         
     }
     
-    dest = (char*)ctx.bitmap.pBitmap[ctx.bitmap.index]+8+ctx.bitmap.actPos;
-    if (ctx.bitmap.rleCompressed)
+    dest = (char*)ctx.bitmap[ctx.bitmaploader.index].data+8+ctx.bitmaploader.actPos;
+    if (ctx.bitmaploader.rleCompressed)
     {
-        if ((ctx.bitmap.chars & 1) == 0)    // pixel info
+        if ((ctx.bitmaploader.chars & 1) == 0)    // pixel info
         {
             *dest = pixel;
         }
@@ -1193,26 +1202,92 @@ void gfx_term_load_bitmap(char pixel)
             for (i=0;i<nbPixels;i++)
             {
                 *dest++ = pixel;
-                ctx.bitmap.actPos++;
-                if (ctx.bitmap.actPos >= ctx.bitmap.pixels)
+                ctx.bitmaploader.actPos++;
+                if (ctx.bitmaploader.actPos >= ctx.bitmaploader.pixels)
                 {
                     // finished
-                    ctx.bitmap.loading = 0;
+                    ctx.bitmaploader.loading = 0;
                     break;
                 }
             }
         }
-        ctx.bitmap.chars++;
+        ctx.bitmaploader.chars++;
     }
     else
     {
         *dest = pixel;
-        ctx.bitmap.actPos++;
-        if (ctx.bitmap.actPos >= ctx.bitmap.pixels)
+        ctx.bitmaploader.actPos++;
+        if (ctx.bitmaploader.actPos >= ctx.bitmaploader.pixels)
         {
             // finished
-            ctx.bitmap.loading = 0;
+            ctx.bitmaploader.loading = 0;
         }
+    }
+    
+    /*    struct
+    {
+        // this is offset of top left bitmap index
+        // for transparent bitmaps, the transparent area is subtracted
+        unsigned int   top;
+        unsigned int   bottom;
+        unsigned int   left;
+        unsigned int   right;
+    } transbox;*/
+    
+    if (ctx.bitmaploader.loading == 0)
+    {
+        // save transparent color
+        ctx.bitmap[ctx.bitmaploader.index].transparentcolor = ctx.transparentcolor;
+        // set actual transparent image borders
+        unsigned int* pW = (unsigned int*)ctx.bitmap[ctx.bitmaploader.index].data;
+        unsigned int* pH = pW+1;
+        unsigned char* pData = ctx.bitmap[ctx.bitmaploader.index].data+8;
+        
+        ctx.bitmap[ctx.bitmaploader.index].transbox.top = *pH;
+        ctx.bitmap[ctx.bitmaploader.index].transbox.bottom = 0;
+        ctx.bitmap[ctx.bitmaploader.index].transbox.left = *pW;
+        ctx.bitmap[ctx.bitmaploader.index].transbox.right = 0;
+        
+        cout("looking for borders H: ");cout_d(*pH);cout(" W: ");cout_d(*pW);cout(" trans: ");cout_d(ctx.transparentcolor);cout_endl();
+        
+        // find first line from top with solid color
+        // find first x-pos from left with solid color
+        for (unsigned int y = 0; y<*pH; y++)
+        {
+            for (unsigned int x = 0; x<*pW; x++)
+            {
+                if (pData[y*(*pW)+x] != ctx.transparentcolor)
+                {
+                    if (x < ctx.bitmap[ctx.bitmaploader.index].transbox.left)
+                    {
+                        //cout("x: ");cout_d(x);cout(" y: ");cout_d(y);cout(" px: ");cout_h(pData[y*(*pW)+x]);cout_endl();
+                        ctx.bitmap[ctx.bitmaploader.index].transbox.left = x;
+                        if (y < ctx.bitmap[ctx.bitmaploader.index].transbox.top) ctx.bitmap[ctx.bitmaploader.index].transbox.top = y;
+                    }
+                    break;
+                }
+            }
+        }
+        // find first line from bottom with solid color
+        // find first x-pos from right with solid color
+        for (int y = *pH-1; y>=0; y--)
+        {
+            for (int x = *pW-1; x>=0; x--)
+            {
+                if (pData[y*(*pW)+x] != ctx.transparentcolor)
+                {
+                    if (x > (int)ctx.bitmap[ctx.bitmaploader.index].transbox.right)
+                    {
+                        //cout("x: ");cout_d(x);cout(" y: ");cout_d(y);cout(" px: ");cout_h(pData[y*(*pW)+x]);cout_endl();
+                        ctx.bitmap[ctx.bitmaploader.index].transbox.right = x;
+                        if (y > (int)ctx.bitmap[ctx.bitmaploader.index].transbox.bottom) ctx.bitmap[ctx.bitmaploader.index].transbox.bottom = y;
+                    }
+                    break;
+                }
+            }
+        }
+        cout("border top: ");cout_d(ctx.bitmap[ctx.bitmaploader.index].transbox.top);cout(" left: ");cout_d(ctx.bitmap[ctx.bitmaploader.index].transbox.left);
+        cout(" bottom: ");cout_d(ctx.bitmap[ctx.bitmaploader.index].transbox.bottom);cout(" right: ");cout_d(ctx.bitmap[ctx.bitmaploader.index].transbox.right);cout_endl();
     }
 }
 
@@ -1531,25 +1606,25 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]) && ((state->cmd_params[3] == 10) || (state->cmd_params[3] == 16)))
                     {
                         // release old data
-                        if (ctx.bitmap.pBitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap.pBitmap[state->cmd_params[0]]);
+                        if (ctx.bitmap[state->cmd_params[0]].data) nmalloc_free((void**)&ctx.bitmap[state->cmd_params[0]].data);
                         
                         // alloc mem
-                        ctx.bitmap.pBitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
-                        if (ctx.bitmap.pBitmap[state->cmd_params[0]])
+                        ctx.bitmap[state->cmd_params[0]].data = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
+                        if (ctx.bitmap[state->cmd_params[0]].data)
                         {
-                            ctx.bitmap.loading = 1;
-                            uint32_t* px = (uint32_t*)ctx.bitmap.pBitmap[state->cmd_params[0]];
+                            ctx.bitmaploader.loading = 1;
+                            uint32_t* px = (uint32_t*)ctx.bitmap[state->cmd_params[0]].data;
                             uint32_t* py = px+1;
                             *px = state->cmd_params[1];
                             *py = state->cmd_params[2];
-                            ctx.bitmap.pixels = state->cmd_params[1]*state->cmd_params[2];
-                            ctx.bitmap.actPos = 0;
-                            ctx.bitmap.index = state->cmd_params[0];
-                            if (ch == 'A') ctx.bitmap.rleCompressed = 1; else ctx.bitmap.rleCompressed = 0;
-                            ctx.bitmap.chars = 0;
-                            ctx.bitmap.asciiByte = 0;
-                            ctx.bitmap.asciiMode = 1;
-                            ctx.bitmap.asciiBase = state->cmd_params[3];
+                            ctx.bitmaploader.pixels = state->cmd_params[1]*state->cmd_params[2];
+                            ctx.bitmaploader.actPos = 0;
+                            ctx.bitmaploader.index = state->cmd_params[0];
+                            if (ch == 'A') ctx.bitmaploader.rleCompressed = 1; else ctx.bitmaploader.rleCompressed = 0;
+                            ctx.bitmaploader.chars = 0;
+                            ctx.bitmaploader.asciiByte = 0;
+                            ctx.bitmaploader.asciiMode = 1;
+                            ctx.bitmaploader.asciiBase = state->cmd_params[3];
                         }
                     }
                 }
@@ -1568,23 +1643,23 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]))
                     {
                         // release old data
-                        if (ctx.bitmap.pBitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap.pBitmap[state->cmd_params[0]]);
+                        if (ctx.bitmap[state->cmd_params[0]].data) nmalloc_free((void**)&ctx.bitmap[state->cmd_params[0]].data);
                         
                         // alloc mem
-                        ctx.bitmap.pBitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
-                        if (ctx.bitmap.pBitmap[state->cmd_params[0]])
+                        ctx.bitmap[state->cmd_params[0]].data = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
+                        if (ctx.bitmap[state->cmd_params[0]].data)
                         {
-                            ctx.bitmap.loading = 1;
-                            uint32_t* px = (uint32_t*)ctx.bitmap.pBitmap[state->cmd_params[0]];
+                            ctx.bitmaploader.loading = 1;
+                            uint32_t* px = (uint32_t*)ctx.bitmap[state->cmd_params[0]].data;
                             uint32_t* py = px+1;
                             *px = state->cmd_params[1];
                             *py = state->cmd_params[2];
-                            ctx.bitmap.pixels = state->cmd_params[1]*state->cmd_params[2];
-                            ctx.bitmap.actPos = 0;
-                            ctx.bitmap.index = state->cmd_params[0];
-                            if (ch == 'B') ctx.bitmap.rleCompressed = 1; else ctx.bitmap.rleCompressed = 0;
-                            ctx.bitmap.chars = 0;
-                            ctx.bitmap.asciiMode = 0;
+                            ctx.bitmaploader.pixels = state->cmd_params[1]*state->cmd_params[2];
+                            ctx.bitmaploader.actPos = 0;
+                            ctx.bitmaploader.index = state->cmd_params[0];
+                            if (ch == 'B') ctx.bitmaploader.rleCompressed = 1; else ctx.bitmaploader.rleCompressed = 0;
+                            ctx.bitmaploader.chars = 0;
+                            ctx.bitmaploader.asciiMode = 0;
                         }
                     }
                 }
@@ -1599,7 +1674,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                     // expects bitmap index, x, y
                     if (state->cmd_params[0] < MAXBITMAPS)
                     {
-                        gfx_put_sprite((unsigned char*)ctx.bitmap.pBitmap[state->cmd_params[0]], state->cmd_params[1], state->cmd_params[2]);
+                        gfx_put_sprite((unsigned char*)ctx.bitmap[state->cmd_params[0]].data, state->cmd_params[1], state->cmd_params[2]);
                     }
                 }
                 retval = 0;
@@ -1617,13 +1692,12 @@ int state_fun_final_letter( char ch, scn_state *state )
                         gfx_remove_sprite(state->cmd_params[0]);
                         
                         // Is the referenced bitmap available?
-                        if (ctx.bitmap.pBitmap[state->cmd_params[1]])
+                        if (ctx.bitmap[state->cmd_params[1]].data)
                         {
-                            gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap.pBitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
-                            gfx_put_sprite((unsigned char*)ctx.bitmap.pBitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
+                            gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap[state->cmd_params[1]].data, state->cmd_params[2], state->cmd_params[3]);
+                            gfx_put_sprite((unsigned char*)ctx.bitmap[state->cmd_params[1]].data, state->cmd_params[2], state->cmd_params[3]);
 
                             // Save drawing mode and transparentcolor
-                            ctx.sprite[state->cmd_params[0]].transparentcolor = ctx.transparentcolor;
                             ctx.sprite[state->cmd_params[0]].mode = ctx.mode;
                             
                             // Draw sprite
@@ -1662,14 +1736,14 @@ int state_fun_final_letter( char ch, scn_state *state )
                     {
                         gfx_remove_sprite(state->cmd_params[0]);
                         
-                        gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                        gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef].data, state->cmd_params[1], state->cmd_params[2]);
                         
                         if (ctx.sprite[state->cmd_params[0]].mode == drawingNORMAL)
-                            gfx_put_sprite_NORMAL((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                            gfx_put_sprite_NORMAL((unsigned char*)ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef].data, state->cmd_params[1], state->cmd_params[2]);
                         else if (ctx.sprite[state->cmd_params[0]].mode == drawingXOR)
-                            gfx_put_sprite_XOR((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                            gfx_put_sprite_XOR((unsigned char*)ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef].data, state->cmd_params[1], state->cmd_params[2]);
                         else
-                            gfx_put_sprite_TRANSPARENT((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                            gfx_put_sprite_TRANSPARENT((unsigned char*)ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef].data, state->cmd_params[1], state->cmd_params[2]);
                         
                         ctx.sprite[state->cmd_params[0]].active = 1;
                         ctx.sprite[state->cmd_params[0]].x = state->cmd_params[1];

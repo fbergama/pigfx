@@ -169,7 +169,7 @@ See [Here](https://en.wikipedia.org/wiki/File:Xterm_256color_chart.svg) for a
 reference of the provided xterm color palette.
 
 ## Bitmap handling
-A maximum of 128 bitmaps can be loaded to the PiGFX, either as list of binary pixels, list of ASCII decimal encoded pixels or list of ASCII hex encoded pixels. All of these can be RLE compressed. Loaded bitmaps can then be put onto the background. A transparent color can be specified, these pixels won't be drawn. RLE compression expects a list of 2 values: first one is the pixel color, second one is the number of pixels to draw with this color.
+A maximum of 128 bitmaps can be loaded to the PiGFX, either as list of binary pixels, list of ASCII decimal encoded pixels or list of ASCII hex encoded pixels. All of these can be RLE compressed. Loaded bitmaps can then be put onto the background. A transparent color should be specified before loading a bitmap, these pixels won't be drawn in transparent mode. RLE compression expects a list of 2 values: first one is the pixel color, second one is the number of pixels to draw with this color.
 
 See [terminal_codes](doc/terminal_codes.txt) for the specific commands.
 
@@ -183,7 +183,7 @@ Pixel = 16 + (round(R / 255 * 5) * 36) + (round(G / 255 * 5) * 6) + round(B / 25
 
 Once a bitmap is loaded, it can be used to draw a maximum of 256 sprites. A sprite is a object which is movable over the background. If a sprite is moved or removed, the previous background gets restored. If the sprite is manipulated by a bitmap or a different sprite, this condition stays until it gets moved or removed. The sprite is then redrawn and the previous background restored. Moving a sprites, which is overlaped by another leads to artefacts.
 
-Sprites can be drawn solid or with a transparent color. A drawn sprite keeps its settings (solid/transparent) until it gets removed.
+Sprites can be drawn solid or with a transparent color. A drawn sprite keeps its settings (solid/transparent) until it gets removed. The transparent color is a attribute of the bitmap and is set at loading time.
 
 Once a sprite is active, you should not manipulate or reload its bitmap source, otherwise the sprite changes to this new bitmap source if it gets moved.
 

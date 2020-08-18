@@ -9,7 +9,7 @@ if "%RPI%"=="4" goto SKIPUSPI
 call makeuspi %RPI%
 :SKIPUSPI
 
-set OOB= asm.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o block.o emmc.o c_utils.o mbr.o fat.o config.o ini.o ps2.o keyboard.o binary_assets.o
+set OOB= asm.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o block.o emmc.o c_utils.o mbr.o fat.o config.o ini.o ps2.o keyboard.o math.o binary_assets.o
 set LIBUSPI= uspi/lib/libuspi.a
 
 set CFLAGS= -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -fsigned-char

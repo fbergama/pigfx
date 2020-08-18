@@ -21,11 +21,7 @@
 #define BLOCK_H
 
 #include <stdint.h>
-//#include <stddef.h>
-
-#define NULL 0
-
-typedef unsigned long	size_t;
+#include <stddef.h>
 
 struct fs;
 

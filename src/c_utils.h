@@ -2,8 +2,7 @@
 #define C_UTILS_H__ 
 
 #include <stdint.h>
-
-typedef unsigned long	size_t;
+#include <stddef.h>
 
 void *pigfx_memset (void *pBuffer, int nValue, size_t nLength);
 void *qmemcpy(void *dest, void *src, size_t n);

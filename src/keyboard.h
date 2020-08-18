@@ -1,7 +1,9 @@
 #ifndef KEYBOARD_H_
 #define KEYBOARD_H_
 
-#include "../uspi/include/uspi/types.h"
+typedef unsigned short u16;
+typedef unsigned char   u8;
+
 #include "../uspi/include/uspi.h"
 
 #define REPEAT_FREQ     10       // 10 hz -> 100ms

@@ -12,6 +12,9 @@
 #include "mbox.h"
 #include "config.h"
 
+#define CUTE_C2_IMPLEMENTATION
+#include "cute_c2.h"
+
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
 #define PFB( X, Y ) ( ctx.pfb + (Y) * ctx.Pitch + (X) )

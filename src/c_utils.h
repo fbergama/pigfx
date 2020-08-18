@@ -16,4 +16,7 @@ char *pigfx_strncpy (char *pDest, const char *pSrc, size_t nMaxLen);
 char *strchr(const char *p, int ch);
 int32_t atoi(const char *p);
 
+#define memset(a,b,c) pigfx_memset(a,b,c)
+#define memcpy(a,b,c) pigfx_memcpy(a,b,c)
+
 #endif

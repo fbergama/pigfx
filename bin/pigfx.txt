@@ -15,3 +15,4 @@ swapDelWithBackspace = 1    ; Substitute DEL (0x7F) with BACKSPACE (0x08)
 [General]
 showRC2014Logo = 0          ; Show the RC2014 logo at startup
 disableGfxDMA = 0           ; Disable fast DMA memory access for graphics (if 1)
+disableCollision = 0        ; Disable sprite collision detection

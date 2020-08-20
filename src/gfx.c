@@ -569,6 +569,19 @@ draw_putsprite_fun (*gfx_put_sprite) = gfx_put_sprite_NORMAL;
 /** Sets the whole display to background color. */
 void gfx_clear()
 {
+    for (unsigned int i=0; i<=ctx.lastUsedSprite; i++)
+    {
+        if (ctx.sprite[i].active)
+        {
+            if (ctx.sprite[i].pBackground)
+            {
+                nmalloc_free((void**)&ctx.sprite[i].pBackground);
+                ctx.sprite[i].pBackground = 0;
+            }
+            ctx.sprite[i].active = 0;
+        }
+    }
+    
     if (PiGfxConfig.disableGfxDMA)
     {
         unsigned int* pf = (unsigned int*)ctx.pfb;

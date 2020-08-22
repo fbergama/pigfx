@@ -380,9 +380,9 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
     unsigned char* pspr = (unsigned char*)p_spr_32;
     
     // limit bitmap size to screen
-    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
-    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
+    if (x+width > ctx.W) usedwidth = ctx.W - x;
 
     if (PiGfxConfig.disableGfxDMA)
     {
@@ -429,9 +429,9 @@ void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y
     unsigned char* pspr = (unsigned char*)p_spr_32;
     
     // limit bitmap size to screen
-    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
-    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
+    if (x+width > ctx.W) usedwidth = ctx.W - x;
 
     for( i=0; i<height; ++i )
     {
@@ -467,9 +467,9 @@ void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsign
     unsigned char* pspr = (unsigned char*)p_spr_32;
     
     // limit bitmap size to screen
-    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
-    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
+    if (x+width > ctx.W) usedwidth = ctx.W - x;
 
     for( i=0; i<height; ++i )
     {
@@ -536,9 +536,9 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     unsigned int width = *pW;
     
     // limit bitmap size to screen
-    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
-    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
+    if (x+width > ctx.W) usedwidth = ctx.W - x;
     
     if (PiGfxConfig.disableGfxDMA)
     {

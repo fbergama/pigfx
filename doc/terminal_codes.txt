@@ -22,7 +22,7 @@ Clearing Text
 <ESC>[J             Clear the screen from cursor
 <ESC>[0J            Clear the screen from cursor
 <ESC>[1J            Clear the screen until cursor position
-<ESC>[2J            Clear the screen and move the cursor to 0-0
+<ESC>[2J            Clear the screen and move the cursor to 0-0, defined sprites are removed, loaded bitmaps are kept
  
 Graphics
 
@@ -62,4 +62,8 @@ Settings
 <ESC>[=<n>t         Set tabulation width (8 by default)
 <ESC>[=<n>h         Change to display mode <n> (legacy PC ANSI.SYS)
                     This is actually only approximate resolutions (check README_ADD)
+                    
+Commands from PiGFX to the controller
+
+<ESC>[#<idx1>;<idx2>c                   Collision detected between sprite idx1 and sprite idx2.
 

@@ -21,7 +21,6 @@
 #include "config.h"
 #include "keyboard.h"
 #include "ps2.h"
-#include "../uspi/include/uspi/types.h"
 #include "../uspi/include/uspi.h"
 
 #define UART_BUFFER_SIZE 16384 /* 16k */

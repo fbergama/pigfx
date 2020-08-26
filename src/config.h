@@ -25,6 +25,7 @@ typedef struct
     unsigned int swapDelWithBackspace;  // Substitute DEL (0x7F) with BACKSPACE (0x08)
     unsigned int showRC2014Logo;        // Show the RC2014 logo at startup
     unsigned int disableGfxDMA;         // Disable DMA for Gfx if 1
+    unsigned int disableCollision;      // Disable collision detection if 1
     char         keyboardLayout[3];     // Keyboard layout (de,uk,us, ...)
 } tPiGfxConfig;
 

@@ -19,13 +19,6 @@
 #define MAXBITMAPS 128
 #define MAXSPRITES 256
 
-void __swap__( int* a, int* b )
-{
-    int aux = *a;
-    *a = *b;
-    *b = aux;
-}
-
 int __abs__( int a )
 {
     return a<0?-a:a;
@@ -34,17 +27,30 @@ int __abs__( int a )
 /** Function type to compute a glyph address in a font. */
 typedef unsigned char* font_fun(unsigned int c);
 
+typedef struct
+{
+    int x;
+    int y;
+} vector2d;
+
+typedef struct
+{
+    vector2d min;
+    vector2d max;
+} tAABB;
+
 // Sprites
 typedef struct
 {
-    unsigned char active;
-    unsigned char bitmapRef;
-    unsigned int width;
-    unsigned int height;
-    DRAWING_MODE mode;
-    unsigned char transparentcolor;
-    unsigned int x;
-    unsigned int y;
+    unsigned char  active;
+    unsigned char  bitmapRef;
+    unsigned int   width;
+    unsigned int   height;
+    unsigned char  transparentcolor;
+    DRAWING_MODE   mode;
+    unsigned int   x;
+    unsigned int   y;
+    tAABB          colDetRect;
     unsigned char* pBackground;
 } tSprite;
 
@@ -77,9 +83,11 @@ typedef struct {
         unsigned char  chars;
         unsigned int   pixels;
         unsigned int   actPos;
-        unsigned char* pBitmap[MAXBITMAPS];
-    } bitmap;
+    } bitmaploader;
     
+    unsigned char* bitmap[MAXBITMAPS];
+    
+    unsigned int lastUsedSprite;
     tSprite sprite[MAXSPRITES];
 
     // Terminal variables
@@ -248,6 +256,18 @@ void gfx_compute_font()
     gfx_term_save_cursor_content();
 }
 
+
+//// Collision detection
+//// Concept taken from cute_c2
+unsigned char AABBtoAABBcollide(tAABB* pA, tAABB* pB)
+{
+    int d0 = pB->max.x+1 < pA->min.x;
+    int d1 = pA->max.x+1 < pB->min.x;
+    int d2 = pB->max.y+1 < pA->min.y;
+    int d3 = pA->max.y+1 < pB->min.y;
+    return !(d0 | d1 | d2 | d3);
+}
+
 /** Sets the display variables. This is called by initialize_framebuffer when setting mode.
  * Default to 8x16 font if no other font was selected before.
  * @param p_framebuffer Framebuffer address as given by DMA
@@ -341,6 +361,24 @@ void gfx_set_transparent_color( GFX_COL color )
 	ctx.transparentcolor = color;
 }
 
+
+// Sprite collision detection
+void gfx_check_collision(unsigned char own)
+{
+    if (PiGfxConfig.disableCollision) return;
+    
+    for (unsigned int i=0; i<=ctx.lastUsedSprite; i++)
+    {
+        if ((ctx.sprite[i].active == 0) || (i == own)) continue;
+        // check collision of own sprite with this sprite
+        if (AABBtoAABBcollide(&ctx.sprite[own].colDetRect, &ctx.sprite[i].colDetRect))
+        {
+            // collision detected
+            cout("\x1b[#");cout_d(own);cout(";");cout_d(i);cout("c");
+        }
+    }
+}
+
 /** Draw a sprite in normal mode.
  * The sprite pixels overwrite the existing background.
  * NB: Foreground and background color are not used by sprites.
@@ -363,9 +401,9 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
     unsigned char* pspr = (unsigned char*)p_spr_32;
     
     // limit bitmap size to screen
-    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
-    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
+    if (x+width > ctx.W) usedwidth = ctx.W - x;
 
     if (PiGfxConfig.disableGfxDMA)
     {
@@ -412,9 +450,9 @@ void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y
     unsigned char* pspr = (unsigned char*)p_spr_32;
     
     // limit bitmap size to screen
-    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
-    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
+    if (x+width > ctx.W) usedwidth = ctx.W - x;
 
     for( i=0; i<height; ++i )
     {
@@ -450,9 +488,9 @@ void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsign
     unsigned char* pspr = (unsigned char*)p_spr_32;
     
     // limit bitmap size to screen
-    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
-    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
+    if (x+width > ctx.W) usedwidth = ctx.W - x;
 
     for( i=0; i<height; ++i )
     {
@@ -477,6 +515,16 @@ void gfx_remove_sprite(unsigned char idx)
     nmalloc_free((void**)&ctx.sprite[idx].pBackground);
     ctx.sprite[idx].pBackground = 0;
     ctx.sprite[idx].active = 0;
+    
+    ctx.lastUsedSprite = 0;
+    for (unsigned int i=MAXSPRITES-1; i>0; i--)
+    {
+        if (ctx.sprite[i].active)
+        {
+            ctx.lastUsedSprite = i;
+            break;
+        }
+    }
 }
 
 // save background data before a sprite is drawn
@@ -509,9 +557,9 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     unsigned int width = *pW;
     
     // limit bitmap size to screen
-    if (y+height >= ctx.H) height = ctx.H - y - 1;
+    if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
-    if (x+width >= ctx.W) usedwidth = ctx.W - x - 1;
+    if (x+width > ctx.W) usedwidth = ctx.W - x;
     
     if (PiGfxConfig.disableGfxDMA)
     {
@@ -542,6 +590,19 @@ draw_putsprite_fun (*gfx_put_sprite) = gfx_put_sprite_NORMAL;
 /** Sets the whole display to background color. */
 void gfx_clear()
 {
+    for (unsigned int i=0; i<=ctx.lastUsedSprite; i++)
+    {
+        if (ctx.sprite[i].active)
+        {
+            if (ctx.sprite[i].pBackground)
+            {
+                nmalloc_free((void**)&ctx.sprite[i].pBackground);
+                ctx.sprite[i].pBackground = 0;
+            }
+            ctx.sprite[i].active = 0;
+        }
+    }
+    
     if (PiGfxConfig.disableGfxDMA)
     {
         unsigned int* pf = (unsigned int*)ctx.pfb;
@@ -1134,7 +1195,7 @@ void gfx_term_render_cursor_newline()
 // check if loading bitmap
 unsigned char gfx_term_loading_bitmap()
 {
-    return ctx.bitmap.loading;
+    return ctx.bitmaploader.loading;
 }
 
 // load bitmap data from serial
@@ -1143,45 +1204,45 @@ void gfx_term_load_bitmap(char pixel)
     char* dest = 0;
     unsigned char nbPixels, i;
     
-    if (ctx.bitmap.asciiMode)
+    if (ctx.bitmaploader.asciiMode)
     {
         // Convert data to binary
         if (pixel == ';')
         {
             // process binary data
-            pixel = ctx.bitmap.asciiByte;
-            ctx.bitmap.asciiByte = 0;
+            pixel = ctx.bitmaploader.asciiByte;
+            ctx.bitmaploader.asciiByte = 0;
         }
-        else if ((ctx.bitmap.asciiBase == 10) && (pixel >= '0') && (pixel <= '9'))
+        else if ((ctx.bitmaploader.asciiBase == 10) && (pixel >= '0') && (pixel <= '9'))
         {
-            ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 10 + pixel - '0';
+            ctx.bitmaploader.asciiByte = ctx.bitmaploader.asciiByte * 10 + pixel - '0';
             return;
         }
-        else if (ctx.bitmap.asciiBase == 16)
+        else if (ctx.bitmaploader.asciiBase == 16)
         {
-            if ((pixel >= '0') && (pixel <= '9')) ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 16 + pixel - '0';
-            else if ((pixel >= 'A') && (pixel <= 'F')) ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 16 + pixel - 'A' + 10;
-            else if ((pixel >= 'a') && (pixel <= 'f')) ctx.bitmap.asciiByte = ctx.bitmap.asciiByte * 16 + pixel - 'a' + 10;
+            if ((pixel >= '0') && (pixel <= '9')) ctx.bitmaploader.asciiByte = ctx.bitmaploader.asciiByte * 16 + pixel - '0';
+            else if ((pixel >= 'A') && (pixel <= 'F')) ctx.bitmaploader.asciiByte = ctx.bitmaploader.asciiByte * 16 + pixel - 'A' + 10;
+            else if ((pixel >= 'a') && (pixel <= 'f')) ctx.bitmaploader.asciiByte = ctx.bitmaploader.asciiByte * 16 + pixel - 'a' + 10;
             else
             {
                 // syntax error
-                ctx.bitmap.loading = 0;
+                ctx.bitmaploader.loading = 0;
             }
             return;
         }
         else
         {
             // syntax error
-            ctx.bitmap.loading = 0;
+            ctx.bitmaploader.loading = 0;
             return;
         }
         
     }
     
-    dest = (char*)ctx.bitmap.pBitmap[ctx.bitmap.index]+8+ctx.bitmap.actPos;
-    if (ctx.bitmap.rleCompressed)
+    dest = (char*)ctx.bitmap[ctx.bitmaploader.index]+8+ctx.bitmaploader.actPos;
+    if (ctx.bitmaploader.rleCompressed)
     {
-        if ((ctx.bitmap.chars & 1) == 0)    // pixel info
+        if ((ctx.bitmaploader.chars & 1) == 0)    // pixel info
         {
             *dest = pixel;
         }
@@ -1193,25 +1254,25 @@ void gfx_term_load_bitmap(char pixel)
             for (i=0;i<nbPixels;i++)
             {
                 *dest++ = pixel;
-                ctx.bitmap.actPos++;
-                if (ctx.bitmap.actPos >= ctx.bitmap.pixels)
+                ctx.bitmaploader.actPos++;
+                if (ctx.bitmaploader.actPos >= ctx.bitmaploader.pixels)
                 {
                     // finished
-                    ctx.bitmap.loading = 0;
+                    ctx.bitmaploader.loading = 0;
                     break;
                 }
             }
         }
-        ctx.bitmap.chars++;
+        ctx.bitmaploader.chars++;
     }
     else
     {
         *dest = pixel;
-        ctx.bitmap.actPos++;
-        if (ctx.bitmap.actPos >= ctx.bitmap.pixels)
+        ctx.bitmaploader.actPos++;
+        if (ctx.bitmaploader.actPos >= ctx.bitmaploader.pixels)
         {
             // finished
-            ctx.bitmap.loading = 0;
+            ctx.bitmaploader.loading = 0;
         }
     }
 }
@@ -1531,25 +1592,25 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]) && ((state->cmd_params[3] == 10) || (state->cmd_params[3] == 16)))
                     {
                         // release old data
-                        if (ctx.bitmap.pBitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap.pBitmap[state->cmd_params[0]]);
+                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap[state->cmd_params[0]]);
                         
                         // alloc mem
-                        ctx.bitmap.pBitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
-                        if (ctx.bitmap.pBitmap[state->cmd_params[0]])
+                        ctx.bitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
+                        if (ctx.bitmap[state->cmd_params[0]])
                         {
-                            ctx.bitmap.loading = 1;
-                            uint32_t* px = (uint32_t*)ctx.bitmap.pBitmap[state->cmd_params[0]];
+                            ctx.bitmaploader.loading = 1;
+                            uint32_t* px = (uint32_t*)ctx.bitmap[state->cmd_params[0]];
                             uint32_t* py = px+1;
                             *px = state->cmd_params[1];
                             *py = state->cmd_params[2];
-                            ctx.bitmap.pixels = state->cmd_params[1]*state->cmd_params[2];
-                            ctx.bitmap.actPos = 0;
-                            ctx.bitmap.index = state->cmd_params[0];
-                            if (ch == 'A') ctx.bitmap.rleCompressed = 1; else ctx.bitmap.rleCompressed = 0;
-                            ctx.bitmap.chars = 0;
-                            ctx.bitmap.asciiByte = 0;
-                            ctx.bitmap.asciiMode = 1;
-                            ctx.bitmap.asciiBase = state->cmd_params[3];
+                            ctx.bitmaploader.pixels = state->cmd_params[1]*state->cmd_params[2];
+                            ctx.bitmaploader.actPos = 0;
+                            ctx.bitmaploader.index = state->cmd_params[0];
+                            if (ch == 'A') ctx.bitmaploader.rleCompressed = 1; else ctx.bitmaploader.rleCompressed = 0;
+                            ctx.bitmaploader.chars = 0;
+                            ctx.bitmaploader.asciiByte = 0;
+                            ctx.bitmaploader.asciiMode = 1;
+                            ctx.bitmaploader.asciiBase = state->cmd_params[3];
                         }
                     }
                 }
@@ -1568,23 +1629,23 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]))
                     {
                         // release old data
-                        if (ctx.bitmap.pBitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap.pBitmap[state->cmd_params[0]]);
+                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap[state->cmd_params[0]]);
                         
                         // alloc mem
-                        ctx.bitmap.pBitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
-                        if (ctx.bitmap.pBitmap[state->cmd_params[0]])
+                        ctx.bitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
+                        if (ctx.bitmap[state->cmd_params[0]])
                         {
-                            ctx.bitmap.loading = 1;
-                            uint32_t* px = (uint32_t*)ctx.bitmap.pBitmap[state->cmd_params[0]];
+                            ctx.bitmaploader.loading = 1;
+                            uint32_t* px = (uint32_t*)ctx.bitmap[state->cmd_params[0]];
                             uint32_t* py = px+1;
                             *px = state->cmd_params[1];
                             *py = state->cmd_params[2];
-                            ctx.bitmap.pixels = state->cmd_params[1]*state->cmd_params[2];
-                            ctx.bitmap.actPos = 0;
-                            ctx.bitmap.index = state->cmd_params[0];
-                            if (ch == 'B') ctx.bitmap.rleCompressed = 1; else ctx.bitmap.rleCompressed = 0;
-                            ctx.bitmap.chars = 0;
-                            ctx.bitmap.asciiMode = 0;
+                            ctx.bitmaploader.pixels = state->cmd_params[1]*state->cmd_params[2];
+                            ctx.bitmaploader.actPos = 0;
+                            ctx.bitmaploader.index = state->cmd_params[0];
+                            if (ch == 'B') ctx.bitmaploader.rleCompressed = 1; else ctx.bitmaploader.rleCompressed = 0;
+                            ctx.bitmaploader.chars = 0;
+                            ctx.bitmaploader.asciiMode = 0;
                         }
                     }
                 }
@@ -1599,7 +1660,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                     // expects bitmap index, x, y
                     if (state->cmd_params[0] < MAXBITMAPS)
                     {
-                        gfx_put_sprite((unsigned char*)ctx.bitmap.pBitmap[state->cmd_params[0]], state->cmd_params[1], state->cmd_params[2]);
+                        gfx_put_sprite(ctx.bitmap[state->cmd_params[0]], state->cmd_params[1], state->cmd_params[2]);
                     }
                 }
                 retval = 0;
@@ -1617,20 +1678,34 @@ int state_fun_final_letter( char ch, scn_state *state )
                         gfx_remove_sprite(state->cmd_params[0]);
                         
                         // Is the referenced bitmap available?
-                        if (ctx.bitmap.pBitmap[state->cmd_params[1]])
+                        if (ctx.bitmap[state->cmd_params[1]])
                         {
-                            gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap.pBitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
-                            gfx_put_sprite((unsigned char*)ctx.bitmap.pBitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
+                            unsigned int* pW = (unsigned int*)ctx.bitmap[state->cmd_params[1]];
+                            unsigned int* pH = pW+1;
+                            gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
+                            gfx_put_sprite(ctx.bitmap[state->cmd_params[1]], state->cmd_params[2], state->cmd_params[3]);
 
                             // Save drawing mode and transparentcolor
-                            ctx.sprite[state->cmd_params[0]].transparentcolor = ctx.transparentcolor;
                             ctx.sprite[state->cmd_params[0]].mode = ctx.mode;
+                            ctx.sprite[state->cmd_params[0]].transparentcolor = ctx.transparentcolor;
                             
                             // Draw sprite
                             ctx.sprite[state->cmd_params[0]].active = 1;
                             ctx.sprite[state->cmd_params[0]].bitmapRef = state->cmd_params[1];
                             ctx.sprite[state->cmd_params[0]].x = state->cmd_params[2];
                             ctx.sprite[state->cmd_params[0]].y = state->cmd_params[3];
+                            ctx.sprite[state->cmd_params[0]].width = *pW;
+                            ctx.sprite[state->cmd_params[0]].height = *pH;
+                            
+                            if (state->cmd_params[0] > ctx.lastUsedSprite) ctx.lastUsedSprite = state->cmd_params[0];
+                            
+                            // Set collision detection rectangle
+                            ctx.sprite[state->cmd_params[0]].colDetRect.min.x = ctx.sprite[state->cmd_params[0]].x;
+                            ctx.sprite[state->cmd_params[0]].colDetRect.min.y = ctx.sprite[state->cmd_params[0]].y;
+                            ctx.sprite[state->cmd_params[0]].colDetRect.max.x = ctx.sprite[state->cmd_params[0]].x + *pW-1;
+                            ctx.sprite[state->cmd_params[0]].colDetRect.max.y = ctx.sprite[state->cmd_params[0]].y + *pH-1;
+                            
+                            gfx_check_collision(state->cmd_params[0]);
                             
                         }
                     }
@@ -1662,18 +1737,36 @@ int state_fun_final_letter( char ch, scn_state *state )
                     {
                         gfx_remove_sprite(state->cmd_params[0]);
                         
-                        gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                        gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
                         
                         if (ctx.sprite[state->cmd_params[0]].mode == drawingNORMAL)
-                            gfx_put_sprite_NORMAL((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                            gfx_put_sprite_NORMAL(ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
                         else if (ctx.sprite[state->cmd_params[0]].mode == drawingXOR)
-                            gfx_put_sprite_XOR((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                            gfx_put_sprite_XOR(ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
                         else
-                            gfx_put_sprite_TRANSPARENT((unsigned char*)ctx.bitmap.pBitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                        {
+                            unsigned char saveColor = ctx.transparentcolor;
+                            ctx.transparentcolor = ctx.sprite[state->cmd_params[0]].transparentcolor;
+                            gfx_put_sprite_TRANSPARENT(ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
+                            ctx.transparentcolor = saveColor;
+                        }
+                        
+                        unsigned int* pW = (unsigned int*)ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef];
+                        unsigned int* pH = pW+1;
                         
                         ctx.sprite[state->cmd_params[0]].active = 1;
                         ctx.sprite[state->cmd_params[0]].x = state->cmd_params[1];
                         ctx.sprite[state->cmd_params[0]].y = state->cmd_params[2];
+                        ctx.sprite[state->cmd_params[0]].width = *pW;
+                        ctx.sprite[state->cmd_params[0]].height = *pH;
+                        
+                        // Set collision detection rectangle
+                        ctx.sprite[state->cmd_params[0]].colDetRect.min.x = ctx.sprite[state->cmd_params[0]].x;
+                        ctx.sprite[state->cmd_params[0]].colDetRect.min.y = ctx.sprite[state->cmd_params[0]].y;
+                        ctx.sprite[state->cmd_params[0]].colDetRect.max.x = ctx.sprite[state->cmd_params[0]].x + *pW-1;
+                        ctx.sprite[state->cmd_params[0]].colDetRect.max.y = ctx.sprite[state->cmd_params[0]].y + *pH-1;
+                        
+                        gfx_check_collision(state->cmd_params[0]);
                     }
                 }
                 retval = 0;

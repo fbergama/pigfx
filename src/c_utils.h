@@ -2,8 +2,7 @@
 #define C_UTILS_H__ 
 
 #include <stdint.h>
-
-typedef unsigned long	size_t;
+#include <stddef.h>
 
 void *pigfx_memset (void *pBuffer, int nValue, size_t nLength);
 void *qmemcpy(void *dest, void *src, size_t n);
@@ -16,5 +15,8 @@ int isspace(int c);
 char *pigfx_strncpy (char *pDest, const char *pSrc, size_t nMaxLen);
 char *strchr(const char *p, int ch);
 int32_t atoi(const char *p);
+
+#define memset(a,b,c) pigfx_memset(a,b,c)
+#define memcpy(a,b,c) pigfx_memcpy(a,b,c)
 
 #endif

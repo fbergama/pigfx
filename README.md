@@ -212,7 +212,7 @@ At the time a sprite is defined, the borders of the sprite are used for detectin
 
 Collision detection takes place at the time a sprite is defined or moved. This sprite is checked against all other active sprites. All detected collisions are reported.
 
-A collision is reported as a keyboard input with this syntax: <ESC>[#<idx1>;<idx2>c where idx1 is the sprite index you just defined or moved and idx2 is the sprite it collides with.
+A collision is reported as a keyboard input with this syntax: \ESC[#<idx1>;<idx2>c where idx1 is the sprite index you just defined or moved and idx2 is the sprite it collides with.
 
 ## Compiling on Mac / Linux
 

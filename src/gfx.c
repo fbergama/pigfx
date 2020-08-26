@@ -12,9 +12,6 @@
 #include "mbox.h"
 #include "config.h"
 
-#define CUTE_C2_IMPLEMENTATION
-#include "cute_c2.h"
-
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
 #define PFB( X, Y ) ( ctx.pfb + (Y) * ctx.Pitch + (X) )
@@ -30,6 +27,18 @@ int __abs__( int a )
 /** Function type to compute a glyph address in a font. */
 typedef unsigned char* font_fun(unsigned int c);
 
+typedef struct
+{
+    int x;
+    int y;
+} vector2d;
+
+typedef struct
+{
+    vector2d min;
+    vector2d max;
+} tAABB;
+
 // Sprites
 typedef struct
 {
@@ -41,7 +50,7 @@ typedef struct
     DRAWING_MODE   mode;
     unsigned int   x;
     unsigned int   y;
-    c2AABB         colDetRect;
+    tAABB          colDetRect;
     unsigned char* pBackground;
 } tSprite;
 
@@ -247,6 +256,18 @@ void gfx_compute_font()
     gfx_term_save_cursor_content();
 }
 
+
+//// Collision detection
+//// Concept taken from cute_c2
+unsigned char AABBtoAABBcollide(tAABB* pA, tAABB* pB)
+{
+    int d0 = pB->max.x+1 < pA->min.x;
+    int d1 = pA->max.x+1 < pB->min.x;
+    int d2 = pB->max.y+1 < pA->min.y;
+    int d3 = pA->max.y+1 < pB->min.y;
+    return !(d0 | d1 | d2 | d3);
+}
+
 /** Sets the display variables. This is called by initialize_framebuffer when setting mode.
  * Default to 8x16 font if no other font was selected before.
  * @param p_framebuffer Framebuffer address as given by DMA
@@ -350,7 +371,7 @@ void gfx_check_collision(unsigned char own)
     {
         if ((ctx.sprite[i].active == 0) || (i == own)) continue;
         // check collision of own sprite with this sprite
-        if (c2AABBtoAABB(ctx.sprite[own].colDetRect, ctx.sprite[i].colDetRect))
+        if (AABBtoAABBcollide(&ctx.sprite[own].colDetRect, &ctx.sprite[i].colDetRect))
         {
             // collision detected
             cout("\x1b[#");cout_d(own);cout(";");cout_d(i);cout("c");

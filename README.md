@@ -208,7 +208,7 @@ This is a table that shows the time for drawing a 400x300 pixel image on differe
 
 ## Collision detection
 
-At the time a sprite is defined, the borders of the sprite are used for detecting collisions with other sprites, so this is always a rectangle. Touching is not yet a collision. Collisions with lower sprite indexes are detected first.
+At the time a sprite is defined, the borders of the sprite are used for detecting collisions with other sprites, so this is always a rectangle. A collision is reported if 2 sprites touch or overlap. Collisions with lower sprite indexes are detected first.
 
 Collision detection takes place at the time a sprite is defined or moved. This sprite is checked against all other active sprites. All detected collisions are reported.
 

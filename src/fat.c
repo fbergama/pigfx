@@ -199,7 +199,7 @@ size_t fs_fread(uint32_t (*get_next_bdev_block_num)(uint32_t f_block_idx, FILE *
 			stream->pos += block_segment_length;
 			save_buf += block_segment_length;
 
-			nmalloc_free((void**)&temp_buf);
+			nmalloc_free(&temp_buf);
 
 			if((uint32_t)bytes_read != fs_block_size)
 				return total_bytes_read;
@@ -323,7 +323,7 @@ int fat_init(struct block_device *parent, struct fs **fs)
 	if(fat_size == 0)
 	    fat_size = read_word((unsigned char*)&bs->ext.fat32.table_size_32,0);
 
-	uint32_t data_sec = total_sectors - (read_halfword((unsigned char*)&bs->reserved_sector_count,0) + 
+	uint32_t data_sec = total_sectors - (read_halfword((unsigned char*)&bs->reserved_sector_count,0) +
 			bs->table_count * fat_size + ret->root_dir_sectors);
 
 	uint32_t total_clusters = data_sec / bs->sectors_per_cluster;
@@ -367,7 +367,7 @@ int fat_init(struct block_device *parent, struct fs **fs)
 		ret->root_dir_cluster = bs->ext.fat32.root_cluster;
 	}
 	else
-	{	
+	{
 		// FAT12/16
 
 		pigfx_strncpy(ret->vol_label, bs->ext.fat16.volume_label, 11);
@@ -397,7 +397,7 @@ int fat_init(struct block_device *parent, struct fs **fs)
 
 	ret->b.block_size = ret->bytes_per_sector * ret->sectors_per_cluster;
 	*fs = (struct fs *)ret;
-	nmalloc_free((void**)&block_0);
+	nmalloc_free(&block_0);
 
 	ee_printf("FAT: found a %s filesystem on %s\n", ret->b.fs_name, ret->b.parent->device_name);
 
@@ -433,7 +433,7 @@ static uint32_t get_next_fat_entry(struct fat_fs *fs, uint32_t current_cluster)
 				}
 				uint32_t fat_index = fat_offset % fs->bytes_per_sector;
 				uint32_t next_cluster = (uint32_t)*(uint16_t *)&buf[fat_index];
-				nmalloc_free((void**)&buf);
+				nmalloc_free(&buf);
 				if(next_cluster >= 0xfff7)
 					next_cluster |= 0x0fff0000;
 				return next_cluster;
@@ -453,7 +453,7 @@ static uint32_t get_next_fat_entry(struct fat_fs *fs, uint32_t current_cluster)
 				}
 				uint32_t fat_index = fat_offset % fs->bytes_per_sector;
 				uint32_t next_cluster = *(uint32_t *)&buf[fat_index];
-				nmalloc_free((void**)&buf);
+				nmalloc_free(&buf);
 				return next_cluster & 0x0fffffff; // FAT32 is actually FAT28
 			}
 		default:
@@ -553,12 +553,12 @@ struct dirent *fat_read_dir(struct fat_fs *fs, struct dirent *d)
 		uint32_t first_data_sector = fat->first_data_sector;
 		if(!is_root)
 			first_data_sector = fat->first_non_root_sector;
-		
+
 #ifdef FAT_DEBUG
 		ee_printf("FAT: reading cluster %i (sector %i)\n", cur_cluster,
 				absolute_cluster * fat->sectors_per_cluster + first_data_sector);
 #endif
-		int br_ret = block_read(fat->b.parent, buf, cluster_size, 
+		int br_ret = block_read(fat->b.parent, buf, cluster_size,
 				absolute_cluster * fat->sectors_per_cluster + first_data_sector);
 
 		if(br_ret < 0)
@@ -623,17 +623,17 @@ struct dirent *fat_read_dir(struct fat_fs *fs, struct dirent *d)
 				de->is_dir = 1;
 			de->next = (void *)0;
 			de->byte_size = read_word(buf, ptr + 28);
-			uintptr_t opaque = read_halfword(buf, ptr + 26) | 
+			uintptr_t opaque = read_halfword(buf, ptr + 26) |
 				((uint32_t)read_halfword(buf, ptr + 20) << 16);
 
 			de->opaque = (void*)opaque;
 
 #ifdef FAT_DEBUG
-			ee_printf("FAT: read dir entry: %s, size %i, cluster %i, ptr %i\n", 
+			ee_printf("FAT: read dir entry: %s, size %i, cluster %i, ptr %i\n",
 					de->name, de->byte_size, opaque, ptr);
 #endif
 		}
-		nmalloc_free((void**)&buf);
+		nmalloc_free(&buf);
 
 		// Get the next cluster
 		if(is_root && (fs->fat_type != FAT32))

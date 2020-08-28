@@ -176,13 +176,12 @@ void* nmalloc_malloc( size_T size )
 }
 
 
-void  nmalloc_free(void **pptr )
+void  nmalloc_free(void *ptr )
 {
     block* prevB;
     block* nextB;
     block *newfblock;
     size_T block_size;
-    void* ptr = *pptr;
 
     ptr = (unsigned char*)ptr - sizeof( size_T );
     block_size = *((size_T*)ptr);
@@ -228,7 +227,7 @@ void  nmalloc_free(void **pptr )
         newfblock->next->prev = newfblock;
 
 
-    *pptr = 0;
+    ptr = 0;
     merge_adjacent_free_blocks();
 }
 

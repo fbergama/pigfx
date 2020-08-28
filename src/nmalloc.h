@@ -55,7 +55,7 @@ typedef unsigned int size_T;
 
 extern void  nmalloc_set_memory_area( void* pBuff, size_T max_size );
 extern void* nmalloc_malloc( size_T size );
-extern void  nmalloc_free( void** ptr );
+extern void  nmalloc_free( void* ptr );
 
 
 /* The following functions are available only in debug mode */

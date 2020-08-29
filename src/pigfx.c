@@ -47,8 +47,8 @@ extern unsigned int heap_sz;
 extern unsigned char G_STARTUP_LOGO;
 
 
-static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
-                                      __attribute__((unused)) void* pParam, 
+static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
+                                      __attribute__((unused)) void* pParam,
                                       __attribute__((unused)) void *pContext )
 {
     if( led_status )
@@ -72,13 +72,13 @@ void uart_fill_queue( __attribute__((unused)) void* data )
         *uart_buffer_end++ = (char)( *pUART0_DR & 0xFF );
 
         if( uart_buffer_end >= uart_buffer_limit )
-           uart_buffer_end = uart_buffer; 
+           uart_buffer_end = uart_buffer;
 
         if( uart_buffer_end == uart_buffer_start )
         {
             uart_buffer_start++;
             if( uart_buffer_start >= uart_buffer_limit )
-                uart_buffer_start = uart_buffer; 
+                uart_buffer_start = uart_buffer;
         }
     }
 
@@ -124,11 +124,11 @@ void initialize_framebuffer(unsigned int width, unsigned int height, unsigned in
     unsigned int v_w = p_w;
     unsigned int v_h = p_h;
 
-    fb_init( p_w, p_h, 
+    fb_init( p_w, p_h,
              v_w, v_h,
              bpp,
-             (void*)&p_fb, 
-             &fbsize, 
+             (void*)&p_fb,
+             &fbsize,
              &pitch );
 
     if (fb_set_xterm_palette() != 0)
@@ -227,7 +227,7 @@ void video_test(int maxloops)
 
 void video_line_test(int maxloops)
 {
-    int x=-10; 
+    int x=-10;
     int y=-10;
     int vx=1;
     int vy=0;
@@ -255,7 +255,7 @@ void video_line_test(int maxloops)
 
         x = x+vx;
         y = y+vy;
-        
+
         if( x>700 )
         {
             x--;
@@ -287,6 +287,9 @@ void video_line_test(int maxloops)
 
 void term_main_loop()
 {
+    unsigned int bla = 1;
+    unsigned int blabla = 0;
+    unsigned char* test = (unsigned char*)&bla;
     ee_printf("Waiting for UART data (%d,8,N,1)\n",PiGfxConfig.uartBaudrate);
 
     /**/
@@ -340,9 +343,9 @@ void term_main_loop()
         }
 
         uart_fill_queue(0);
-        
+
         timer_poll();
-        
+
         if (ps2KeyboardFound)
         {
             PS2KeyboardHandler();
@@ -357,30 +360,30 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 {
     unsigned int boardRevision;
     board_t raspiBoard;
-    
+
     //unused
     (void) r0;
     (void) r1;
     (void) atags;
-    
+
     // Heap init
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
 
     // UART buffer allocation
     uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE );
     uart_init(9600);
-    
+
     // Get informations about the board we are booting
     boardRevision = prop_revision();
     raspiBoard = board_info(boardRevision);
-    
+
     // Where is the Act LED?
     led_init(raspiBoard);
-    
+
     // Timers and heartbeat
     timers_init();
     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
-    
+
     initialize_framebuffer(640, 480, 8);
 
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
@@ -433,7 +436,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     //video_test();
     //video_line_test();
-    
+
     gfx_set_bg(BLACK);
     gfx_set_fg(GRAY);
     ee_printf("\nBooting on Raspberry Pi ");
@@ -441,10 +444,10 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     ee_printf(", ");
     ee_printf(board_processor(raspiBoard.processor));
     ee_printf("\n");
-    
+
     // Set default config
     setDefaultConfig();
-    
+
     gfx_set_bg(BLUE);
     gfx_set_fg(YELLOW);
     ee_printf("Initializing filesystem:\n");
@@ -452,10 +455,10 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     gfx_set_fg(GRAY);
     // Try to load a config file
     lookForConfigFile();
-    
+
     uart_init(PiGfxConfig.uartBaudrate);
     initialize_uart_irq();
-    
+
     gfx_set_bg(BLUE);
     gfx_set_fg(YELLOW);
     ee_printf("Initializing PS/2:\n");
@@ -466,7 +469,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
         ps2KeyboardFound = 1;
         fInitKeyboard(PiGfxConfig.keyboardLayout);
     }
-    
+
 #if RPI<4
     if ((PiGfxConfig.useUsbKeyboard) && (ps2KeyboardFound == 0))
     {

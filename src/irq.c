@@ -1,6 +1,7 @@
 #include "irq.h"
 #include "ee_printf.h"
 #include "utils.h"
+#include "exception.h"
 
 
 rpi_irq_controller_t* pIRQController =  (rpi_irq_controller_t*)INTERRUPT_BASE;
@@ -16,14 +17,13 @@ void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata )
     {
         _irq_handlers[ irq ] = phandler;
         _irq_handlers_data[ irq ] = pdata;
-        
+
         unsigned enableReg = irq / 32;
         unsigned bit = irq % 32;
         pIRQController->Enable_IRQs[enableReg] = (1 << bit);
     }
     enable_irq();
 }
-
 
 void __attribute__((interrupt("IRQ"))) irq_handler_(void)
 {
@@ -38,7 +38,7 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
     else if( pIRQController->IRQ_pending[1] & RPI_UART_INTERRUPT_IRQ && _irq_handlers[57] )
     {
         // IRQ 57
-        IntHandler* hnd = _irq_handlers[57]; 
+        IntHandler* hnd = _irq_handlers[57];
         hnd( _irq_handlers_data[57] );
 
     }
@@ -46,7 +46,7 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
     else if( pIRQController->IRQ_pending[0] & RPI_USB_IRQ && _irq_handlers[9] )
     {
         // IRQ 9
-        IntHandler* hnd = _irq_handlers[9]; 
+        IntHandler* hnd = _irq_handlers[9];
         hnd( _irq_handlers_data[9] );
 
     }
@@ -63,4 +63,43 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
         }
     }
 
+}
+
+// Concept adapted from USPI
+void exception_handler_(unsigned int nException, TAbortFrame *pFrame)
+{
+    char* excType;
+    unsigned int FSR = 0, FAR = 0;
+    if (nException == EXCEPTION_UNDEFINED_INSTRUCTION)excType = "Undefined instruction occurred!";
+    else if (nException == EXCEPTION_PREFETCH_ABORT)
+    {
+        excType = "Prefetch abort exception occurred!";
+		asm volatile ("mrc p15, 0, %0, c5, c0,  1" : "=r" (FSR));
+		asm volatile ("mrc p15, 0, %0, c6, c0,  2" : "=r" (FAR));
+    }
+    else
+    {
+        excType = "Data abort exception occurred!";
+		asm volatile ("mrc p15, 0, %0, c5, c0,  0" : "=r" (FSR));
+		asm volatile ("mrc p15, 0, %0, c6, c0,  0" : "=r" (FAR));
+    }
+
+	unsigned int lr = pFrame->lr;
+	unsigned int sp = pFrame->sp;
+
+	if ((pFrame->spsr & 0x1F) == 0x12)	// IRQ mode?
+	{
+		lr = pFrame->lr_irq;
+		sp = pFrame->sp_irq;
+	}
+
+    ee_printf("\e[2J");
+    ee_printf("%s -> HALT\n", excType);
+
+    ee_printf("PC %08x, FSR %08x, FAR %08x, SP %08x, LR %08x, PSR %08x\n", pFrame->pc, FSR, FAR, sp, lr, pFrame->spsr);
+
+    while (1)
+    {
+        ;
+    }
 }

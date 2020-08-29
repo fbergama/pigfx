@@ -38,6 +38,8 @@ SECTIONS
         . = . + 4096;     /* IRQ stack size core 0 */
         __IRQ_stack_core0 = .;
         . = . + 4096;     /* FIQ stack size core 0 */
+        __abort_stack_core0 = .;
+        . = . + 4096;     /* abort stack size core 0 */
         __FIQ_stack_core0 = .;
         . = ALIGN(8);
         __stack_end__core0 = .;  

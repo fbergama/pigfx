@@ -243,7 +243,7 @@ void gfx_compute_font()
 	ctx.cursor_buffer_size = ctx.term.FONTWIDTH * ctx.term.FONTHEIGHT;
 	if (ctx.cursor_buffer)
 	{
-		nmalloc_free(&ctx.cursor_buffer);
+		nmalloc_free(ctx.cursor_buffer);
 		ctx.cursor_buffer = 0;
 		ctx.cursor_buffer_ready = 0;
 	}
@@ -512,7 +512,7 @@ void gfx_remove_sprite(unsigned char idx)
     if (ctx.sprite[idx].active == 0) return;
     if (ctx.sprite[idx].pBackground == 0) return;
     gfx_put_sprite_NORMAL(ctx.sprite[idx].pBackground, ctx.sprite[idx].x, ctx.sprite[idx].y);
-    nmalloc_free(&ctx.sprite[idx].pBackground);
+    nmalloc_free(ctx.sprite[idx].pBackground);
     ctx.sprite[idx].pBackground = 0;
     ctx.sprite[idx].active = 0;
 
@@ -596,7 +596,7 @@ void gfx_clear()
         {
             if (ctx.sprite[i].pBackground)
             {
-                nmalloc_free(&ctx.sprite[i].pBackground);
+                nmalloc_free(ctx.sprite[i].pBackground);
                 ctx.sprite[i].pBackground = 0;
             }
             ctx.sprite[i].active = 0;
@@ -1592,7 +1592,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]) && ((state->cmd_params[3] == 10) || (state->cmd_params[3] == 16)))
                     {
                         // release old data
-                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free(&ctx.bitmap[state->cmd_params[0]]);
+                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free(ctx.bitmap[state->cmd_params[0]]);
 
                         // alloc mem
                         ctx.bitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
@@ -1629,7 +1629,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]))
                     {
                         // release old data
-                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free(&ctx.bitmap[state->cmd_params[0]]);
+                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free(ctx.bitmap[state->cmd_params[0]]);
 
                         // alloc mem
                         ctx.bitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data

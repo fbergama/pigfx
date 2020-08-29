@@ -160,7 +160,7 @@ unsigned char lookForConfigFile()
     if (filesys->fread(filesys, cfgfiledata, configfile->len, configfile) != (size_t)configfile->len)
     {
         ee_printf("Error reading config file\n");
-        nmalloc_free(&cfgfiledata);
+        nmalloc_free(cfgfiledata);
         return errREADFILE;
     }
 
@@ -169,10 +169,10 @@ unsigned char lookForConfigFile()
     if (retVal < 0)
     {
         ee_printf("Syntax error %d interpreting config file\n", retVal);
-        nmalloc_free(&cfgfiledata);
+        nmalloc_free(cfgfiledata);
         return errSYNTAX;
     }
 
-    nmalloc_free(&cfgfiledata);
+    nmalloc_free(cfgfiledata);
     return errOK;
 }

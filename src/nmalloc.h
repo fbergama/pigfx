@@ -12,7 +12,7 @@
        to obtain a memory chunk of size "size"
 
     3) When an allocated chunk "a" is no longer needed, call
-        nmalloc_free( &a );
+        nmalloc_free( a );
 
         the pointer a is automatically set to 0.
 

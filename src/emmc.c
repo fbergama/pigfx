@@ -1786,7 +1786,7 @@ int sd_card_init(struct block_device **dev)
 	if(FAIL(ret))
     {
         ee_printf("SD: error sending SEND_RELATIVE_ADDR\n");
-        nmalloc_free(&ret);
+        nmalloc_free(ret);
         return -1;
     }
 
@@ -1805,32 +1805,32 @@ int sd_card_init(struct block_device **dev)
 	if(crc_error)
 	{
 		ee_printf("SD: CRC error\n");
-		nmalloc_free(&ret);
-		nmalloc_free(&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
 	if(illegal_cmd)
 	{
 		ee_printf("SD: illegal command\n");
-		nmalloc_free(&ret);
-		nmalloc_free(&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
 	if(error)
 	{
 		ee_printf("SD: generic error\n");
-		nmalloc_free(&ret);
-		nmalloc_free(&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
 	if(!ready)
 	{
 		ee_printf("SD: not ready for data\n");
-		nmalloc_free(&ret);
-		nmalloc_free(&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
@@ -1843,7 +1843,7 @@ int sd_card_init(struct block_device **dev)
 	if(FAIL(ret))
 	{
 	    ee_printf("SD: error sending CMD7\n");
-	    nmalloc_free(&ret);
+	    nmalloc_free(ret);
 	    return -1;
 	}
 
@@ -1853,8 +1853,8 @@ int sd_card_init(struct block_device **dev)
 	if((status != 3) && (status != 4))
 	{
 		ee_printf("SD: invalid status (%i)\n", status);
-		nmalloc_free(&ret);
-		nmalloc_free(&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
@@ -1865,7 +1865,7 @@ int sd_card_init(struct block_device **dev)
 	    if(FAIL(ret))
 	    {
 	        ee_printf("SD: error sending SET_BLOCKLEN\n");
-	        nmalloc_free(&ret);
+	        nmalloc_free(ret);
 	        return -1;
 	    }
 	}
@@ -1885,8 +1885,8 @@ int sd_card_init(struct block_device **dev)
 	if(FAIL(ret))
 	{
 	    ee_printf("SD: error sending SEND_SCR\n");
-	    nmalloc_free(&ret->scr);
-        nmalloc_free(&ret);
+	    nmalloc_free(ret->scr);
+        nmalloc_free(ret);
 	    return -1;
 	}
 

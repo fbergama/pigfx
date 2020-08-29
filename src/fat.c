@@ -199,7 +199,7 @@ size_t fs_fread(uint32_t (*get_next_bdev_block_num)(uint32_t f_block_idx, FILE *
 			stream->pos += block_segment_length;
 			save_buf += block_segment_length;
 
-			nmalloc_free(&temp_buf);
+			nmalloc_free(temp_buf);
 
 			if((uint32_t)bytes_read != fs_block_size)
 				return total_bytes_read;
@@ -397,7 +397,7 @@ int fat_init(struct block_device *parent, struct fs **fs)
 
 	ret->b.block_size = ret->bytes_per_sector * ret->sectors_per_cluster;
 	*fs = (struct fs *)ret;
-	nmalloc_free(&block_0);
+	nmalloc_free(block_0);
 
 	ee_printf("FAT: found a %s filesystem on %s\n", ret->b.fs_name, ret->b.parent->device_name);
 
@@ -433,7 +433,7 @@ static uint32_t get_next_fat_entry(struct fat_fs *fs, uint32_t current_cluster)
 				}
 				uint32_t fat_index = fat_offset % fs->bytes_per_sector;
 				uint32_t next_cluster = (uint32_t)*(uint16_t *)&buf[fat_index];
-				nmalloc_free(&buf);
+				nmalloc_free(buf);
 				if(next_cluster >= 0xfff7)
 					next_cluster |= 0x0fff0000;
 				return next_cluster;
@@ -453,7 +453,7 @@ static uint32_t get_next_fat_entry(struct fat_fs *fs, uint32_t current_cluster)
 				}
 				uint32_t fat_index = fat_offset % fs->bytes_per_sector;
 				uint32_t next_cluster = *(uint32_t *)&buf[fat_index];
-				nmalloc_free(&buf);
+				nmalloc_free(buf);
 				return next_cluster & 0x0fffffff; // FAT32 is actually FAT28
 			}
 		default:
@@ -633,7 +633,7 @@ struct dirent *fat_read_dir(struct fat_fs *fs, struct dirent *d)
 					de->name, de->byte_size, opaque, ptr);
 #endif
 		}
-		nmalloc_free(&buf);
+		nmalloc_free(buf);
 
 		// Get the next cluster
 		if(is_root && (fs->fat_type != FAT32))

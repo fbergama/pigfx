@@ -16,7 +16,7 @@ void *malloc (unsigned nSize)		// result must be 4-byte aligned
 
 void free (void *pBlock)
 {
-    nmalloc_free( &pBlock );
+    nmalloc_free( pBlock );
 }
 
 
@@ -99,7 +99,7 @@ int SetPowerStateOn (unsigned nDeviceId)	// "set power state" to "on", wait unti
     if (mbox_send(&msg) != 0) {
         return 0;   // Error
     }
-    
+
     usleep(500000); // Wait some more for wireless keyboards startup time
     return 1;
 }

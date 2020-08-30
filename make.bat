@@ -9,7 +9,7 @@ if "%RPI%"=="4" goto SKIPUSPI
 call makeuspi %RPI%
 :SKIPUSPI
 
-set OOB= asm.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o block.o emmc.o c_utils.o mbr.o fat.o config.o ini.o ps2.o keyboard.o binary_assets.o
+set OOB= asm.o exceptionstub.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o block.o emmc.o c_utils.o mbr.o fat.o config.o ini.o ps2.o keyboard.o binary_assets.o
 set LIBUSPI= uspi/lib/libuspi.a
 
 set CFLAGS= -Wall -Wextra -O2 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -fsigned-char
@@ -56,9 +56,9 @@ for /F "delims=" %%a in (pigfx_config.h.in) DO (
 :: Compiling c files
 del build\*.* /Q 2>NUL
 del *.elf /Q 2>NUL
-for %%c in (src/*.c) do arm-none-eabi-gcc src\%%c %CFLAGS% -c -o build\%%~nc.o
 :: Compiling s files
-for %%s in (src/*.s) do arm-none-eabi-as src\%%s -c -o build\%%~ns.o
+for %%s in (src/*.s) do arm-none-eabi-gcc src\%%s %CFLAGS% -c -o build\%%~ns.o
+for %%c in (src/*.c) do arm-none-eabi-gcc src\%%c %CFLAGS% -c -o build\%%~nc.o
 :: linking files
 for %%A in (%OOB%) do (call :addbuild %%A)
 arm-none-eabi-ld %OBJS% "%LIBGCC%" %LIBUSPI% -T memmap -o pigfx.elf

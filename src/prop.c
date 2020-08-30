@@ -9,7 +9,7 @@ uint32_t prop_revision(void) {
   typedef struct {
     mbox_msgheader_t header;
     mbox_tagheader_t tag;
-    
+
     union {
       // No request.
       struct {
@@ -43,7 +43,7 @@ uint32_t prop_fwrev(void) {
   typedef struct {
     mbox_msgheader_t header;
     mbox_tagheader_t tag;
-    
+
     union {
       // No request.
       struct {
@@ -69,7 +69,7 @@ uint32_t prop_fwrev(void) {
   if (mbox_send(&msg) != 0) {
     return 0;
   }
-  
+
   return msg.value.response.firmware;
 }
 
@@ -78,7 +78,7 @@ int prop_macaddr(unsigned char* pOutAddr) {
   typedef struct {
     mbox_msgheader_t header;
     mbox_tagheader_t tag;
-    
+
     union {
       // No request.
       struct {
@@ -105,7 +105,7 @@ int prop_macaddr(unsigned char* pOutAddr) {
   if (mbox_send(&msg) != 0) {
     return 0;
   }
-  
+
   for( off=0; off<6; ++off )
   {
       pOutAddr[off] = msg.value.response.addr[off];
@@ -117,7 +117,7 @@ uint64_t prop_serial(void) {
   typedef struct {
     mbox_msgheader_t header;
     mbox_tagheader_t tag;
-    
+
     union {
       // No request.
       struct {
@@ -145,4 +145,74 @@ uint64_t prop_serial(void) {
   }
 
   return msg.value.response.serial;
+}
+
+void prop_VCRAM(tSysRam* ram)
+{
+  typedef struct {
+    mbox_msgheader_t header;
+    mbox_tagheader_t tag;
+
+    union {
+      // No request.
+      struct {
+        uint32_t base;
+        uint32_t vcRam;
+      }
+      response;
+    }
+    value;
+
+    mbox_msgfooter_t footer;
+  }
+  message_t;
+
+  message_t msg __attribute__((aligned(16)));
+
+  msg.header.size = sizeof(msg);
+  msg.header.code = 0;
+  msg.tag.id = MAILBOX_TAG_GET_VC_MEMORY; // Get VC Memory.
+  msg.tag.size = sizeof(msg.value);
+  msg.tag.code = 0;
+  msg.footer.end = 0;
+
+  mbox_send(&msg);
+
+  ram->baseAddr = msg.value.response.base;
+  ram->size = msg.value.response.vcRam / (1024*1024);
+}
+
+void prop_ARMRAM(tSysRam* ram)
+{
+  typedef struct {
+    mbox_msgheader_t header;
+    mbox_tagheader_t tag;
+
+    union {
+      // No request.
+      struct {
+        uint32_t base;
+        uint32_t armRam;
+      }
+      response;
+    }
+    value;
+
+    mbox_msgfooter_t footer;
+  }
+  message_t;
+
+  message_t msg __attribute__((aligned(16)));
+
+  msg.header.size = sizeof(msg);
+  msg.header.code = 0;
+  msg.tag.id = MAILBOX_TAG_GET_ARM_MEMORY; // Get ARM Memory.
+  msg.tag.size = sizeof(msg.value);
+  msg.tag.code = 0;
+  msg.footer.end = 0;
+
+  mbox_send(&msg);
+
+  ram->baseAddr = msg.value.response.base;
+  ram->size = msg.value.response.armRam / (1024*1024);
 }

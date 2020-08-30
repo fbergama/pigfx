@@ -287,9 +287,6 @@ void video_line_test(int maxloops)
 
 void term_main_loop()
 {
-    unsigned int bla = 1;
-    unsigned int blabla = 0;
-    unsigned char* test = (unsigned char*)&bla;
     ee_printf("Waiting for UART data (%d,8,N,1)\n",PiGfxConfig.uartBaudrate);
 
     /**/
@@ -360,6 +357,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 {
     unsigned int boardRevision;
     board_t raspiBoard;
+    tSysRam ArmRam;
 
     //unused
     (void) r0;
@@ -376,6 +374,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     // Get informations about the board we are booting
     boardRevision = prop_revision();
     raspiBoard = board_info(boardRevision);
+    prop_ARMRAM(&ArmRam);
 
     // Where is the Act LED?
     led_init(raspiBoard);
@@ -443,7 +442,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     ee_printf(board_model(raspiBoard.model));
     ee_printf(", ");
     ee_printf(board_processor(raspiBoard.processor));
-    ee_printf("\n");
+    ee_printf(", %iMB ARM RAM\n", ArmRam.size, ArmRam.baseAddr);
 
     // Set default config
     setDefaultConfig();

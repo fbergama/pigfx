@@ -16,10 +16,18 @@
 #define PROP_CLOCK_PIXEL  9
 #define PROP_CLOCK_PWM   10
 
+typedef struct
+{
+    unsigned int baseAddr;
+    unsigned int size;
+} tSysRam;
+
 uint32_t   prop_revision(void);
 uint32_t   prop_fwrev(void);
 uint32_t   prop_model(void);
 int        prop_macaddr(unsigned char* pOutAddr);
 uint64_t   prop_serial(void);
+void       prop_VCRAM(tSysRam* ram);
+void       prop_ARMRAM(tSysRam* ram);
 
-#endif /* PROP_H__ */ 
+#endif /* PROP_H__ */

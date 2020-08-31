@@ -11,7 +11,7 @@
 
 #define KERNEL_STACK_SIZE	0x20000				// all sizes must be a multiple of 16K // 128KB
 #define EXCEPTION_STACK_SIZE	0x8000          // 32KB
-#define PAGE_TABLE1_SIZE	0x4000              // 16KB
+#define PAGE_TABLE1_SIZE	0x4000              // 16KB     4096 Entries * 4 byte -> 4GB addressable memory
 
 #define MEM_KERNEL_START	0x8000
 #define MEM_KERNEL_END		(MEM_KERNEL_START + KERNEL_MAX_SIZE)

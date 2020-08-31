@@ -22,6 +22,7 @@
 #include "keyboard.h"
 #include "ps2.h"
 #include "memory.h"
+#include "mmu.h"
 #include "../uspi/include/uspi.h"
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
@@ -374,16 +375,24 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 	}
 
     // Heap init
-    nmalloc_set_memory_area( (unsigned char*)MEM_HEAP_START, ARM_MEMSIZE-MEM_HEAP_START);
+    unsigned int memSize = ARM_MEMSIZE-MEM_HEAP_START;
+    nmalloc_set_memory_area( (unsigned char*)MEM_HEAP_START, memSize);
 
     // UART buffer allocation
     uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE );
     uart_init(9600);
 
+    // Init Pagetable
+    CreatePageTable(ARM_MEMSIZE);
+    EnableMMU();
+
     // Get informations about the board we are booting
     boardRevision = prop_revision();
     raspiBoard = board_info(boardRevision);
     prop_ARMRAM(&ArmRam);
+    cout_d(boardRevision);cout_endl();
+    cout_d(raspiBoard.model);cout_endl();
+    cout_d(ArmRam.size);cout_endl();
 
     // Where is the Act LED?
     led_init(raspiBoard);
@@ -413,6 +422,8 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     }
     ee_printf("\n");
 
+    cout("alive10");cout_endl();
+
     // 16-223 are gradients
     int count = 0;
 	for (  ; color <= 255-24 ; color++) {
@@ -423,12 +434,16 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 			ee_printf("\n");
 	}
 
+	cout("alive11");cout_endl();
+
 	// 224-255 are gray scales
     for (  ; color <= 255 ; color++) {
 		gfx_set_bg(color);
 		ee_printf("%02x", color);
 	}
 	ee_printf("\n");
+
+	cout("alive12");cout_endl();
 
     /* informations
     gfx_set_bg(0);
@@ -453,6 +468,8 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     ee_printf(board_processor(raspiBoard.processor));
     ee_printf(", %iMB ARM RAM\n", ArmRam.size, ArmRam.baseAddr);
 
+    cout("alive13");cout_endl();
+
     // Set default config
     setDefaultConfig();
 
@@ -461,6 +478,9 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     ee_printf("Initializing filesystem:\n");
     gfx_set_bg(BLACK);
     gfx_set_fg(GRAY);
+
+    cout("alive14");cout_endl();
+
     // Try to load a config file
     lookForConfigFile();
 

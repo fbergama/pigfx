@@ -2,6 +2,7 @@
 
 #include "prop.h"
 #include "mbox.h"
+#include "memory.h"
 
 #include <stdint.h>
 
@@ -23,20 +24,20 @@ uint32_t prop_revision(void) {
   }
   message_t;
 
-  message_t msg __attribute__((aligned(16)));
+  message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-  msg.header.size = sizeof(msg);
-  msg.header.code = 0;
-  msg.tag.id = MAILBOX_TAG_GET_BOARD_REVISION; // Get board revision.
-  msg.tag.size = sizeof(msg.value);
-  msg.tag.code = 0;
-  msg.footer.end = 0;
+  msg->header.size = sizeof(*msg);
+  msg->header.code = 0;
+  msg->tag.id = MAILBOX_TAG_GET_BOARD_REVISION; // Get board revision.
+  msg->tag.size = sizeof(msg->value);
+  msg->tag.code = 0;
+  msg->footer.end = 0;
 
-  if (mbox_send(&msg) != 0) {
+  if (mbox_send(msg) != 0) {
     return 0;
   }
 
-  return msg.value.response.revision;
+  return msg->value.response.revision;
 }
 
 uint32_t prop_fwrev(void) {

@@ -21,6 +21,7 @@
 #include "config.h"
 #include "keyboard.h"
 #include "ps2.h"
+#include "memory.h"
 #include "../uspi/include/uspi.h"
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
@@ -364,8 +365,16 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     (void) r1;
     (void) atags;
 
+	// clear BSS
+	extern unsigned char __bss_start;
+	extern unsigned char _end;
+	for (unsigned char *pBSS = &__bss_start; pBSS < &_end; pBSS++)
+	{
+		*pBSS = 0;
+	}
+
     // Heap init
-    nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
+    nmalloc_set_memory_area( (unsigned char*)MEM_HEAP_START, ARM_MEMSIZE-MEM_HEAP_START);
 
     // UART buffer allocation
     uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE );

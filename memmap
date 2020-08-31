@@ -1,59 +1,30 @@
-
-MEMORY
-{
-    ram : ORIGIN = 0x8000, LENGTH = 10M
-}
-
-heap_size = 5242880;
+ENTRY(bootstrap)
 
 SECTIONS
 {
-    .text : { *(.text*) } > ram
-    .rodata ALIGN(4096) : { *(.rodata*) } > ram
-    .data ALIGN(4096): { *(.data*) } > ram
+	. = 0x8000;
+	
+	.text : {
+		*(.text*)
+	}
 
-    /* Uninitialized data section */
-    .bss ALIGN(4): {
-        __bss_start__ = .;
-        *(.bss*)
-    } > ram 
-    . = ALIGN(4);
-    __bss_end__ = .;
-    __bss_size__ = __bss_end__ - __bss_start__;
+	_etext = .;
 
-    .heap ALIGN(4): {
-        _heap_start = .;
-        . = . + heap_size;
-        _heap_end = .;
-    } > ram 
-    
-    .stack :
-    {
-        . = ALIGN(8);  /* Stack must always be aligned to 8 byte boundary AAPCS32 call standard */
-        __stack_start__core0 = .;
-        . = . + 512;    /* HYP stack size core 0 */
-        __HYP_stack_core0 = .;
-        . = . + 32768;    /* SVC stack size core 0 */
-        __SVC_stack_core0 = .;
-        . = . + 4096;     /* IRQ stack size core 0 */
-        __IRQ_stack_core0 = .;
-        . = . + 4096;     /* FIQ stack size core 0 */
-        __abort_stack_core0 = .;
-        . = . + 4096;     /* abort stack size core 0 */
-        __FIQ_stack_core0 = .;
-        . = ALIGN(8);
-        __stack_end__core0 = .;  
-    } > ram
+	.rodata : {
+		*(.rodata*)
+	}
 
-    /* Remove information from the standard libraries 
-       /DISCARD/ :
-       {
-       libc.a ( * )
-       libm.a ( * )
-       libgcc.a ( * )
-       }
-     */
+	.data : {
+		*(.data*)
+	}
 
-    .ARM.attributes 0 : { *(.ARM.attributes) }
+	__bss_start = .;
+
+	.bss : {
+		*(.bss*)
+	}
+
+	_end = .;
 }
+
 

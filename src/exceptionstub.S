@@ -20,13 +20,13 @@
  // Modified by Christian Lehner for PiGFX
 
 #include "exception.h"
+#include "memory.h"
 
 	.macro	stub name, exception, pc_offset
 
 	.globl	\name
 \name:
-	/*mov	sp, #MEM_ABORT_STACK*/
-	ldr	sp, =__abort_stack_core0
+	mov	sp, #MEM_ABORT_STACK
 	sub	lr, lr, #\pc_offset		/* lr: correct PC of aborted program */
 	stmfd	sp!, {lr}			/* store PC onto stack */
 	mrs	lr, spsr			/* lr can be overwritten now */

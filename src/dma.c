@@ -1,3 +1,12 @@
+//
+// dma.c
+// Handle direct memory access
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+
 #include "dma.h"
 #include "utils.h"
 #include "mbox.h"
@@ -12,11 +21,11 @@
 typedef struct _DMA_Ctrl_Block
 {
     unsigned int TI;                    // Transfer information
-    unsigned int SOURCE_AD;             // source address 
-    unsigned int DEST_AD;               // destination address 
-    unsigned int TXFR_LEN;              // transfer length 
+    unsigned int SOURCE_AD;             // source address
+    unsigned int DEST_AD;               // destination address
+    unsigned int TXFR_LEN;              // transfer length
     unsigned int STRIDE;                // 2D mode stride
-    struct _DMA_Ctrl_Block* NEXTCONBK;  // Next control block address 
+    struct _DMA_Ctrl_Block* NEXTCONBK;  // Next control block address
     unsigned int reserved1;
     unsigned int reserved2;
 
@@ -57,13 +66,13 @@ int dma_enqueue_operation( void* src, void* dst, unsigned int len, unsigned int 
 
     if( curr_blk > 0 )
     {
-        // Enqueue 
+        // Enqueue
         ctr_blocks[ curr_blk -1 ].NEXTCONBK = blk;
     }
 
     ++curr_blk;
     return curr_blk;
-}  
+}
 
 
 void dma_execute_queue()
@@ -76,7 +85,7 @@ void dma_execute_queue()
 
     // reset the queue
     curr_blk=0;
-    
+
     // wait for DMA to finish
     while( dma_running() )
     {
@@ -93,7 +102,7 @@ int dma_running()
 
 void dma_memcpy_32( void* src, void *dst, unsigned int size )
 {
-    dma_enqueue_operation( src, dst, size, 0, DMA_TI_SRC_INC | DMA_TI_DEST_INC ); 
+    dma_enqueue_operation( src, dst, size, 0, DMA_TI_SRC_INC | DMA_TI_DEST_INC );
     dma_execute_queue();
 }
 

@@ -1,3 +1,14 @@
+//
+// actled.c
+// Set the state of the act-LED of every Pi
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Christian Lehner
+// Based on the leiradel tutorial at
+// https://github.com/leiradel/barebones-rpi/blob/master/barebones08/rpi/led.c
+
 #include "gpio.h"
 #include "prop.h"
 #include "board.h"
@@ -31,7 +42,6 @@ static void set_130(const int on) {
   }
   message_t;
 
-  //message_t msg __attribute__((aligned(16)));
   message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
   msg->header.size = sizeof(*msg);

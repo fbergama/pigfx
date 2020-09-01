@@ -1,3 +1,12 @@
+//
+// prop.h
+// Get mailbox properties
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+// Based on the leiradel tutorial at
 // https://github.com/leiradel/barebones-rpi
 
 #ifndef PROP_H__

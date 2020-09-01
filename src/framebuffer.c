@@ -1,8 +1,18 @@
+//
+// framebuffer.c
+// Handle framebuffer and palette
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Filippo Bergamasco, Christian Lehner
+
 #include "pigfx_config.h"
 #include "framebuffer.h"
 #include "console.h"
 #include "utils.h"
 #include "synchronize.h"
+#include "memory.h"
 #include "mbox.h"
 
 #define NB_PALETTE_ELE 256
@@ -169,57 +179,57 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
 
-    msg.tag_phys_size.id = MAILBOX_TAG_SET_PHYSICAL_WIDTH_HEIGHT; // Set physical resolution
-    msg.tag_phys_size.size = sizeof(msg.value_phys_size);
-    msg.tag_phys_size.code = 0;
-    msg.value_phys_size.request.display_w = ph_w;
-    msg.value_phys_size.request.display_h = ph_h;
+    msg->tag_phys_size.id = MAILBOX_TAG_SET_PHYSICAL_WIDTH_HEIGHT; // Set physical resolution
+    msg->tag_phys_size.size = sizeof(msg->value_phys_size);
+    msg->tag_phys_size.code = 0;
+    msg->value_phys_size.request.display_w = ph_w;
+    msg->value_phys_size.request.display_h = ph_h;
 
-    msg.tag_virt_size.id = MAILBOX_TAG_SET_VIRTUAL_WIDTH_HEIGHT; // Set virtual resolution
-    msg.tag_virt_size.size = sizeof(msg.value_virt_size);
-    msg.tag_virt_size.code = 0;
-    msg.value_virt_size.request.display_w = vrt_w;
-    msg.value_virt_size.request.display_h = vrt_h;
+    msg->tag_virt_size.id = MAILBOX_TAG_SET_VIRTUAL_WIDTH_HEIGHT; // Set virtual resolution
+    msg->tag_virt_size.size = sizeof(msg->value_virt_size);
+    msg->tag_virt_size.code = 0;
+    msg->value_virt_size.request.display_w = vrt_w;
+    msg->value_virt_size.request.display_h = vrt_h;
 
-    msg.tag_colour_depth.id = MAILBOX_TAG_SET_COLOUR_DEPTH; // Set colour depth
-    msg.tag_colour_depth.size = sizeof(msg.value_colour_depth);
-    msg.tag_colour_depth.code = 0;
-    msg.value_colour_depth.request.depth = bpp;
+    msg->tag_colour_depth.id = MAILBOX_TAG_SET_COLOUR_DEPTH; // Set colour depth
+    msg->tag_colour_depth.size = sizeof(msg->value_colour_depth);
+    msg->tag_colour_depth.code = 0;
+    msg->value_colour_depth.request.depth = bpp;
 
-    msg.tag_get_buf.id = MAILBOX_TAG_ALLOCATE_FRAMEBUFFER; // we want one
-    msg.tag_get_buf.size = sizeof(msg.value_get_buf);
-    msg.tag_get_buf.code = 0;
-    msg.value_get_buf.request.alignment = 16;
+    msg->tag_get_buf.id = MAILBOX_TAG_ALLOCATE_FRAMEBUFFER; // we want one
+    msg->tag_get_buf.size = sizeof(msg->value_get_buf);
+    msg->tag_get_buf.code = 0;
+    msg->value_get_buf.request.alignment = 16;
 
-    msg.footer.end = 0;
+    msg->footer.end = 0;
 
     CleanDataCache ();
     DataSyncBarrier ();
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
         return FB_ERROR;
     }
     InvalidateDataCache ();
 
-    if ((msg.value_get_buf.response.bufferaddr == 0) || (msg.value_get_buf.response.buffersize == 0)) return FB_INVALID_TAG_DATA;
+    if ((msg->value_get_buf.response.bufferaddr == 0) || (msg->value_get_buf.response.buffersize == 0)) return FB_INVALID_TAG_DATA;
 
     /* physical_screenbase is the address of the screen in RAM
     *   * screenbase needs to be the screen address in virtual memory
     *       */
-    *pp_fb = (void*)mem_vc2arm(msg.value_get_buf.response.bufferaddr);
-    *pfbsize = msg.value_get_buf.response.buffersize;
+    *pp_fb = (void*)mem_vc2arm(msg->value_get_buf.response.bufferaddr);
+    *pfbsize = msg->value_get_buf.response.buffersize;
 
 #if ENABLED(FRAMEBUFFER_DEBUG)
     cout("Set physical display size: ");cout_d(ph_w);cout("x");cout_d(ph_h);cout_endl();
-    cout("Response: ");cout_d(msg.value_phys_size.response.act_display_w);cout("x");cout_d(msg.value_phys_size.response.act_display_h);cout_endl();
+    cout("Response: ");cout_d(msg->value_phys_size.response.act_display_w);cout("x");cout_d(msg->value_phys_size.response.act_display_h);cout_endl();
     cout("Set virtual display size: ");cout_d(vrt_w);cout("x");cout_d(vrt_h);cout_endl();
-    cout("Response: ");cout_d(msg.value_virt_size.response.act_display_w);cout("x");cout_d(msg.value_virt_size.response.act_display_h);cout_endl();
+    cout("Response: ");cout_d(msg->value_virt_size.response.act_display_w);cout("x");cout_d(msg->value_virt_size.response.act_display_h);cout_endl();
     cout("Set colour depth: ");cout_d(bpp);cout(" bpp");cout_endl();
-    cout("Response: ");cout_d(msg.value_colour_depth.response.act_depth);cout(" bpp");cout_endl();
+    cout("Response: ");cout_d(msg->value_colour_depth.response.act_depth);cout(" bpp");cout_endl();
     cout("Screen addr: ");cout_h((unsigned int)*pp_fb); cout_endl();
     cout("Screen size: ");cout_d(*pfbsize); cout_endl();
 #endif
@@ -243,16 +253,16 @@ FB_RETURN_TYPE fb_release()
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
-    msg.tag.id = MAILBOX_TAG_RELEASE_FRAMEBUFFER; // Release framebuffer
-    msg.tag.size = 0;
-    msg.tag.code = 0;
-    msg.footer.end = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_RELEASE_FRAMEBUFFER; // Release framebuffer
+    msg->tag.size = 0;
+    msg->tag.code = 0;
+    msg->footer.end = 0;
 
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
         return FB_ERROR;
     }
 
@@ -283,21 +293,21 @@ FB_RETURN_TYPE fb_get_phys_res(unsigned int* pRes_w, unsigned int* pRes_h)
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
-    msg.tag.id = MAILBOX_TAG_GET_PHYSICAL_WIDTH_HEIGHT; // Get physical resolution
-    msg.tag.size = sizeof(msg.value);
-    msg.tag.code = 0;
-    msg.footer.end = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_GET_PHYSICAL_WIDTH_HEIGHT; // Get physical resolution
+    msg->tag.size = sizeof(msg->value);
+    msg->tag.code = 0;
+    msg->footer.end = 0;
 
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
         return FB_ERROR;
     }
 
-    *pRes_w = msg.value.response.display_w;
-    *pRes_h = msg.value.response.display_h;
+    *pRes_w = msg->value.response.display_w;
+    *pRes_h = msg->value.response.display_h;
 
     return FB_SUCCESS;
 }
@@ -332,25 +342,25 @@ FB_RETURN_TYPE fb_set_grayscale_palette()
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
-    msg.tag.id = MAILBOX_TAG_SET_PALETTE;
-    msg.tag.size = sizeof(msg.value);
-    msg.tag.code = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_SET_PALETTE;
+    msg->tag.size = sizeof(msg->value);
+    msg->tag.code = 0;
 
-    msg.value.request.offset = 0;
-    msg.value.request.nbrOfEntries = NB_PALETTE_ELE;
+    msg->value.request.offset = 0;
+    msg->value.request.nbrOfEntries = NB_PALETTE_ELE;
     for(i=0;i<NB_PALETTE_ELE;i++)
     {
-        msg.value.request.entries[i] = (i & 0xFF)<<16 | (i & 0xFF)<<8 | (i & 0xFF);
-        msg.value.request.entries[i] = msg.value.request.entries[i] | 0xFF000000; //alpha
+        msg->value.request.entries[i] = (i & 0xFF)<<16 | (i & 0xFF)<<8 | (i & 0xFF);
+        msg->value.request.entries[i] = msg->value.request.entries[i] | 0xFF000000; //alpha
     }
 
-    msg.footer.end = 0;
+    msg->footer.end = 0;
 
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
         return FB_ERROR;
     }
 
@@ -387,25 +397,25 @@ FB_RETURN_TYPE fb_set_xterm_palette()
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
-    msg.tag.id = MAILBOX_TAG_SET_PALETTE;
-    msg.tag.size = sizeof(msg.value);
-    msg.tag.code = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_SET_PALETTE;
+    msg->tag.size = sizeof(msg->value);
+    msg->tag.code = 0;
 
-    msg.value.request.offset = 0;
-    msg.value.request.nbrOfEntries = NB_PALETTE_ELE;
+    msg->value.request.offset = 0;
+    msg->value.request.nbrOfEntries = NB_PALETTE_ELE;
     for(i=0;i<NB_PALETTE_ELE;i++)
     {
         const unsigned int vc = xterm_colors[i];
-        msg.value.request.entries[i] = (vc<<16 & 0xFF0000) | ( vc & 0x00FF00) | ( vc>>16 & 0x0000FF) | 0xFF000000;
+        msg->value.request.entries[i] = (vc<<16 & 0xFF0000) | ( vc & 0x00FF00) | ( vc>>16 & 0x0000FF) | 0xFF000000;
     }
 
-    msg.footer.end = 0;
+    msg->footer.end = 0;
 
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
         return FB_ERROR;
     }
 
@@ -435,20 +445,20 @@ FB_RETURN_TYPE fb_get_pitch( unsigned int* pPitch )
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
-    msg.tag.id = MAILBOX_TAG_GET_PITCH; // Get pitch (bytes per line)
-    msg.tag.size = sizeof(msg.value);
-    msg.tag.code = 0;
-    msg.footer.end = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_GET_PITCH; // Get pitch (bytes per line)
+    msg->tag.size = sizeof(msg->value);
+    msg->tag.code = 0;
+    msg->footer.end = 0;
 
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
         return FB_ERROR;
     }
 
-    *pPitch = msg.value.response.pitch;
+    *pPitch = msg->value.response.pitch;
 
     return FB_SUCCESS;
 }

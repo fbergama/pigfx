@@ -1,5 +1,14 @@
+//
+// c_utils.h
+// Several general functions
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+
 #ifndef C_UTILS_H__
-#define C_UTILS_H__ 
+#define C_UTILS_H__
 
 #include <stdint.h>
 #include <stddef.h>

@@ -1,3 +1,12 @@
+//
+// timer.h
+// Software timers
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Filippo Bergamasco, Christian Lehner
+
 #ifndef _PIGFX_TIMER_H_
 #define _PIGFX_TIMER_H_
 

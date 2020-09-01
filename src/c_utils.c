@@ -1,7 +1,12 @@
-/* 2020 Christian Lehner
- * 
- * 
- * */
+//
+// c_utils.c
+// Several general functions
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+
 #ifndef C_UTILS_H_
 #define C_UTILS_H_
 
@@ -34,7 +39,6 @@ void *qmemcpy(void *dest, void *src, size_t n)
 
 void veryfastmemcpy(void *dest, void* src, unsigned int n)
 {
-    //ee_printf("veryfast\n");
     if ((((unsigned int)dest & 0x3) == 0) && (((unsigned int)src & 0x3) == 0))
     {
         // both 4 byte aligned
@@ -87,7 +91,7 @@ void *pigfx_memcpy (void *pDest, const void *pSrc, size_t nLength)
 	}
 
 	return pDest;
-} 
+}
 
 char *pigfx_strcpy (char *pDest, const char *pSrc)
 {

@@ -1,3 +1,12 @@
+//
+// console.c
+// Output to the serial port
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+
 #include "console.h"
 #include "uart.h"
 #include "utils.h"
@@ -5,7 +14,7 @@
 /** Outputs a zero-ending character string to UART.
  * @param str the string
  */
-void cout( const char* str ) 
+void cout( const char* str )
 {
     uart_write_str(str);
 }
@@ -45,14 +54,14 @@ void cout_d( unsigned int val )
     {
         uart_write('0');
         return;
-    }   
+    }
 
     while(val!=0)
     {
         buffer[i++] = val%10+'0';
         val=val/10;
     }
-    
+
     // Reverse number
     for (t=i;t>0;t--)
         uart_write(buffer[t-1]);

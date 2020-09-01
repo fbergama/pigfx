@@ -1,7 +1,11 @@
-/* Copyright Christian Lehner 2020
- * PiGFX Project
- *
- */
+//
+// config.c
+// Read the content of a ini file and set the configuration
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
 
 #include "config.h"
 #include "emmc.h"

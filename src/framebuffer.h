@@ -1,3 +1,12 @@
+//
+// framebuffer.h
+// Handle framebuffer and palette
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Filippo Bergamasco, Christian Lehner
+
 #ifndef _FRAMEBUFFER_H_
 #define _FRAMEBUFFER_H_
 

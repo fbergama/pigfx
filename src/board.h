@@ -1,3 +1,13 @@
+//
+// board.h
+// Get the board type we're running on
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Christian Lehner
+// Based on the leiradel tutorial: https://github.com/leiradel/barebones-rpi/blob/master/barebones08/rpi/board.c
+
 #ifndef BOARD_H__
 #define BOARD_H__
 
@@ -56,4 +66,4 @@ const char* board_model(const board_model_t model);
 const char* board_processor(const board_processor_t processor);
 const char* board_manufacturer(const board_manufacturer_t manufacturer);
 
-#endif /* BOARD_H__ */ 
+#endif /* BOARD_H__ */

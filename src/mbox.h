@@ -1,4 +1,13 @@
-// Thanks to https://github.com/leiradel/barebones-rpi
+//
+// mbox.h
+// Communication with the property mailbox
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+// Based on the leiradel tutorial at
+// https://github.com/leiradel/barebones-rpi
 
 #ifndef MBOX_H__
 #define MBOX_H__
@@ -18,7 +27,7 @@
 {		  https://github.com/raspberrypi/firmware/wiki/Mailboxes			}
 {--------------------------------------------------------------------------*/
 typedef enum {
-	MB_CHANNEL_POWER = 0x0,								// Mailbox Channel 0: Power Management Interface 
+	MB_CHANNEL_POWER = 0x0,								// Mailbox Channel 0: Power Management Interface
 	MB_CHANNEL_FB = 0x1,								// Mailbox Channel 1: Frame Buffer
 	MB_CHANNEL_VUART = 0x2,								// Mailbox Channel 2: Virtual UART
 	MB_CHANNEL_VCHIQ = 0x3,								// Mailbox Channel 3: VCHIQ Interface
@@ -83,7 +92,7 @@ typedef enum {
 	MAILBOX_TAG_LOCK_MEMORY					= 0x0003000D,			// Lock memory
 	MAILBOX_TAG_UNLOCK_MEMORY				= 0x0003000E,			// Unlock memory
 	MAILBOX_TAG_RELEASE_MEMORY				= 0x0003000F,			// Release Memory
-																	
+
 	/* Execute code commands */
 	MAILBOX_TAG_EXECUTE_CODE				= 0x00030010,			// Execute code
 
@@ -128,7 +137,7 @@ typedef enum {
 	MAILBOX_TAG_VCHIQ_INIT					= 0x00048010,			// Enable VCHIQ
 
 	/* Config commands */
-	MAILBOX_TAG_GET_COMMAND_LINE			= 0x00050001,			// Get command line 
+	MAILBOX_TAG_GET_COMMAND_LINE			= 0x00050001,			// Get command line
 
 	/* Shared resource management commands */
 	MAILBOX_TAG_GET_DMA_CHANNELS			= 0x00060001,			// Get DMA channels
@@ -189,6 +198,6 @@ extern uint32_t mem_arm2vc(const uint32_t address);
 
 extern uint32_t mem_vc2arm(const uint32_t address);
 
-int mbox_send(void* message);
+int mbox_send(void* msg);
 
-#endif /* MBOX_H__ */ 
+#endif /* MBOX_H__ */

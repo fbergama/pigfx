@@ -3,6 +3,7 @@
 //
 // USPi - An USB driver for Raspberry Pi written in C
 // Copyright (C) 2014-2016  R. Stange <rsta2@o2online.de>
+// Modified by Christian Lehner 2020 to fit PiGFX
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,8 +18,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
-
-// Modified by Christian Lehner 2020 to fit PiGFX
 
 #include "synchronize.h"
 

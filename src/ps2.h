@@ -1,3 +1,14 @@
+//
+// ps2.h
+// PS/2 keyboard driver for the GPIO port
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+// Based on information from this document: https://www.avrfreaks.net/sites/default/files/PS2%20Keyboard.pdf
+// and https://wiki.osdev.org/PS/2_Keyboard
+
 #ifndef PS2_H__
 #define PS2_H__
 

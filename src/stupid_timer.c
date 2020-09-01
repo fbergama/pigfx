@@ -1,3 +1,12 @@
+//
+// stupid_timer.c
+// Software timers
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Filippo Bergamasco, Christian Lehner
+
 #include "peri.h"
 #include "timer.h"
 #include "utils.h"
@@ -78,7 +87,7 @@ void timer_poll()
 
     for( hnd=1; hnd<=N_TIMERS; ++hnd )
     {
-        if( timers[hnd].handler != 0 && 
+        if( timers[hnd].handler != 0 &&
             (actTicks-timers[hnd].last_tick) > timers[hnd].microsec_interval )
         {
             _TimerHandler* handler = timers[hnd].handler;

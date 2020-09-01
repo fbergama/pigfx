@@ -1,3 +1,12 @@
+//
+// uspios_wrapper.c
+// Wrapper for the USPI library
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Filippo Bergamasco, Christian Lehner
+
 #include "../uspi/include/uspios.h"
 #include "nmalloc.h"
 #include "timer.h"
@@ -6,6 +15,7 @@
 #include "irq.h"
 #include "prop.h"
 #include "mbox.h"
+#include "memory.h"
 
 
 void *malloc (unsigned nSize)		// result must be 4-byte aligned
@@ -85,18 +95,18 @@ int SetPowerStateOn (unsigned nDeviceId)	// "set power state" to "on", wait unti
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
-    msg.tag.id = MAILBOX_TAG_SET_POWER_STATE;
-    msg.tag.size = sizeof(msg.value);
-    msg.tag.code = 0;
-    msg.value.request.deviceId = nDeviceId;
-    msg.value.request.state = 1; // Bit 0: 0=off, 1=on; Bit 1: 0=do not wait, 1=wait; Bits 2-31: reserved for future use (set to 0)
-    msg.footer.end = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_SET_POWER_STATE;
+    msg->tag.size = sizeof(msg->value);
+    msg->tag.code = 0;
+    msg->value.request.deviceId = nDeviceId;
+    msg->value.request.state = 1; // Bit 0: 0=off, 1=on; Bit 1: 0=do not wait, 1=wait; Bits 2-31: reserved for future use (set to 0)
+    msg->footer.end = 0;
 
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
         return 0;   // Error
     }
 
@@ -107,8 +117,6 @@ int SetPowerStateOn (unsigned nDeviceId)	// "set power state" to "on", wait unti
 
 int GetMACAddress (unsigned char Buffer[6])	// "get board MAC address"
 {
-    //ee_printf("* GetMacAddress *\n");
-
     if (prop_macaddr(Buffer) != 1)
         return 0;   // error
 

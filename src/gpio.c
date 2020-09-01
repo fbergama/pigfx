@@ -1,4 +1,14 @@
-// This file was used from https://github.com/leiradel/barebones-rpi and modified by Christian Lehner
+//
+// gpio.c
+// Use the GPIO ports of the Pi
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+// Based on the leiradel tutorial at
+// https://github.com/leiradel/barebones-rpi
+
 #include <stdint.h>
 #include "gpio.h"
 #include "peri.h"
@@ -46,9 +56,9 @@ unsigned char gpio_get(const unsigned pin)
 {
     const unsigned index = pin >> 5;
     const uint32_t bit = UINT32_C(1) << (pin & 31);
-    
+
     unsigned int gpio_state;
-    
+
     if (index)
     {
         gpio_state = R32(GPIO_GPLEV1);
@@ -57,7 +67,7 @@ unsigned char gpio_get(const unsigned pin)
     {
         gpio_state = R32(GPIO_GPLEV0);
     }
-    
+
     return ((gpio_state & bit) != 0);
 }
 
@@ -69,7 +79,7 @@ void gpio_setpull(const unsigned pin, const gpio_pull_t pull) {
       // Empty.
     }
   }
-    
+
   const unsigned index = pin >> 5;
   const uint32_t bit = UINT32_C(1) << (pin & 31);
 
@@ -99,9 +109,9 @@ void gpio_setpull(const unsigned pin, const gpio_pull_t pull) {
   const unsigned index = pin >> 4;
   const unsigned int UpDnReg = GPIO_PUP_PDN_CNTRL_REG0 + index*4;
   unsigned shift = (pin % 16) * 2;
-  
+
   //ee_printf("set %d GPIO %d at reg %08x\n", pull, pin, UpDnReg);
-  
+
   unsigned int actValue = R32(UpDnReg);
   actValue &= ~(3 << shift);
   actValue |= pull << shift;
@@ -116,7 +126,7 @@ void gpio_clear_irq(const unsigned pin)
   const uint32_t bit = UINT32_C(1) << (pin & 31);
   unsigned int GPEDS = GPIO_GPEDS0 + index*4;
   unsigned int regVal;
-  
+
   // clear pending flag for this pin
   regVal = R32(GPEDS);
   regVal = regVal | bit;
@@ -128,39 +138,39 @@ void gpio_setedgedetect(const unsigned pin, const unsigned char edgedetect)
   const unsigned index = pin >> 5;
   const uint32_t bit = UINT32_C(1) << (pin & 31);
   unsigned int offset = index*4;
-  
+
   unsigned int GPREN = GPIO_GPREN0 + offset;
   unsigned int GPFEN = GPIO_GPFEN0 + offset;
   unsigned int GPAREN = GPIO_GPAREN0 + offset;
   unsigned int GPAFEN = GPIO_GPAFEN0 + offset;
-  
+
   unsigned int regVal;
-  
+
   // set rising edge
   regVal = R32(GPREN);
   if (edgedetect & GPIO_EDGE_DETECT_RISING) regVal = regVal | bit;
   else regVal = regVal & ~bit;
   W32(GPREN, regVal);
-  
+
   // set falling edge
   regVal = R32(GPFEN);
   if (edgedetect & GPIO_EDGE_DETECT_FALLING) regVal = regVal | bit;
   else regVal = regVal & ~bit;
   W32(GPFEN, regVal);
-  
+
   // set async rising edge
   regVal = R32(GPAREN);
   if (edgedetect & GPIO_EDGE_DETECT_ASYNC_RISING) regVal = regVal | bit;
   else regVal = regVal & ~bit;
   W32(GPAREN, regVal);
-  
+
   // set async falling edge
   regVal = R32(GPAFEN);
   if (edgedetect & GPIO_EDGE_DETECT_ASYNC_FALLING) regVal = regVal | bit;
   else regVal = regVal & ~bit;
   W32(GPAFEN, regVal);
-  
+
   // clear pending flag for this pin
   gpio_clear_irq(pin);
 }
- 
+

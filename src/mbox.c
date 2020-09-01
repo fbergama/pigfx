@@ -1,4 +1,13 @@
-// Thanks to https://github.com/leiradel/barebones-rpi
+//
+// mbox.c
+// Communication with the property mailbox
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+// Based on the leiradel tutorial at
+// https://github.com/leiradel/barebones-rpi
 
 #include "mbox.h"
 #include "utils.h"

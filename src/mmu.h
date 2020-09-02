@@ -58,5 +58,6 @@
 
 void CreatePageTable(unsigned int nMemSize);
 void EnableMMU();
+void SetStrictAlignment();
 
 #endif // MMU_H__

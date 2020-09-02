@@ -13,6 +13,15 @@
 #include "memory.h"
 #include "synchronize.h"
 
+void SetStrictAlignment()
+{
+	// enable MMU
+	unsigned int nControl;
+	asm volatile ("mrc p15, 0, %0, c1, c0,  0" : "=r" (nControl));
+	nControl |= ARM_CONTROL_STRICT_ALIGNMENT;
+	asm volatile ("mcr p15, 0, %0, c1, c0,  0" : : "r" (nControl) : "memory");
+}
+
 void CreatePageTable(unsigned int nMemSize)
 {
     // PageTable must be 16K aligned

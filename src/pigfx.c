@@ -393,6 +393,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     // Init Pagetable
     CreatePageTable(ARM_MEMSIZE);
+    SetStrictAlignment();
     //EnableMMU();
 
     // Get informations about the board we are booting
@@ -514,14 +515,16 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
                 USPiKeyboardRegisterKeyStatusHandlerRaw(KeyStatusHandlerRaw);
                 gfx_set_fg(GREEN);
                 usbKeyboardFound = 1;
-                ee_printf("Keyboard found.\n");
+                ee_printf("Keyboard found.");
                 gfx_set_fg(GRAY);
+                ee_printf("\n");
             }
             else
             {
                 gfx_set_fg(RED);
-                ee_printf("No keyboard found.\n");
+                ee_printf("No keyboard found.");
                 gfx_set_fg(GRAY);
+                ee_printf("\n");
             }
         }
         else

@@ -54,6 +54,7 @@
 #endif
 
 #define TTBCR_SPLIT	0
+#define ARMV6MMU_FAULT 0x0000
 
 void CreatePageTable(unsigned int nMemSize);
 void EnableMMU();

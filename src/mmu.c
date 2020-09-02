@@ -21,34 +21,30 @@ void CreatePageTable(unsigned int nMemSize)
 	for (unsigned int nEntry = 0; nEntry < 4096; nEntry++)
 	{
 		unsigned int nBaseAddress = MEGABYTE * nEntry;
+		unsigned int nAttributes = ARMV6MMU_FAULT;
 
-#if RPI == 3
-		if (nBaseAddress == MEM_COHERENT_REGION)
+		extern unsigned char _etext;
+		if (nBaseAddress < (unsigned int) &_etext)
 		{
-			pPageTable[nEntry] = ARMV6MMUL1SECTION_COHERENT | nBaseAddress;
+			nAttributes = ARMV6MMUL1SECTION_NORMAL;
 		}
-		else
-#endif
-		if (nBaseAddress < nMemSize)
+		else if (nBaseAddress == MEM_COHERENT_REGION)
 		{
-			extern unsigned char _etext;
-			if (nBaseAddress < (unsigned int) &_etext)
-			{
-				pPageTable[nEntry] = ARMV6MMUL1SECTION_NORMAL | nBaseAddress;
-			}
-			else
-			{
-				pPageTable[nEntry] = ARMV6MMUL1SECTION_NORMAL_XN | nBaseAddress;
-			}
+			nAttributes = ARMV6MMUL1SECTION_COHERENT;
+		}
+		else if (nBaseAddress < nMemSize)
+		{
+			nAttributes = ARMV6MMUL1SECTION_NORMAL_XN;
 		}
 		else
 		{
-			pPageTable[nEntry] = ARMV6MMUL1SECTION_DEVICE | nBaseAddress;
+			nAttributes = ARMV6MMUL1SECTION_DEVICE;
 		}
+
+		pPageTable[nEntry] = nBaseAddress | nAttributes;
 	}
 
 	CleanDataCache ();
-	DataSyncBarrier ();
 }
 
 void EnableMMU()
@@ -72,6 +68,10 @@ void EnableMMU()
 	asm volatile ("mcr p15, 0, %0, c3, c0,  0" : : "r" (DOMAIN_CLIENT << 0));
 
 	InvalidateDataCache ();
+	InvalidateInstructionCache ();
+	FlushBranchTargetCache ();
+	asm volatile ("mcr p15, 0, %0, c8, c7,  0" : : "r" (0));	// invalidate unified TLB
+	DataSyncBarrier ();
 	FlushPrefetchBuffer ();
 
 	// enable MMU

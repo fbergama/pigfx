@@ -351,7 +351,7 @@ void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys
         return;
     }
 
-    if (ucKeyCode == actKeyMap.ucLastPhyCode) ucKeyCode = 0;
+    if (ucKeyCode == actKeyMap.ucLastPhyCode) return;
     else actKeyMap.ucLastPhyCode = ucKeyCode;
 
     actKeyMap.ucModifiers = ucModifiers;

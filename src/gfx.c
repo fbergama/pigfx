@@ -1184,6 +1184,95 @@ void gfx_term_render_cursor()
     ctx.cursor_buffer_ready = 1;
 }
 
+/** shifts content from cursor 1 character to the right */
+void gfx_term_shift_right()
+{
+    dma_enqueue_operation( PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                        PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                        (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col-1)*ctx.term.FONTWIDTH & 0xFFFF ),
+                        ((((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | (((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                        DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+    dma_execute_queue();
+}
+
+/** shifts content right of cursor 1 character to the left */
+void gfx_term_shift_left()
+{
+    dma_enqueue_operation( PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                        PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                        (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col)*ctx.term.FONTWIDTH & 0xFFFF ),
+                        (((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | ((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                        DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+    dma_execute_queue();
+}
+
+/** restore cursor content
+    move line content from cursor 1 position to the right
+   insert blank
+   redraw cursor */
+void gfx_term_insert_blank()
+{
+    gfx_restore_cursor_content();
+    gfx_term_shift_right();
+    gfx_clear_rect( ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
+    gfx_term_render_cursor();
+}
+
+/** move line content from right of cursor cursor 1 position to the left
+    fill last character with bg
+    restore cursor */
+void gfx_term_delete_char()
+{
+    if (ctx.term.cursor_col < (ctx.term.WIDTH-1))
+    {
+        gfx_term_shift_left();
+    }
+    gfx_clear_rect( (ctx.term.WIDTH-1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
+    gfx_term_render_cursor();
+}
+
+/** Insert blank line at current row (shift screen down) */
+void gfx_term_insert_line()
+{
+    unsigned int size = ctx.term.WIDTH*ctx.term.FONTWIDTH*ctx.term.FONTHEIGHT;
+
+    gfx_restore_cursor_content();
+
+    for(int i=ctx.term.HEIGHT-2;i>=(int)ctx.term.cursor_row; i--)
+    {
+        dma_memcpy_32(PFB((0), i * ctx.term.FONTHEIGHT), PFB((0), (i+1) * ctx.term.FONTHEIGHT), size);
+    }
+
+    unsigned int* pos = (unsigned int*)PFB(0, ctx.term.cursor_row * ctx.term.FONTHEIGHT);
+    for(unsigned int i=0; i<size/4;i++)
+    {
+        *pos++=ctx.bg32;
+    }
+
+    gfx_term_render_cursor();
+}
+
+// Delete the current line (shift screen up)
+void gfx_term_delete_line()
+{
+    unsigned int size;
+
+    if (ctx.term.cursor_row < ctx.term.HEIGHT-2)
+    {
+        size = ctx.term.WIDTH*ctx.term.FONTWIDTH*ctx.term.FONTHEIGHT*(ctx.term.HEIGHT-1-ctx.term.cursor_row);
+        dma_memcpy_32(PFB((0), (ctx.term.cursor_row+1) * ctx.term.FONTHEIGHT), PFB((0), ctx.term.cursor_row * ctx.term.FONTHEIGHT), size);
+    }
+
+    unsigned int* pos = (unsigned int*)PFB(0, (ctx.term.HEIGHT-1) * ctx.term.FONTHEIGHT);
+    size = ctx.term.WIDTH*ctx.term.FONTWIDTH*ctx.term.FONTHEIGHT;
+    for(unsigned int i=0; i<size/4;i++)
+    {
+        *pos++=ctx.bg32;
+    }
+
+    gfx_term_render_cursor();
+}
+
 /** Fill cursor buffer with the current background and framebuffer with fg.
  */
 void gfx_term_render_cursor_newline()
@@ -2027,6 +2116,42 @@ int state_fun_final_letter( char ch, scn_state *state )
 
         case 'u':
             gfx_term_restore_cursor();
+            goto back_to_normal;
+            break;
+
+        case '@':
+            // Insert a blank character position (shift line to the right)
+            if( state->cmd_params_size == 1 )
+            {
+                gfx_term_insert_blank();
+            }
+            goto back_to_normal;
+            break;
+
+        case 'P':
+            // Delete a character position (shift line to the left)
+            if( state->cmd_params_size == 1 )
+            {
+                gfx_term_delete_char();
+            }
+            goto back_to_normal;
+            break;
+
+        case 'L':
+            // Insert blank line at current row (shift screen down)
+            if( state->cmd_params_size == 1 )
+            {
+                gfx_term_insert_line();
+            }
+            goto back_to_normal;
+            break;
+
+        case 'M':
+            // Delete the current line (shift screen up)
+            if( state->cmd_params_size == 1 )
+            {
+                gfx_term_delete_line();
+            }
             goto back_to_normal;
             break;
 

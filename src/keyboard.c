@@ -1,7 +1,12 @@
-/* 2020 Christian Lehner
- * loosely taken from uspi
- * 
- * */
+//
+// keyboard.c
+// Keyboard input handling
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+// Most of this code is loosely taken from the USPI project
 
 #include "keyboard.h"
 #include "c_utils.h"
@@ -92,17 +97,17 @@ void fInitKeyboard(char* layout)
 {
     backspace_n_skip = 0;
     last_backspace_t = 0;
-    
+
     actKeyMap.leds.m_bCapsLock   = 0;
     actKeyMap.leds.m_bNumLock    = 1;
     actKeyMap.leds.m_bScrollLock = 0;
     actKeyMap.leds.LastCombinedState = 0;
     fSetKbdLeds(&actKeyMap.leds);
-    
+
     actKeyMap.ucLastPhyCode = 0;
     actKeyMap.ucModifiers = 0;
     actKeyMap.repeatTimerHnd = 0;
-    
+
     if      ((layout[0] == 'u') && (layout[1] == 'k')) pigfx_memcpy(&actKeyMap.m_KeyMap, keyMap_uk, sizeof(actKeyMap.m_KeyMap));
     else if ((layout[0] == 'i') && (layout[1] == 't')) pigfx_memcpy(&actKeyMap.m_KeyMap, keyMap_it, sizeof(actKeyMap.m_KeyMap));
     else if ((layout[0] == 'f') && (layout[1] == 'r')) pigfx_memcpy(&actKeyMap.m_KeyMap, keyMap_fr, sizeof(actKeyMap.m_KeyMap));
@@ -111,7 +116,7 @@ void fInitKeyboard(char* layout)
     else if ((layout[0] == 's') && (layout[1] == 'g')) pigfx_memcpy(&actKeyMap.m_KeyMap, keyMap_sg, sizeof(actKeyMap.m_KeyMap));
     // all else is us
     else                                               pigfx_memcpy(&actKeyMap.m_KeyMap, keyMap_us, sizeof(actKeyMap.m_KeyMap));
-    
+
 }
 
 unsigned short ScancodeToKey (TKeyMap *pThis, unsigned char nPhyCode, unsigned char nModifiers)
@@ -129,7 +134,7 @@ unsigned short ScancodeToKey (TKeyMap *pThis, unsigned char nPhyCode, unsigned c
         && (nModifiers & (LCTRL | RCTRL))
         && (nModifiers & ALT))
     {
-        return ActionShutdown; 
+        return ActionShutdown;
     }
 
     if (   (KeyF1 <= nLogCodeNorm && nLogCodeNorm <= KeyF12)
@@ -142,7 +147,7 @@ unsigned short ScancodeToKey (TKeyMap *pThis, unsigned char nPhyCode, unsigned c
     {
         return KeyNone;
     }
-    
+
     unsigned nTable = K_NORMTAB;
 
     // TODO: hard-wired to keypad
@@ -176,7 +181,7 @@ unsigned short ScancodeToKey (TKeyMap *pThis, unsigned char nPhyCode, unsigned c
     case KeyCapsLock:
         pThis->leds.m_bCapsLock = !pThis->leds.m_bCapsLock;
         return ActionSwitchCapsLock;
-    
+
     case KeyNumLock:
         pThis->leds.m_bNumLock = !pThis->leds.m_bNumLock;
         return ActionSwitchNumLock;
@@ -204,7 +209,7 @@ const char *KeyToString (TKeyMap *pThis, unsigned short nKeyCode, unsigned char 
     }
 
     char chChar = (char) nKeyCode;
-        
+
     if (nModifiers & (LCTRL | RCTRL))
     {
         chChar -= 'a';
@@ -215,7 +220,7 @@ const char *KeyToString (TKeyMap *pThis, unsigned short nKeyCode, unsigned char 
 
             return Buffer;
         }
-        
+
         return 0;
     }
 
@@ -241,9 +246,9 @@ void KeyEvent(unsigned short ucKeyCode, unsigned char ucModifiers)
 {
     const char* pKeyString = 0;
     char buffer[2];
-    
+
     unsigned short key = ScancodeToKey(&actKeyMap, ucKeyCode, ucModifiers);
-        
+
     switch (key)
     {
     case ActionSwitchCapsLock:
@@ -306,8 +311,8 @@ void KeyEvent(unsigned short ucKeyCode, unsigned char ucModifiers)
                     backspace_n_skip = 2;
                     last_backspace_t = time_microsec();
                 }
-                
-                uart_write( ch ); 
+
+                uart_write( ch );
                 ++c;
             }
         }
@@ -320,7 +325,7 @@ void RepeatKey( unsigned hnd, void* pParam, void *pContext )
     (void)hnd;
     (void)pContext;
     TKeyMap* p = (TKeyMap*)pParam;
-    
+
     if (p->ucLastPhyCode != 0)
     {
         KeyEvent(p->ucLastPhyCode, p->ucModifiers);
@@ -331,7 +336,7 @@ void RepeatKey( unsigned hnd, void* pParam, void *pContext )
 void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys[6])  // key code or 0 in each byte
 {
     unsigned char ucKeyCode = 0;
-    
+
     for (int i = 5; i >= 0; i--)
     {
         ucKeyCode = RawKeys[i];
@@ -345,18 +350,18 @@ void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys
         // too many keys pressed
         return;
     }
-    
-    if (ucKeyCode == actKeyMap.ucLastPhyCode) ucKeyCode = 0;
+
+    if (ucKeyCode == actKeyMap.ucLastPhyCode) return;
     else actKeyMap.ucLastPhyCode = ucKeyCode;
-    
+
     actKeyMap.ucModifiers = ucModifiers;
-    
+
     if (ucKeyCode)
     {
         KeyEvent(ucKeyCode, ucModifiers);
-        
+
         if (actKeyMap.repeatTimerHnd) remove_timer(actKeyMap.repeatTimerHnd);
-        
+
         actKeyMap.repeatTimerHnd = attach_timer_handler(1, RepeatKey, (void*)&actKeyMap, 0);       // 1 until repeat starts
     }
     else
@@ -366,6 +371,6 @@ void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys
             actKeyMap.repeatTimerHnd = 0;
         }
     }
-    
+
 }
 

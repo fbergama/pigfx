@@ -8,3 +8,6 @@ pigfx.hex
 pigfx.img
 tags
 
+PiGFX.layout
+PiGFX.cbp
+pigfx.dump

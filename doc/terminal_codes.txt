@@ -23,6 +23,13 @@ Clearing Text
 <ESC>[0J            Clear the screen from cursor
 <ESC>[1J            Clear the screen until cursor position
 <ESC>[2J            Clear the screen and move the cursor to 0-0, defined sprites are removed, loaded bitmaps are kept
+
+Insert / Delete
+
+<ESC>[1@            Insert a blank character position (shift line to the right)
+<ESC>[1P            Delete a character position (shift line to the left)
+<ESC>[1L            Insert blank line at current row (shift screen down)
+<ESC>[1M            Delete the current line (shift screen up)
  
 Graphics
 

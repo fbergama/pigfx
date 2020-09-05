@@ -1,7 +1,19 @@
+//
+// actled.c
+// Set the state of the act-LED of every Pi
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Christian Lehner
+// Based on the leiradel tutorial at
+// https://github.com/leiradel/barebones-rpi/blob/master/barebones08/rpi/led.c
+
 #include "gpio.h"
 #include "prop.h"
 #include "board.h"
 #include "mbox.h"
+#include "memory.h"
 
 static void set_16_inv(const int on) {
   gpio_set(16, !on);
@@ -15,7 +27,7 @@ static void set_130(const int on) {
   typedef struct {
     mbox_msgheader_t header;
     mbox_tagheader_t tag;
-    
+
     union {
       struct {
         uint32_t pin;
@@ -30,18 +42,18 @@ static void set_130(const int on) {
   }
   message_t;
 
-  message_t msg __attribute__((aligned(16)));
+  message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-  msg.header.size = sizeof(msg);
-  msg.header.code = 0;
-  msg.tag.id = UINT32_C(0x00038041);
-  msg.tag.size = sizeof(msg.value);
-  msg.tag.code = 0;
-  msg.value.request.pin = 130;
-  msg.value.request.value = !!on;
-  msg.footer.end = 0;
+  msg->header.size = sizeof(*msg);
+  msg->header.code = 0;
+  msg->tag.id = UINT32_C(0x00038041);
+  msg->tag.size = sizeof(msg->value);
+  msg->tag.code = 0;
+  msg->value.request.pin = 130;
+  msg->value.request.value = !!on;
+  msg->footer.end = 0;
 
-  mbox_send(&msg);
+  mbox_send(msg);
 }
 
 static void set_29(const int on) {

@@ -1,0 +1,14 @@
+  8080 Signal  |  6800 Signal  |  Raspberry Pin    |  Description
+--------------------------------------------------------------------------
+  /CS          |  /CS          |  GPIO 4 (Pin 7)   |  Chip Select (low active)
+  /RS          |  /RS          |  GPIO 18 (Pin 12) |  Register Select (1 = Data, 0 = command)
+  /RD          |  E            |  GPIO 25 (Pin 22) |  8080 Read (low active) / 6800 Enable (high active)
+  /WR          |  R/W          |  GPIO 8 (Pin 24)  |  8080 Write (low active) Input latched at rising edge / 6800 1=read 0=write  Input latched at falling edge of E
+  D0           |  D0           |  GPIO 17 (Pin 11) |  Data Bit 0
+  D1           |  D1           |  GPIO 27 (Pin 13) |  Data Bit 1
+  D2           |  D2           |  GPIO 22 (Pin 15) |  Data Bit 2
+  D3           |  D3           |  GPIO 10 (Pin 19) |  Data Bit 3
+  D4           |  D4           |  GPIO 9 (Pin 21)  |  Data Bit 4
+  D5           |  D5           |  GPIO 11 (Pin 23) |  Data Bit 5
+  D6           |  D6           |  GPIO 23 (Pin 16) |  Data Bit 6
+  D7           |  D7           |  GPIO 24 (Pin 18) |  Data Bit 7

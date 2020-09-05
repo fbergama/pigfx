@@ -1,3 +1,12 @@
+//
+// gfx.h
+// Graphic functions
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Filippo Bergamasco, Christian Lehner
+
 #ifndef _GFX_H_
 #define _GFX_H_
 
@@ -13,38 +22,38 @@ extern void gfx_get_gfx_size( unsigned int* width, unsigned int* height );
 extern void gfx_set_drawing_mode( DRAWING_MODE mode );
 extern void gfx_set_transparent_color( GFX_COL color );
 
-/*! 
- * Fills the entire framebuffer with the background color 
+/*!
+ * Fills the entire framebuffer with the background color
  */
 extern void gfx_clear();
 
-/*! 
- * Fills a rectangle with the foreground color 
+/*!
+ * Fills a rectangle with the foreground color
  */
 extern void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height );
 
-/*! 
- * Renders a line from x0-y0 to x1-y1 
+/*!
+ * Renders a line from x0-y0 to x1-y1
  */
 extern void gfx_line( int x0, int y0, int x1, int y1 );
 
-/*! 
- * Fills a rectangle with the background color 
+/*!
+ * Fills a rectangle with the background color
  */
 extern void gfx_clear_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height );
 
-/*! 
+/*!
  * Renders the character "c" at location (x,y).
  * This points to the current drawing mode function.
  */
 extern draw_putc_fun (*gfx_putc);
 
-/*! 
+/*!
  * Scrolls the entire framebuffer down (adding background color at the bottom)
  */
 extern void gfx_scroll_down( unsigned int npixels );
 
-/*! 
+/*!
  * Scrolls the entire framebuffer up (adding background color at the top)
  */
 extern void gfx_scroll_up( unsigned int npixels );

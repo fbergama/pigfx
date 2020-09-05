@@ -1,7 +1,14 @@
-/* Copyright 2020 Christian Lehner
- * Based on information from this document: https://www.avrfreaks.net/sites/default/files/PS2%20Keyboard.pdf
- * and https://wiki.osdev.org/PS/2_Keyboard
- */
+//
+// ps2.c
+// PS/2 keyboard driver for the GPIO port
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+// Based on information from this document: https://www.avrfreaks.net/sites/default/files/PS2%20Keyboard.pdf
+// and https://wiki.osdev.org/PS/2_Keyboard
+
 
 #include "gpio.h"
 #include "irq.h"
@@ -230,7 +237,7 @@ unsigned char wait4Ack()
             }
             else
             {
-                ee_printf("[PS/2] unexpected data '%02x' from keyboard\n");
+                ee_printf("[PS/2] unexpected data '%02x' from keyboard\n", rxChar);
                 return 1;
             }
         }
@@ -250,22 +257,22 @@ unsigned char initPS2()
     // No one ever should produce a short by switching the line direclty to high.
     gpio_select(PS2DATAPIN, GPIO_INPUT);
     gpio_select(PS2CLOCKPIN, GPIO_INPUT);
-    
+
     gpio_setpull(PS2DATAPIN, GPIO_PULL_UP);
     gpio_setpull(PS2CLOCKPIN, GPIO_PULL_UP);
-    
+
     gpio_setedgedetect(PS2CLOCKPIN, GPIO_EDGE_DETECT_FALLING);
-    
+
     irq_attach_handler(49, handlePS2ClockEvent, 0);
-    
+
     inout.readPos = 0;
     inout.writePos = 0;
     inout.bit_cnt = 0;
-    
+
     // Disable Scanning
     sendPS2Byte(PS2_DISABLESCANNING);
     if (wait4Ack()) return 1;
-    
+
     // Get keyboard type
     sendPS2Byte(PS2_IDENTIFYDEV);
     if (wait4Ack()) return 2;
@@ -275,13 +282,13 @@ unsigned char initPS2()
     {
         getPS2char(&inout.keyboardType[i]);
     }
-    
+
     // Set Scancode 2
     sendPS2Byte(PS2_GETSETSCANCODE);
     if (wait4Ack()) return 3;
     sendPS2Byte(2);        // set scancode 2
     if (wait4Ack()) return 4;
-    
+
     // Get Scancode
     sendPS2Byte(PS2_GETSETSCANCODE);
     if (wait4Ack()) return 5;
@@ -298,11 +305,11 @@ unsigned char initPS2()
         ee_printf("[PS/2] keyboard seems to not support scancode set 2\n");
         return 8;
     }
-    
+
     // Re-enable scanning
     sendPS2Byte(PS2_ENABLESCANNING);
     if (wait4Ack()) return 9;
-    
+
     ee_printf("[PS/2] keyboard type (0x%02x 0x%02x) detected, using scancode set %d\n", inout.keyboardType[0], inout.keyboardType[1], inout.scanCodeSet);
     return 0;
 }
@@ -345,9 +352,9 @@ void sendPS2Byte(unsigned char sendVal)
 void handlePS2ClockEvent(__attribute__((unused)) void* data)
 {
     unsigned char data_state;
-    
+
     inout.bit_cnt++;
-    
+
     if (inout.sending == 0)
     // receiving from keyboard
     {
@@ -417,7 +424,7 @@ void handlePS2ClockEvent(__attribute__((unused)) void* data)
             inout.bit_cnt = 0;
         }
     }
-    
+
     gpio_clear_irq(PS2CLOCKPIN);
 }
 
@@ -438,7 +445,7 @@ void PS2KeyboardHandler()
 {
     unsigned char fromKbd;
     unsigned char usbKey = 0;
-    
+
     if (getPS2char(&fromKbd) == 0)      // got a char
     {
         // got a char
@@ -465,12 +472,12 @@ void PS2KeyboardHandler()
                         else if (fromKbd == 0x12) keyModifiers |= LSHIFT;
                         else if (fromKbd == 0x14) keyModifiers |= LCTRL;
                         else if (fromKbd == 0x59) keyModifiers |= RSHIFT;
-                        
+
                         usbKey = ps2_set2_to_usb_map[fromKbd];
                     }
                 }
                 break;
-                
+
             case ps2_E1:
                 // only pause key
                 ps2E1CntChars++;
@@ -487,7 +494,7 @@ void PS2KeyboardHandler()
                     ps2ToUsbState = ps2_idle;
                 }
                 break;
-                
+
             case ps2_E0:
                 if (fromKbd == 0xf0) ps2E0released = 1;
                 else if (ps2E0released == 1)
@@ -496,7 +503,7 @@ void PS2KeyboardHandler()
                     else if (fromKbd == 0x14) keyModifiers &= ~RCTRL;
                     else if (fromKbd == 0x1f) keyModifiers &= ~LWIN;
                     else if (fromKbd == 0x27) keyModifiers &= ~RWIN;
-                    
+
                     ps2E0released = 0;
                     ps2ToUsbState = ps2_idle;
                 }
@@ -510,7 +517,7 @@ void PS2KeyboardHandler()
                         else if (fromKbd == 0x14) keyModifiers |= RCTRL;
                         else if (fromKbd == 0x1f) keyModifiers |= LWIN;
                         else if (fromKbd == 0x27) keyModifiers |= RWIN;
-                        
+
                         usbKey = ps2_set2_e0_to_usb_map[fromKbd];
                     }
                 }

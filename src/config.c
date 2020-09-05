@@ -1,7 +1,11 @@
-/* Copyright Christian Lehner 2020
- * PiGFX Project
- *
- */
+//
+// config.c
+// Read the content of a ini file and set the configuration
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
 
 #include "config.h"
 #include "emmc.h"
@@ -16,10 +20,10 @@
 int inihandler(void* user, const char* section, const char* name, const char* value)
 {
     int tmpValue;
-    
+
     (void)user;
     (void)section;      // we don't care about the section
-    
+
     if (pigfx_strcmp(name, "baudrate") == 0)
     {
         tmpValue = atoi(value);
@@ -80,7 +84,7 @@ int inihandler(void* user, const char* section, const char* name, const char* va
 void setDefaultConfig()
 {
     pigfx_memset(&PiGfxConfig, 0, sizeof(PiGfxConfig));
-    
+
     PiGfxConfig.uartBaudrate = 115200;
     PiGfxConfig.useUsbKeyboard = 1;
     PiGfxConfig.sendCRLF = 0;
@@ -98,26 +102,26 @@ unsigned char lookForConfigFile()
 {
     int retVal;
     struct block_device *sd_dev = 0;
-    
+
     if(sd_card_init(&sd_dev) != 0)
     {
         ee_printf("Error initializing SD card\n");
         return errSDCARDINIT;
     }
-    
+
     if ((read_mbr(sd_dev, (void*)0, (void*)0)) != 0)
     {
         ee_printf("Error reading MasterBootRecord\n");
         return errMBR;
     }
-    
+
     struct fs * filesys = sd_dev->fs;
     if (filesys == 0)
     {
         ee_printf("Error reading filesystem\n");
         return errFS;
     }
-    
+
     // loading root dir
     char* myfilename = 0;
     struct dirent *direntry = filesys->read_directory(filesys, &myfilename);
@@ -160,19 +164,19 @@ unsigned char lookForConfigFile()
     if (filesys->fread(filesys, cfgfiledata, configfile->len, configfile) != (size_t)configfile->len)
     {
         ee_printf("Error reading config file\n");
-        nmalloc_free((void**)&cfgfiledata);
+        nmalloc_free(cfgfiledata);
         return errREADFILE;
     }
-    
+
     // Interpret file content
     retVal = ini_parse_string(cfgfiledata, inihandler, 0);
     if (retVal < 0)
     {
         ee_printf("Syntax error %d interpreting config file\n", retVal);
-        nmalloc_free((void**)&cfgfiledata);
+        nmalloc_free(cfgfiledata);
         return errSYNTAX;
     }
-    
-    nmalloc_free((void**)&cfgfiledata);
+
+    nmalloc_free(cfgfiledata);
     return errOK;
 }

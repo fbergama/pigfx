@@ -1,3 +1,13 @@
+//
+// keyboard.h
+// Keyboard input handling
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+// Most of this code is loosely taken from the USPI project
+
 #ifndef KEYBOARD_H_
 #define KEYBOARD_H_
 

@@ -1,3 +1,12 @@
+//
+// dma.c
+// Handle direct memory access
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+
 #ifndef _DMA_H_
 #define _DMA_H_
 
@@ -15,7 +24,7 @@
 
 
 void dma_init();
-int dma_enqueue_operation( void* src, void* dst, unsigned int len, unsigned int stride, unsigned int TRANSFER_INFO );   
+int dma_enqueue_operation( void* src, void* dst, unsigned int len, unsigned int stride, unsigned int TRANSFER_INFO );
 void dma_execute_queue();
 void dma_memcpy_32( void* src, void *dst, unsigned int size );
 int dma_running();

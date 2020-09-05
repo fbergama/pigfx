@@ -1,4 +1,13 @@
-// This file was used from here: https://github.com/leiradel/barebones-rpi/
+//
+// gpio.h
+// Use the GPIO ports of the Pi
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2020 Christian Lehner
+// Based on the leiradel tutorial at
+// https://github.com/leiradel/barebones-rpi
 
 #ifndef GPIO_H__
 #define GPIO_H__
@@ -40,4 +49,4 @@ void gpio_setpull(const unsigned pin, const gpio_pull_t pull);
 void gpio_clear_irq(const unsigned pin);
 void gpio_setedgedetect(const unsigned pin, const unsigned char edgedetect);
 
-#endif /* GPIO_H__ */ 
+#endif /* GPIO_H__ */

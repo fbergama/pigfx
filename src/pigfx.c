@@ -1,3 +1,12 @@
+//
+// pigfx.c
+// Main part
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Filippo Bergamasco, Christian Lehner
+
 #include "peri.h"
 #include "pigfx_config.h"
 #include "uart.h"
@@ -21,6 +30,8 @@
 #include "config.h"
 #include "keyboard.h"
 #include "ps2.h"
+#include "memory.h"
+#include "mmu.h"
 #include "../uspi/include/uspi.h"
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
@@ -47,8 +58,8 @@ extern unsigned int heap_sz;
 extern unsigned char G_STARTUP_LOGO;
 
 
-static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
-                                      __attribute__((unused)) void* pParam, 
+static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
+                                      __attribute__((unused)) void* pParam,
                                       __attribute__((unused)) void *pContext )
 {
     if( led_status )
@@ -72,13 +83,13 @@ void uart_fill_queue( __attribute__((unused)) void* data )
         *uart_buffer_end++ = (char)( *pUART0_DR & 0xFF );
 
         if( uart_buffer_end >= uart_buffer_limit )
-           uart_buffer_end = uart_buffer; 
+           uart_buffer_end = uart_buffer;
 
         if( uart_buffer_end == uart_buffer_start )
         {
             uart_buffer_start++;
             if( uart_buffer_start >= uart_buffer_limit )
-                uart_buffer_start = uart_buffer; 
+                uart_buffer_start = uart_buffer;
         }
     }
 
@@ -124,11 +135,11 @@ void initialize_framebuffer(unsigned int width, unsigned int height, unsigned in
     unsigned int v_w = p_w;
     unsigned int v_h = p_h;
 
-    fb_init( p_w, p_h, 
+    fb_init( p_w, p_h,
              v_w, v_h,
              bpp,
-             (void*)&p_fb, 
-             &fbsize, 
+             (void*)&p_fb,
+             &fbsize,
              &pitch );
 
     if (fb_set_xterm_palette() != 0)
@@ -227,7 +238,7 @@ void video_test(int maxloops)
 
 void video_line_test(int maxloops)
 {
-    int x=-10; 
+    int x=-10;
     int y=-10;
     int vx=1;
     int vy=0;
@@ -255,7 +266,7 @@ void video_line_test(int maxloops)
 
         x = x+vx;
         y = y+vy;
-        
+
         if( x>700 )
         {
             x--;
@@ -340,9 +351,9 @@ void term_main_loop()
         }
 
         uart_fill_queue(0);
-        
+
         timer_poll();
-        
+
         if (ps2KeyboardFound)
         {
             PS2KeyboardHandler();
@@ -357,30 +368,46 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 {
     unsigned int boardRevision;
     board_t raspiBoard;
-    
+    tSysRam ArmRam;
+
     //unused
     (void) r0;
     (void) r1;
     (void) atags;
-    
+
+	// clear BSS
+	extern unsigned char __bss_start;
+	extern unsigned char _end;
+	for (unsigned char *pBSS = &__bss_start; pBSS < &_end; pBSS++)
+	{
+		*pBSS = 0;
+	}
+
     // Heap init
-    nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
+    unsigned int memSize = ARM_MEMSIZE-MEM_HEAP_START;
+    nmalloc_set_memory_area( (unsigned char*)MEM_HEAP_START, memSize);
 
     // UART buffer allocation
     uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE );
     uart_init(9600);
-    
+
+    // Init Pagetable
+    CreatePageTable(ARM_MEMSIZE);
+    SetStrictAlignment();
+    //EnableMMU();
+
     // Get informations about the board we are booting
     boardRevision = prop_revision();
     raspiBoard = board_info(boardRevision);
-    
+    prop_ARMRAM(&ArmRam);
+
     // Where is the Act LED?
     led_init(raspiBoard);
-    
+
     // Timers and heartbeat
     timers_init();
     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
-    
+
     initialize_framebuffer(640, 480, 8);
 
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
@@ -433,29 +460,30 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     //video_test();
     //video_line_test();
-    
+
     gfx_set_bg(BLACK);
     gfx_set_fg(GRAY);
     ee_printf("\nBooting on Raspberry Pi ");
     ee_printf(board_model(raspiBoard.model));
     ee_printf(", ");
     ee_printf(board_processor(raspiBoard.processor));
-    ee_printf("\n");
-    
+    ee_printf(", %iMB ARM RAM\n", ArmRam.size, ArmRam.baseAddr);
+
     // Set default config
     setDefaultConfig();
-    
+
     gfx_set_bg(BLUE);
     gfx_set_fg(YELLOW);
     ee_printf("Initializing filesystem:\n");
     gfx_set_bg(BLACK);
     gfx_set_fg(GRAY);
+
     // Try to load a config file
     lookForConfigFile();
-    
+
     uart_init(PiGfxConfig.uartBaudrate);
     initialize_uart_irq();
-    
+
     gfx_set_bg(BLUE);
     gfx_set_fg(YELLOW);
     ee_printf("Initializing PS/2:\n");
@@ -466,7 +494,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
         ps2KeyboardFound = 1;
         fInitKeyboard(PiGfxConfig.keyboardLayout);
     }
-    
+
 #if RPI<4
     if ((PiGfxConfig.useUsbKeyboard) && (ps2KeyboardFound == 0))
     {
@@ -487,14 +515,16 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
                 USPiKeyboardRegisterKeyStatusHandlerRaw(KeyStatusHandlerRaw);
                 gfx_set_fg(GREEN);
                 usbKeyboardFound = 1;
-                ee_printf("Keyboard found.\n");
+                ee_printf("Keyboard found.");
                 gfx_set_fg(GRAY);
+                ee_printf("\n");
             }
             else
             {
                 gfx_set_fg(RED);
-                ee_printf("No keyboard found.\n");
+                ee_printf("No keyboard found.");
                 gfx_set_fg(GRAY);
+                ee_printf("\n");
             }
         }
         else

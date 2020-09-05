@@ -3,17 +3,17 @@ RPI ?= 1
 
 ARMGNU ?= arm-none-eabi
 ifeq ($(strip $(RPI)),1)
-CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -fsigned-char -march=armv6j -mtune=arm1176jzf-s -DRPI=1
+CFLAGS = -Wall -Wextra -O2 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mno-unaligned-access -fsigned-char -march=armv6j -mtune=arm1176jzf-s -DRPI=1
 else ifeq ($(strip $(RPI)),2)
-CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -fsigned-char -march=armv7-a -mtune=cortex-a7 -DRPI=2
+CFLAGS = -Wall -Wextra -O2 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mno-unaligned-access -fsigned-char -march=armv7-a -mtune=cortex-a7 -DRPI=2
 else ifeq ($(strip $(RPI)),3)
-CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -fsigned-char -march=armv8-a -mtune=cortex-a53 -DRPI=3
+CFLAGS = -Wall -Wextra -O2 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mno-unaligned-access -fsigned-char -march=armv8-a -mtune=cortex-a53 -DRPI=3
 else
-CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -fsigned-char -march=armv8-a -mtune=cortex-a53 -DRPI=4
+CFLAGS = -Wall -Wextra -O2 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mno-unaligned-access -fsigned-char -march=armv8-a -mtune=cortex-a53 -DRPI=4
 endif
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o block.o emmc.o c_utils.o mbr.o fat.o config.o ini.o ps2.o keyboard.o binary_assets.o
+OOB = asm.o exceptionstub.o synchronize.o mmu.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o block.o emmc.o c_utils.o mbr.o fat.o config.o ini.o ps2.o keyboard.o binary_assets.o
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -64,7 +64,7 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c
 	@echo "CC $<"
 
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.s 
-	@$(ARMGNU)-as $< -o $@
+	@$(ARMGNU)-gcc $(CFLAGS) -c $< -o $@
 	@echo "AS $<"
 
 %.hex : %.elf 

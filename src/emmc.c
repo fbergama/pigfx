@@ -39,6 +39,7 @@
 #include "timer.h"
 #include "nmalloc.h"
 #include "c_utils.h"
+#include "memory.h"
 
 #ifdef DEBUG2
 #define EMMC_DEBUG
@@ -508,32 +509,32 @@ static uint32_t sd_get_base_clock_hz()
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
-    msg.tag.id = MAILBOX_TAG_GET_CLOCK_RATE;
-    msg.tag.size = sizeof(msg.value);
-    msg.tag.code = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_GET_CLOCK_RATE;
+    msg->tag.size = sizeof(msg->value);
+    msg->tag.code = 0;
 #if RPI<4
-    msg.value.request.clockId = CLOCK_ID_EMMC;      // EMMC
+    msg->value.request.clockId = CLOCK_ID_EMMC;      // EMMC
 #else
-    msg.value.request.clockId = CLOCK_ID_EMMC2;     // EMMC2
+    msg->value.request.clockId = CLOCK_ID_EMMC2;     // EMMC2
 #endif
-    msg.footer.end = 0;
+    msg->footer.end = 0;
 
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
 	    ee_printf("EMMC: property mailbox did not return a valid response.\n");
 	    return 0;
     }
 
-	if(msg.value.response.clockId != msg.value.request.clockId)
+	if(msg->value.response.clockId != msg->value.request.clockId)
 	{
 	    ee_printf("EMMC: property mailbox did not return a valid clock id.\n");
 	    return 0;
 	}
 
-	base_clock = msg.value.response.rate;
+	base_clock = msg->value.response.rate;
 #else
     ee_printf("EMMC: get_base_clock_hz() is not implemented for this "
            "architecture.\n");
@@ -576,32 +577,32 @@ static int bcm_2708_power_off()
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
-    msg.tag.id = MAILBOX_TAG_SET_POWER_STATE;
-    msg.tag.size = sizeof(msg.value);
-    msg.tag.code = 0;
-    msg.value.request.deviceId = 0;     // SDCard
-    msg.value.request.state = 2; // Bit 0: 0=off, 1=on; Bit 1: 0=do not wait, 1=wait; Bits 2-31: reserved for future use (set to 0)
-    msg.footer.end = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_SET_POWER_STATE;
+    msg->tag.size = sizeof(msg->value);
+    msg->tag.code = 0;
+    msg->value.request.deviceId = 0;     // SDCard
+    msg->value.request.state = 2; // Bit 0: 0=off, 1=on; Bit 1: 0=do not wait, 1=wait; Bits 2-31: reserved for future use (set to 0)
+    msg->footer.end = 0;
 
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
 	    ee_printf("EMMC: bcm_2708_power_off(): property mailbox did not return a valid response.\n");
 	    return -1;
     }
 
-	if(msg.value.response.deviceId != 0x0)
+	if(msg->value.response.deviceId != 0x0)
 	{
 	    ee_printf("EMMC: property mailbox did not return a valid device id.\n");
 	    return -1;
 	}
 
-	if((msg.value.response.state & 0x3) != 0)
+	if((msg->value.response.state & 0x3) != 0)
 	{
 #ifdef EMMC_DEBUG
-		ee_printf("EMMC: bcm_2708_power_off(): device did not power off successfully (%08x).\n", msg.value.response.state);
+		ee_printf("EMMC: bcm_2708_power_off(): device did not power off successfully (%08x).\n", msg->value.response.state);
 #endif
 		return 1;
 	}
@@ -638,32 +639,32 @@ static int bcm_2708_power_on()
     }
     message_t;
 
-    message_t msg __attribute__((aligned(16)));
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
 
-    msg.header.size = sizeof(msg);
-    msg.header.code = 0;
-    msg.tag.id = MAILBOX_TAG_SET_POWER_STATE;
-    msg.tag.size = sizeof(msg.value);
-    msg.tag.code = 0;
-    msg.value.request.deviceId = 0;     // SDCard
-    msg.value.request.state = 3; // Bit 0: 0=off, 1=on; Bit 1: 0=do not wait, 1=wait; Bits 2-31: reserved for future use (set to 0)
-    msg.footer.end = 0;
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_SET_POWER_STATE;
+    msg->tag.size = sizeof(msg->value);
+    msg->tag.code = 0;
+    msg->value.request.deviceId = 0;     // SDCard
+    msg->value.request.state = 3; // Bit 0: 0=off, 1=on; Bit 1: 0=do not wait, 1=wait; Bits 2-31: reserved for future use (set to 0)
+    msg->footer.end = 0;
 
-    if (mbox_send(&msg) != 0) {
+    if (mbox_send(msg) != 0) {
 	    ee_printf("EMMC: bcm_2708_power_on(): property mailbox did not return a valid response.\n");
 	    return -1;
     }
 
-	if(msg.value.response.deviceId != 0x0)
+	if(msg->value.response.deviceId != 0x0)
 	{
 	    ee_printf("EMMC: property mailbox did not return a valid device id.\n");
 	    return -1;
 	}
 
-	if((msg.value.response.state & 0x3) != 1)
+	if((msg->value.response.state & 0x3) != 1)
 	{
 #ifdef EMMC_DEBUG
-		ee_printf("EMMC: bcm_2708_power_on(): device did not power on successfully (%08x).\n", msg.value.response.state);
+		ee_printf("EMMC: bcm_2708_power_on(): device did not power on successfully (%08x).\n", msg->value.response.state);
 #endif
 		return 1;
 	}
@@ -1403,7 +1404,7 @@ int sd_card_init(struct block_device **dev)
 #ifdef EMMC_DEBUG
 	ee_printf("EMMC: capabilities: %08x%08x\n", capabilities_1, capabilities_0);
 #endif
-    
+
 #if RPI >= 4
 	// Enable SD Bus Power VDD1 at 3.3V
 	uint32_t control0 = R32(emmc_base + EMMC_CONTROL0);
@@ -1786,7 +1787,7 @@ int sd_card_init(struct block_device **dev)
 	if(FAIL(ret))
     {
         ee_printf("SD: error sending SEND_RELATIVE_ADDR\n");
-        nmalloc_free((void**)&ret);
+        nmalloc_free(ret);
         return -1;
     }
 
@@ -1805,32 +1806,32 @@ int sd_card_init(struct block_device **dev)
 	if(crc_error)
 	{
 		ee_printf("SD: CRC error\n");
-		nmalloc_free((void**)&ret);
-		nmalloc_free((void**)&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
 	if(illegal_cmd)
 	{
 		ee_printf("SD: illegal command\n");
-		nmalloc_free((void**)&ret);
-		nmalloc_free((void**)&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
 	if(error)
 	{
 		ee_printf("SD: generic error\n");
-		nmalloc_free((void**)&ret);
-		nmalloc_free((void**)&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
 	if(!ready)
 	{
 		ee_printf("SD: not ready for data\n");
-		nmalloc_free((void**)&ret);
-		nmalloc_free((void**)&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
@@ -1843,7 +1844,7 @@ int sd_card_init(struct block_device **dev)
 	if(FAIL(ret))
 	{
 	    ee_printf("SD: error sending CMD7\n");
-	    nmalloc_free((void**)&ret);
+	    nmalloc_free(ret);
 	    return -1;
 	}
 
@@ -1853,8 +1854,8 @@ int sd_card_init(struct block_device **dev)
 	if((status != 3) && (status != 4))
 	{
 		ee_printf("SD: invalid status (%i)\n", status);
-		nmalloc_free((void**)&ret);
-		nmalloc_free((void**)&dev_id);
+		nmalloc_free(ret);
+		nmalloc_free(dev_id);
 		return -1;
 	}
 
@@ -1865,7 +1866,7 @@ int sd_card_init(struct block_device **dev)
 	    if(FAIL(ret))
 	    {
 	        ee_printf("SD: error sending SET_BLOCKLEN\n");
-	        nmalloc_free((void**)&ret);
+	        nmalloc_free(ret);
 	        return -1;
 	    }
 	}
@@ -1885,8 +1886,8 @@ int sd_card_init(struct block_device **dev)
 	if(FAIL(ret))
 	{
 	    ee_printf("SD: error sending SEND_SCR\n");
-	    nmalloc_free((void**)&ret->scr);
-        nmalloc_free((void**)&ret);
+	    nmalloc_free(ret->scr);
+        nmalloc_free(ret);
 	    return -1;
 	}
 
@@ -2202,4 +2203,4 @@ int sd_write(struct block_device *dev, uint8_t *buf, size_t buf_size, uint32_t b
 }
 #endif
 
- 
+

@@ -23,7 +23,7 @@
        to obtain a memory chunk of size "size"
 
     3) When an allocated chunk "a" is no longer needed, call
-        nmalloc_free( &a );
+        nmalloc_free( a );
 
         the pointer a is automatically set to 0.
 
@@ -176,13 +176,12 @@ void* nmalloc_malloc( size_T size )
 }
 
 
-void  nmalloc_free(void **pptr )
+void  nmalloc_free(void *ptr )
 {
     block* prevB;
     block* nextB;
     block *newfblock;
     size_T block_size;
-    void* ptr = *pptr;
 
     ptr = (unsigned char*)ptr - sizeof( size_T );
     block_size = *((size_T*)ptr);
@@ -219,7 +218,6 @@ void  nmalloc_free(void **pptr )
         newfblock->next = nextB;
     }
 
-
     /* Update neighbours */
     if( newfblock->prev )
         newfblock->prev->next = newfblock;
@@ -227,8 +225,6 @@ void  nmalloc_free(void **pptr )
     if( newfblock->next )
         newfblock->next->prev = newfblock;
 
-
-    *pptr = 0;
     merge_adjacent_free_blocks();
 }
 

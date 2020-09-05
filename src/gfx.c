@@ -1,3 +1,12 @@
+//
+// gfx.c
+// Graphic functions
+//
+// PiGFX is a bare metal kernel for the Raspberry Pi
+// that implements a basic ANSI terminal emulator with
+// the additional support of some primitive graphics functions.
+// Copyright (C) 2014-2020 Filippo Bergamasco, Christian Lehner
+
 #include "pigfx_config.h"
 #include "scn_state.h"
 #include "gfx.h"
@@ -69,7 +78,7 @@ typedef struct {
     unsigned char* pfb;					/// Framebuffer address
     DRAWING_MODE mode;					/// Drawing mode: normal, xor, transparent
     unsigned char transparentcolor;		/// For transparent drawing mode
-    
+
     // bitmap handling
     struct
     {
@@ -84,9 +93,9 @@ typedef struct {
         unsigned int   pixels;
         unsigned int   actPos;
     } bitmaploader;
-    
+
     unsigned char* bitmap[MAXBITMAPS];
-    
+
     unsigned int lastUsedSprite;
     tSprite sprite[MAXSPRITES];
 
@@ -243,7 +252,7 @@ void gfx_compute_font()
 	ctx.cursor_buffer_size = ctx.term.FONTWIDTH * ctx.term.FONTHEIGHT;
 	if (ctx.cursor_buffer)
 	{
-		nmalloc_free((void**)&ctx.cursor_buffer);
+		nmalloc_free(ctx.cursor_buffer);
 		ctx.cursor_buffer = 0;
 		ctx.cursor_buffer_ready = 0;
 	}
@@ -280,7 +289,7 @@ unsigned char AABBtoAABBcollide(tAABB* pA, tAABB* pB)
 void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, unsigned int bpp, unsigned int pitch, unsigned int size )
 {
     dma_init();
-    
+
     // Set ctx memory to 0
     pigfx_memset(&ctx, 0, sizeof(ctx));
 
@@ -307,7 +316,7 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     // set default colors
     gfx_set_fg(15);
     gfx_set_bg(0);
-    
+
     gfx_term_render_cursor();
 }
 
@@ -366,7 +375,7 @@ void gfx_set_transparent_color( GFX_COL color )
 void gfx_check_collision(unsigned char own)
 {
     if (PiGfxConfig.disableCollision) return;
-    
+
     for (unsigned int i=0; i<=ctx.lastUsedSprite; i++)
     {
         if ((ctx.sprite[i].active == 0) || (i == own)) continue;
@@ -389,9 +398,9 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
     if (p_sprite == 0) return;
     // Check start
     if (x >= ctx.W || y >= ctx.H) return;
-    
+
     //unsigned int tact = time_microsec();
-    
+
     // Get framebuffer address and bitmap size
     unsigned char* pf = PFB(x,y);
     unsigned int *p_spr_32 = (unsigned int*)p_sprite;
@@ -399,7 +408,7 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
     unsigned int height = *p_spr_32; p_spr_32++;
 
     unsigned char* pspr = (unsigned char*)p_spr_32;
-    
+
     // limit bitmap size to screen
     if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
@@ -416,8 +425,8 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
     }
     else
     {
-        dma_enqueue_operation( p_spr_32, 
-                            pf, 
+        dma_enqueue_operation( p_spr_32,
+                            pf,
                             (((height-1) & 0xFFFF )<<16) | (usedwidth & 0xFFFF ),
                             (((ctx.Pitch-usedwidth) & 0xFFFF)<<16 | ((width-usedwidth) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
                             DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
@@ -438,9 +447,9 @@ void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y
     if (p_sprite == 0) return;
     // Check start
     if (x >= ctx.W || y >= ctx.H) return;
-    
+
     //unsigned int tact = time_microsec();
-    
+
     unsigned char* pf = PFB(x,y);
     unsigned int *p_spr_32 = (unsigned int*)p_sprite;
     unsigned int width  = *p_spr_32; p_spr_32++;
@@ -448,7 +457,7 @@ void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y
 
     unsigned int i,j;
     unsigned char* pspr = (unsigned char*)p_spr_32;
-    
+
     // limit bitmap size to screen
     if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
@@ -476,9 +485,9 @@ void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsign
     if (p_sprite == 0) return;
     // Check start
     if (x >= ctx.W || y >= ctx.H) return;
-    
+
     //unsigned int tact = time_microsec();
-    
+
     unsigned char* pf = PFB(x,y);
     unsigned int *p_spr_32 = (unsigned int*)p_sprite;
     unsigned int width  = *p_spr_32; p_spr_32++;
@@ -486,7 +495,7 @@ void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsign
 
     unsigned int i,j;
     unsigned char* pspr = (unsigned char*)p_spr_32;
-    
+
     // limit bitmap size to screen
     if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
@@ -512,10 +521,10 @@ void gfx_remove_sprite(unsigned char idx)
     if (ctx.sprite[idx].active == 0) return;
     if (ctx.sprite[idx].pBackground == 0) return;
     gfx_put_sprite_NORMAL(ctx.sprite[idx].pBackground, ctx.sprite[idx].x, ctx.sprite[idx].y);
-    nmalloc_free((void**)&ctx.sprite[idx].pBackground);
+    nmalloc_free(ctx.sprite[idx].pBackground);
     ctx.sprite[idx].pBackground = 0;
     ctx.sprite[idx].active = 0;
-    
+
     ctx.lastUsedSprite = 0;
     for (unsigned int i=MAXSPRITES-1; i>0; i--)
     {
@@ -534,9 +543,9 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     if ((pSprite == 0) || (pBitmap == 0))  return;
     // Check start
     if (x >= ctx.W || y >= ctx.H) return;
-    
+
     //unsigned int tact = time_microsec();
-    
+
     // Get width and height
     uint32_t* pW = (uint32_t*)pBitmap;
     uint32_t* pH = pW+1;
@@ -555,12 +564,12 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     unsigned char* pSave = pSprite->pBackground+8;
     unsigned int height = *pH;
     unsigned int width = *pW;
-    
+
     // limit bitmap size to screen
     if (y+height > ctx.H) height = ctx.H - y;
     unsigned int usedwidth = width;
     if (x+width > ctx.W) usedwidth = ctx.W - x;
-    
+
     if (PiGfxConfig.disableGfxDMA)
     {
         for( i=0; i<height; ++i )
@@ -572,14 +581,14 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     }
     else
     {
-        dma_enqueue_operation( pScreen, 
-                            pSave, 
+        dma_enqueue_operation( pScreen,
+                            pSave,
                             (((height-1) & 0xFFFF )<<16) | (usedwidth & 0xFFFF ),
                             (((width-usedwidth) & 0xFFFF)<<16 | ((ctx.Pitch-usedwidth) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
                             DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
         dma_execute_queue();
     }
-    
+
     //cout("gfx_save_background took ");cout_d(time_microsec()- tact);cout(" DisableDMA=");cout_d(PiGfxConfig.disableGfxDMA);cout_endl();
 }
 
@@ -596,13 +605,13 @@ void gfx_clear()
         {
             if (ctx.sprite[i].pBackground)
             {
-                nmalloc_free((void**)&ctx.sprite[i].pBackground);
+                nmalloc_free(ctx.sprite[i].pBackground);
                 ctx.sprite[i].pBackground = 0;
             }
             ctx.sprite[i].active = 0;
         }
     }
-    
+
     if (PiGfxConfig.disableGfxDMA)
     {
         unsigned int* pf = (unsigned int*)ctx.pfb;
@@ -619,10 +628,10 @@ void gfx_clear()
         {
             fillScreen[i] = ctx.bg32;
         }
-        dma_enqueue_operation( ctx.pfb, 
-                            ctx.pfb+ctx.Pitch, 
+        dma_enqueue_operation( ctx.pfb,
+                            ctx.pfb+ctx.Pitch,
                             (((ctx.H-2) & 0xFFFF )<<16) | (ctx.Pitch & 0xFFFF ), // y len << 16 | xlen
-                            (-ctx.Pitch & 0xFFFF), // bits 31:16 destination stride, 15:0 source stride 
+                            (-ctx.Pitch & 0xFFFF), // bits 31:16 destination stride, 15:0 source stride
                             DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
         dma_execute_queue();
     }
@@ -644,7 +653,7 @@ void gfx_scroll_down( unsigned int npixels )
     {
         unsigned int line_height = ctx.Pitch * npixels;
         unsigned int pixelstocopy = ctx.size - line_height;
-        
+
         dma_memcpy_32(ctx.pfb + line_height, ctx.pfb, pixelstocopy);
         pf_dst += pixelstocopy/4;
     }
@@ -663,7 +672,7 @@ void gfx_scroll_up( unsigned int npixels )
 
     while( pf_src >= pfb_end )
         *pf_dst-- = *pf_src--;
-    
+
     // Fill with bg at the top
     while( pf_dst >= pfb_end )
         *pf_dst-- = ctx.bg32;
@@ -710,7 +719,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
         pfb = PFB(x0,ydraw);
         *pfb = ctx.fg;
     }
-    
+
     //setPixel(x0, y0 - rad);
     ydraw -= rad+rad;
     if (ydraw >= 0)
@@ -718,7 +727,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
         pfb = PFB(x0,ydraw);
         *pfb = ctx.fg;
     }
-    
+
     //setPixel(x0 + rad, y0);
     xdraw = x0+rad;
     if (xdraw < (int)ctx.W)
@@ -726,7 +735,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
         pfb = PFB(xdraw,y0);
         *pfb = ctx.fg;
     }
-    
+
     //setPixel(x0 - rad, y0);
     xdraw -= rad+rad;
     if (xdraw >= 0)
@@ -734,7 +743,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
         pfb = PFB(xdraw,y0);
         *pfb = ctx.fg;
     }
-    
+
 
     while(x < y)
     {
@@ -756,7 +765,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
             pfb = PFB(xdraw,ydraw);
             *pfb = ctx.fg;
         }
-        
+
         //setPixel(x0 - x, y0 + y);
         xdraw = x0-x;
         if ((xdraw >= 0) && (ydraw < (int)ctx.H))
@@ -764,7 +773,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
             pfb = PFB(xdraw,ydraw);
             *pfb = ctx.fg;
         }
-        
+
         //setPixel(x0 + x, y0 - y);
         xdraw = x0+x;
         ydraw = y0-y;
@@ -773,7 +782,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
             pfb = PFB(xdraw,ydraw);
             *pfb = ctx.fg;
         }
-        
+
         //setPixel(x0 - x, y0 - y);
         xdraw = x0-x;
         if ((xdraw >= 0) && (ydraw >= 0))
@@ -781,7 +790,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
             pfb = PFB(xdraw,ydraw);
             *pfb = ctx.fg;
         }
-        
+
         //setPixel(x0 + y, y0 + x);
         xdraw = x0+y;
         ydraw = y0+x;
@@ -790,7 +799,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
             pfb = PFB(xdraw,ydraw);
             *pfb = ctx.fg;
         }
-        
+
         //setPixel(x0 - y, y0 + x);
         xdraw = x0-y;
         if ((xdraw >= 0) && (ydraw < (int)ctx.H))
@@ -798,7 +807,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
             pfb = PFB(xdraw,ydraw);
             *pfb = ctx.fg;
         }
-        
+
         //setPixel(x0 + y, y0 - x);
         xdraw = x0+y;
         ydraw = y0-x;
@@ -807,7 +816,7 @@ void gfx_draw_circle(unsigned int x0, unsigned int y0, unsigned int rad)
             pfb = PFB(xdraw,ydraw);
             *pfb = ctx.fg;
         }
-        
+
         //setPixel(x0 - y, y0 - x);
         xdraw = x0-y;
         if ((xdraw >= 0) && (ydraw >= 0))
@@ -823,9 +832,9 @@ void gfx_draw_hor_line(int x0, int y0, unsigned int width)
 {
     if ((y0 < 0) || (y0 >= (int)ctx.H)) return;
     if (x0 >= (int)ctx.W) return;
-    
+
     int diff;
-    
+
     if (x0 < 0)
     {
         diff = 0-x0;
@@ -836,7 +845,7 @@ void gfx_draw_hor_line(int x0, int y0, unsigned int width)
     {
         width = ctx.W-x0-1;
     }
-    
+
     unsigned int i;
     register unsigned char* pfb = PFB(x0,y0);
     for (i=0;i<width;i++)
@@ -852,21 +861,21 @@ void gfx_draw_filled_circle(unsigned int x0, unsigned int y0, unsigned int rad)
     int yoff = rad;
     int balance = -rad;
     int p0,p1,w0,w1;
-    
+
     while (xoff <= yoff)
     {
         p0 = x0 - xoff;
         p1 = x0 - yoff;
-        
+
         w0 = xoff + xoff;
         w1 = yoff + yoff;
-        
+
         gfx_draw_hor_line(p0, y0 + yoff, w0);
         gfx_draw_hor_line(p0, y0 - yoff, w0);
-        
+
         gfx_draw_hor_line(p1, y0 + xoff, w1);
         gfx_draw_hor_line(p1, y0 - xoff, w1);
-        
+
         balance += xoff+xoff+1;
         xoff++;
 
@@ -893,7 +902,7 @@ void gfx_line( int x0, int y0, int x1, int y1 )
     y0 = MAX( MIN(y0, (int)ctx.H), 0 );
     x1 = MAX( MIN(x1, (int)ctx.W), 0 );
     y1 = MAX( MIN(y1, (int)ctx.H), 0 );
-    
+
     register unsigned char* pfb;
     int e2;
     int dx =  __abs__(x1-x0);
@@ -901,7 +910,7 @@ void gfx_line( int x0, int y0, int x1, int y1 )
     int dy = -__abs__(y1-y0);
     int sy = y0<y1 ? 1 : -1;
     int err = dx+dy;  /* error value e_xy */
-    
+
     while (1)   /* loop */
     {
         // draw pixel
@@ -1140,7 +1149,7 @@ void gfx_term_save_cursor_content()
 */
 void gfx_term_render_cursor()
 {
-    
+
     unsigned char* pb = ctx.cursor_buffer;
     //cout("pb: "); cout_h((unsigned int)pb);cout_endl();
     unsigned char* pfb = (unsigned char*)PFB(
@@ -1175,6 +1184,95 @@ void gfx_term_render_cursor()
     ctx.cursor_buffer_ready = 1;
 }
 
+/** shifts content from cursor 1 character to the right */
+void gfx_term_shift_right()
+{
+    dma_enqueue_operation( PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                        PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                        (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col-1)*ctx.term.FONTWIDTH & 0xFFFF ),
+                        ((((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | (((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                        DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+    dma_execute_queue();
+}
+
+/** shifts content right of cursor 1 character to the left */
+void gfx_term_shift_left()
+{
+    dma_enqueue_operation( PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                        PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                        (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col)*ctx.term.FONTWIDTH & 0xFFFF ),
+                        (((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | ((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                        DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+    dma_execute_queue();
+}
+
+/** restore cursor content
+    move line content from cursor 1 position to the right
+   insert blank
+   redraw cursor */
+void gfx_term_insert_blank()
+{
+    gfx_restore_cursor_content();
+    gfx_term_shift_right();
+    gfx_clear_rect( ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
+    gfx_term_render_cursor();
+}
+
+/** move line content from right of cursor cursor 1 position to the left
+    fill last character with bg
+    restore cursor */
+void gfx_term_delete_char()
+{
+    if (ctx.term.cursor_col < (ctx.term.WIDTH-1))
+    {
+        gfx_term_shift_left();
+    }
+    gfx_clear_rect( (ctx.term.WIDTH-1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT, ctx.term.FONTWIDTH, ctx.term.FONTHEIGHT );
+    gfx_term_render_cursor();
+}
+
+/** Insert blank line at current row (shift screen down) */
+void gfx_term_insert_line()
+{
+    unsigned int size = ctx.term.WIDTH*ctx.term.FONTWIDTH*ctx.term.FONTHEIGHT;
+
+    gfx_restore_cursor_content();
+
+    for(int i=ctx.term.HEIGHT-2;i>=(int)ctx.term.cursor_row; i--)
+    {
+        dma_memcpy_32(PFB((0), i * ctx.term.FONTHEIGHT), PFB((0), (i+1) * ctx.term.FONTHEIGHT), size);
+    }
+
+    unsigned int* pos = (unsigned int*)PFB(0, ctx.term.cursor_row * ctx.term.FONTHEIGHT);
+    for(unsigned int i=0; i<size/4;i++)
+    {
+        *pos++=ctx.bg32;
+    }
+
+    gfx_term_render_cursor();
+}
+
+// Delete the current line (shift screen up)
+void gfx_term_delete_line()
+{
+    unsigned int size;
+
+    if (ctx.term.cursor_row < ctx.term.HEIGHT-2)
+    {
+        size = ctx.term.WIDTH*ctx.term.FONTWIDTH*ctx.term.FONTHEIGHT*(ctx.term.HEIGHT-1-ctx.term.cursor_row);
+        dma_memcpy_32(PFB((0), (ctx.term.cursor_row+1) * ctx.term.FONTHEIGHT), PFB((0), ctx.term.cursor_row * ctx.term.FONTHEIGHT), size);
+    }
+
+    unsigned int* pos = (unsigned int*)PFB(0, (ctx.term.HEIGHT-1) * ctx.term.FONTHEIGHT);
+    size = ctx.term.WIDTH*ctx.term.FONTWIDTH*ctx.term.FONTHEIGHT;
+    for(unsigned int i=0; i<size/4;i++)
+    {
+        *pos++=ctx.bg32;
+    }
+
+    gfx_term_render_cursor();
+}
+
 /** Fill cursor buffer with the current background and framebuffer with fg.
  */
 void gfx_term_render_cursor_newline()
@@ -1203,7 +1301,7 @@ void gfx_term_load_bitmap(char pixel)
 {
     char* dest = 0;
     unsigned char nbPixels, i;
-    
+
     if (ctx.bitmaploader.asciiMode)
     {
         // Convert data to binary
@@ -1236,9 +1334,9 @@ void gfx_term_load_bitmap(char pixel)
             ctx.bitmaploader.loading = 0;
             return;
         }
-        
+
     }
-    
+
     dest = (char*)ctx.bitmap[ctx.bitmaploader.index]+8+ctx.bitmaploader.actPos;
     if (ctx.bitmaploader.rleCompressed)
     {
@@ -1250,7 +1348,7 @@ void gfx_term_load_bitmap(char pixel)
         {
             nbPixels = pixel;
             pixel = *dest;
-            
+
             for (i=0;i<nbPixels;i++)
             {
                 *dest++ = pixel;
@@ -1580,7 +1678,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 retval = 0;
             goto back_to_normal;
             break;
-            
+
             case 'a':
             case 'A':
                 // load a bitmap ASCII encoded
@@ -1592,8 +1690,8 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]) && ((state->cmd_params[3] == 10) || (state->cmd_params[3] == 16)))
                     {
                         // release old data
-                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap[state->cmd_params[0]]);
-                        
+                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free(ctx.bitmap[state->cmd_params[0]]);
+
                         // alloc mem
                         ctx.bitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
                         if (ctx.bitmap[state->cmd_params[0]])
@@ -1617,7 +1715,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 retval = 0;
             goto back_to_normal;
             break;
-            
+
             case 'b':
             case 'B':
                 // load a bitmap
@@ -1629,8 +1727,8 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if ((state->cmd_params[0] < MAXBITMAPS) && (state->cmd_params[1]) && (state->cmd_params[2]))
                     {
                         // release old data
-                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free((void**)&ctx.bitmap[state->cmd_params[0]]);
-                        
+                        if (ctx.bitmap[state->cmd_params[0]]) nmalloc_free(ctx.bitmap[state->cmd_params[0]]);
+
                         // alloc mem
                         ctx.bitmap[state->cmd_params[0]] = nmalloc_malloc(8+state->cmd_params[1]*state->cmd_params[2]);    // Header 8 bytes for x and y, then data
                         if (ctx.bitmap[state->cmd_params[0]])
@@ -1652,7 +1750,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 retval = 0;
             goto back_to_normal;
             break;
-            
+
             case 'd':
                 /* draw a bitmap */
                 if (state->cmd_params_size == 3)
@@ -1666,7 +1764,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 retval = 0;
             goto back_to_normal;
             break;
-            
+
             case 's':
                 /* draw a sprite */
                 if (state->cmd_params_size == 4)
@@ -1676,7 +1774,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                     {
                         // If the sprite is active we must restore the background
                         gfx_remove_sprite(state->cmd_params[0]);
-                        
+
                         // Is the referenced bitmap available?
                         if (ctx.bitmap[state->cmd_params[1]])
                         {
@@ -1688,7 +1786,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                             // Save drawing mode and transparentcolor
                             ctx.sprite[state->cmd_params[0]].mode = ctx.mode;
                             ctx.sprite[state->cmd_params[0]].transparentcolor = ctx.transparentcolor;
-                            
+
                             // Draw sprite
                             ctx.sprite[state->cmd_params[0]].active = 1;
                             ctx.sprite[state->cmd_params[0]].bitmapRef = state->cmd_params[1];
@@ -1696,24 +1794,24 @@ int state_fun_final_letter( char ch, scn_state *state )
                             ctx.sprite[state->cmd_params[0]].y = state->cmd_params[3];
                             ctx.sprite[state->cmd_params[0]].width = *pW;
                             ctx.sprite[state->cmd_params[0]].height = *pH;
-                            
+
                             if (state->cmd_params[0] > ctx.lastUsedSprite) ctx.lastUsedSprite = state->cmd_params[0];
-                            
+
                             // Set collision detection rectangle
                             ctx.sprite[state->cmd_params[0]].colDetRect.min.x = ctx.sprite[state->cmd_params[0]].x;
                             ctx.sprite[state->cmd_params[0]].colDetRect.min.y = ctx.sprite[state->cmd_params[0]].y;
                             ctx.sprite[state->cmd_params[0]].colDetRect.max.x = ctx.sprite[state->cmd_params[0]].x + *pW-1;
                             ctx.sprite[state->cmd_params[0]].colDetRect.max.y = ctx.sprite[state->cmd_params[0]].y + *pH-1;
-                            
+
                             gfx_check_collision(state->cmd_params[0]);
-                            
+
                         }
                     }
                 }
                 retval = 0;
             goto back_to_normal;
             break;
-            
+
             case 'x':
                 /* remove a sprite */
                 if (state->cmd_params_size == 1)
@@ -1727,7 +1825,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 retval = 0;
             goto back_to_normal;
             break;
-            
+
             case 'm':
                 /* move a sprite to a new position */
                 if (state->cmd_params_size == 3)
@@ -1736,9 +1834,9 @@ int state_fun_final_letter( char ch, scn_state *state )
                     if ((state->cmd_params[0] < MAXSPRITES) && (ctx.sprite[state->cmd_params[0]].active))
                     {
                         gfx_remove_sprite(state->cmd_params[0]);
-                        
+
                         gfx_save_background(&ctx.sprite[state->cmd_params[0]], ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
-                        
+
                         if (ctx.sprite[state->cmd_params[0]].mode == drawingNORMAL)
                             gfx_put_sprite_NORMAL(ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
                         else if (ctx.sprite[state->cmd_params[0]].mode == drawingXOR)
@@ -1750,22 +1848,22 @@ int state_fun_final_letter( char ch, scn_state *state )
                             gfx_put_sprite_TRANSPARENT(ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef], state->cmd_params[1], state->cmd_params[2]);
                             ctx.transparentcolor = saveColor;
                         }
-                        
+
                         unsigned int* pW = (unsigned int*)ctx.bitmap[ctx.sprite[state->cmd_params[0]].bitmapRef];
                         unsigned int* pH = pW+1;
-                        
+
                         ctx.sprite[state->cmd_params[0]].active = 1;
                         ctx.sprite[state->cmd_params[0]].x = state->cmd_params[1];
                         ctx.sprite[state->cmd_params[0]].y = state->cmd_params[2];
                         ctx.sprite[state->cmd_params[0]].width = *pW;
                         ctx.sprite[state->cmd_params[0]].height = *pH;
-                        
+
                         // Set collision detection rectangle
                         ctx.sprite[state->cmd_params[0]].colDetRect.min.x = ctx.sprite[state->cmd_params[0]].x;
                         ctx.sprite[state->cmd_params[0]].colDetRect.min.y = ctx.sprite[state->cmd_params[0]].y;
                         ctx.sprite[state->cmd_params[0]].colDetRect.max.x = ctx.sprite[state->cmd_params[0]].x + *pW-1;
                         ctx.sprite[state->cmd_params[0]].colDetRect.max.y = ctx.sprite[state->cmd_params[0]].y + *pH-1;
-                        
+
                         gfx_check_collision(state->cmd_params[0]);
                     }
                 }
@@ -1867,7 +1965,7 @@ int state_fun_final_letter( char ch, scn_state *state )
     switch( ch )
     {
         case 'l':
-            if( state->private_mode_char == '?' && 
+            if( state->private_mode_char == '?' &&
                 state->cmd_params_size == 1 &&
                 state->cmd_params[0] == 25 )
             {
@@ -1878,7 +1976,7 @@ int state_fun_final_letter( char ch, scn_state *state )
             break;
 
         case 'h':
-            if( state->private_mode_char == '?' && 
+            if( state->private_mode_char == '?' &&
                 state->cmd_params_size == 1 &&
                 state->cmd_params[0] == 25 )
             {
@@ -1912,7 +2010,7 @@ int state_fun_final_letter( char ch, scn_state *state )
             }
             goto back_to_normal;
             break;
-        
+
         case 'J':
             if( state->cmd_params_size== 0 )
             {
@@ -2021,6 +2119,42 @@ int state_fun_final_letter( char ch, scn_state *state )
             goto back_to_normal;
             break;
 
+        case '@':
+            // Insert a blank character position (shift line to the right)
+            if( state->cmd_params_size == 1 )
+            {
+                gfx_term_insert_blank();
+            }
+            goto back_to_normal;
+            break;
+
+        case 'P':
+            // Delete a character position (shift line to the left)
+            if( state->cmd_params_size == 1 )
+            {
+                gfx_term_delete_char();
+            }
+            goto back_to_normal;
+            break;
+
+        case 'L':
+            // Insert blank line at current row (shift screen down)
+            if( state->cmd_params_size == 1 )
+            {
+                gfx_term_insert_line();
+            }
+            goto back_to_normal;
+            break;
+
+        case 'M':
+            // Delete the current line (shift screen up)
+            if( state->cmd_params_size == 1 )
+            {
+                gfx_term_delete_line();
+            }
+            goto back_to_normal;
+            break;
+
         default:
             goto back_to_normal;
     }
@@ -2097,7 +2231,7 @@ int state_fun_selectescape( char ch, scn_state *state )
         state->cmd_params[ 0 ] = ch-'0';
         state->next = state_fun_read_digit;
         return 1;
-    } 
+    }
     else
     {
         if( ch=='?' || ch=='#' || ch=='=' )
@@ -2108,7 +2242,7 @@ int state_fun_selectescape( char ch, scn_state *state )
             state->next = state_fun_read_digit;
             return 1;
         }
-    } 
+    }
 
     // Already at the final letter
     state_fun_final_letter( ch, state );

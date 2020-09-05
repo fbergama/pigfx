@@ -85,10 +85,12 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
     }
     else
     {
+        unsigned int lr;
+        asm volatile ("MOV %0, LR\n" : "=r" (lr) );
 #if RPI<4
-        ee_printf("ERROR: unhandled interrupt basic:%08x, pend1:%08x, pend2:%08x", pIRQController->IRQ_basic_pending, pIRQController->IRQ_pending[0], pIRQController->IRQ_pending[1]);
+        ee_printf("ERROR: unhandled interrupt basic:%08x, pend1:%08x, pend2:%08x, LR:%08x\n", pIRQController->IRQ_basic_pending, pIRQController->IRQ_pending[0], pIRQController->IRQ_pending[1], lr);
 #else
-        ee_printf("ERROR: unhandled interrupt pend0:%08x, pend1:%08x, pend2:%08x", pIRQController->IRQ_pending[0], pIRQController->IRQ_pending[1], pIRQController->IRQ_pending[2]);
+        ee_printf("ERROR: unhandled interrupt pend0:%08x, pend1:%08x, pend2:%08x, LR:%08x\n", pIRQController->IRQ_pending[0], pIRQController->IRQ_pending[1], pIRQController->IRQ_pending[2], lr);
 #endif
         while (1)
         {

@@ -16,6 +16,7 @@
 #include "timer.h"
 #include "utils.h"
 #include "keyboard.h"
+#include "synchronize.h"
 #include "ps2.h"
 
 // PS/2 Data
@@ -353,6 +354,9 @@ void handlePS2ClockEvent(__attribute__((unused)) void* data)
 {
     unsigned char data_state;
 
+    gpio_clear_irq(PS2CLOCKPIN);
+    DataMemBarrier();
+
     inout.bit_cnt++;
 
     if (inout.sending == 0)
@@ -424,8 +428,6 @@ void handlePS2ClockEvent(__attribute__((unused)) void* data)
             inout.bit_cnt = 0;
         }
     }
-
-    gpio_clear_irq(PS2CLOCKPIN);
 }
 
 unsigned char getPS2char(unsigned char *fromKbd)

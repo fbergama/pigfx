@@ -20,6 +20,7 @@
 #include "ee_printf.h"
 #include "mbox.h"
 #include "config.h"
+#include "synchronize.h"
 
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
@@ -1357,6 +1358,11 @@ void gfx_term_load_bitmap(char pixel)
                 {
                     // finished
                     ctx.bitmaploader.loading = 0;
+#if RPI == 1
+                    CleanDataCache();
+#else
+                    CleanDataCacheRange((unsigned int)ctx.bitmap[ctx.bitmaploader.index], ctx.bitmaploader.pixels+8);
+#endif
                     break;
                 }
             }
@@ -1371,6 +1377,11 @@ void gfx_term_load_bitmap(char pixel)
         {
             // finished
             ctx.bitmaploader.loading = 0;
+#if RPI == 1
+            CleanDataCache();
+#else
+            CleanDataCacheRange((unsigned int)ctx.bitmap[ctx.bitmaploader.index], ctx.bitmaploader.pixels+8);
+#endif
         }
     }
 }

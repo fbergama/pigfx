@@ -393,8 +393,7 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
 
     // Init Pagetable
     CreatePageTable(ARM_MEMSIZE);
-    SetStrictAlignment();
-    //EnableMMU();
+    EnableMMU();
 
     // Get informations about the board we are booting
     boardRevision = prop_revision();

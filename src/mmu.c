@@ -13,15 +13,6 @@
 #include "memory.h"
 #include "synchronize.h"
 
-void SetStrictAlignment()
-{
-	// enable MMU
-	unsigned int nControl;
-	asm volatile ("mrc p15, 0, %0, c1, c0,  0" : "=r" (nControl));
-	nControl |= ARM_CONTROL_STRICT_ALIGNMENT;
-	asm volatile ("mcr p15, 0, %0, c1, c0,  0" : : "r" (nControl) : "memory");
-}
-
 void CreatePageTable(unsigned int nMemSize)
 {
     // PageTable must be 16K aligned
@@ -45,6 +36,7 @@ void CreatePageTable(unsigned int nMemSize)
 		{
 			nAttributes = ARMV6MMUL1SECTION_NORMAL_XN;
 		}
+		// All above 128MB
 		else
 		{
 			nAttributes = ARMV6MMUL1SECTION_DEVICE;
@@ -86,15 +78,12 @@ void EnableMMU()
 	// enable MMU
 	unsigned int nControl;
 	asm volatile ("mrc p15, 0, %0, c1, c0,  0" : "=r" (nControl));
+
 #if RPI == 1
-#ifdef ARM_STRICT_ALIGNMENT
-	nControl &= ~ARM_CONTROL_UNALIGNED_PERMITTED;
-	nControl |= ARM_CONTROL_STRICT_ALIGNMENT;
-#else
 	nControl &= ~ARM_CONTROL_STRICT_ALIGNMENT;
 	nControl |= ARM_CONTROL_UNALIGNED_PERMITTED;
 #endif
-#endif
 	nControl |= MMU_MODE;
+
 	asm volatile ("mcr p15, 0, %0, c1, c0,  0" : : "r" (nControl) : "memory");
 }

@@ -12,7 +12,7 @@ call makeuspi %RPI%
 set OOB= asm.o exceptionstub.o synchronize.o mmu.o pigfx.o uart.o irq.o utils.o gpio.o mbox.o prop.o board.o actled.o framebuffer.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o stupid_timer.o block.o emmc.o c_utils.o mbr.o fat.o config.o ini.o ps2.o keyboard.o binary_assets.o
 set LIBUSPI= uspi/lib/libuspi.a
 
-set CFLAGS= -Wall -Wextra -O2 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mno-unaligned-access -fsigned-char
+set CFLAGS= -Wall -Wextra -O2 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -fsigned-char
 if "%RPI%"=="1" (
   set CFLAGS= %CFLAGS% -march=armv6j -mtune=arm1176jzf-s -DRPI=1
 )

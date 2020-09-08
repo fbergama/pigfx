@@ -46,7 +46,18 @@
 //
 // Barriers
 //
+/*
+ *  Data synchronisation barrier
+ *  No instruction after the DSB can run until all instructions before it have
+ *  completed
+ */
 #define DataSyncBarrier()	__asm volatile ("mcr p15, 0, %0, c7, c10, 4" : : "r" (0) : "memory")
+/*
+ *   Data memory barrier
+ *   No memory access after the DMB can run until all memory accesses before it
+ *    have completed
+ *
+ */
 #define DataMemBarrier() 	__asm volatile ("mcr p15, 0, %0, c7, c10, 5" : : "r" (0) : "memory")
 
 #define InstructionSyncBarrier() FlushPrefetchBuffer()
@@ -73,7 +84,18 @@ void CleanAndInvalidateDataCacheRange (unsigned int nAddress, unsigned int nLeng
 //
 // Barriers
 //
+/*
+ *  Data synchronisation barrier
+ *  No instruction after the DSB can run until all instructions before it have
+ *  completed
+ */
 #define DataSyncBarrier()	__asm volatile ("dsb" ::: "memory")
+/*
+ *   Data memory barrier
+ *   No memory access after the DMB can run until all memory accesses before it
+ *    have completed
+ *
+ */
 #define DataMemBarrier() 	__asm volatile ("dmb" ::: "memory")
 
 #define InstructionSyncBarrier() __asm volatile ("isb" ::: "memory")

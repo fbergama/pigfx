@@ -1,9 +1,8 @@
 #!/bin/sh 
-# We need to add the compiler option -mno-unaligned-access in uspi. If not, the compiler will generate halb-word accesses on odd memory addresses. RPI1 could handle this by enabling unaligned access in a CPU config register. However RPI2&3 have it already enabled, but need a enabled MMU with pagetables. They otherwise just crash.
 for i in 1 2 3
 do
     cd uspi
-    echo -e "RASPPI = $i\nCFLAGS += -mno-unaligned-access" > Config.mk
+    echo "RASPPI = $i" > Config.mk
     ./makeall clean
     ./makeall
     cd ..

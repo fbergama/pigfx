@@ -1195,23 +1195,51 @@ void gfx_term_render_cursor()
 /** shifts content from cursor 1 character to the right */
 void gfx_term_shift_right()
 {
-    dma_enqueue_operation( PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
-                        PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
-                        (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col-1)*ctx.term.FONTWIDTH & 0xFFFF ),
-                        ((((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | (((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
-                        DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
-    dma_execute_queue();
+    if (PiGfxConfig.disableGfxDMA)
+    {
+        for (unsigned int i=0; i<ctx.term.FONTHEIGHT; i++)
+        {
+            unsigned int* src = (unsigned int*)PFB(ctx.W-4-ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i);
+            unsigned int* dst = (unsigned int*)PFB(ctx.W-4, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i);
+            unsigned int* end = (unsigned int*)PFB(ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i);
+            while (src >= end)
+            {
+                *dst-- = *src--;
+            }
+        }
+    }
+    else
+    {
+        dma_enqueue_operation( PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                            PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                            (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col-1)*ctx.term.FONTWIDTH & 0xFFFF ),
+                            ((((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | (((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                            DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+        dma_execute_queue();
+    }
 }
 
 /** shifts content right of cursor 1 character to the left */
 void gfx_term_shift_left()
 {
-    dma_enqueue_operation( PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
-                        PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
-                        (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col)*ctx.term.FONTWIDTH & 0xFFFF ),
-                        (((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | ((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
-                        DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
-    dma_execute_queue();
+    if (PiGfxConfig.disableGfxDMA)
+    {
+        for (unsigned int i=0; i<ctx.term.FONTHEIGHT; i++)
+        {
+            veryfastmemcpy(PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i),
+                           PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i),
+                           (ctx.term.WIDTH-ctx.term.cursor_col)*ctx.term.FONTWIDTH);
+        }
+    }
+    else
+    {
+        dma_enqueue_operation( PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                            PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                            (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col)*ctx.term.FONTWIDTH & 0xFFFF ),
+                            (((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | ((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                            DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+        dma_execute_queue();
+    }
 }
 
 /** restore cursor content
@@ -1248,7 +1276,14 @@ void gfx_term_insert_line()
 
     for(int i=ctx.term.HEIGHT-2;i>=(int)ctx.term.cursor_row; i--)
     {
-        dma_memcpy_32(PFB((0), i * ctx.term.FONTHEIGHT), PFB((0), (i+1) * ctx.term.FONTHEIGHT), size);
+        if (PiGfxConfig.disableGfxDMA)
+        {
+            veryfastmemcpy(PFB((0), (i+1) * ctx.term.FONTHEIGHT), PFB((0), i * ctx.term.FONTHEIGHT), size);
+        }
+        else
+        {
+            dma_memcpy_32(PFB((0), i * ctx.term.FONTHEIGHT), PFB((0), (i+1) * ctx.term.FONTHEIGHT), size);
+        }
     }
 
     unsigned int* pos = (unsigned int*)PFB(0, ctx.term.cursor_row * ctx.term.FONTHEIGHT);
@@ -1268,7 +1303,14 @@ void gfx_term_delete_line()
     if (ctx.term.cursor_row < ctx.term.HEIGHT-2)
     {
         size = ctx.term.WIDTH*ctx.term.FONTWIDTH*ctx.term.FONTHEIGHT*(ctx.term.HEIGHT-1-ctx.term.cursor_row);
-        dma_memcpy_32(PFB((0), (ctx.term.cursor_row+1) * ctx.term.FONTHEIGHT), PFB((0), ctx.term.cursor_row * ctx.term.FONTHEIGHT), size);
+        if (PiGfxConfig.disableGfxDMA)
+        {
+            veryfastmemcpy(PFB((0), ctx.term.cursor_row * ctx.term.FONTHEIGHT), PFB((0), (ctx.term.cursor_row+1) * ctx.term.FONTHEIGHT), size);
+        }
+        else
+        {
+            dma_memcpy_32(PFB((0), (ctx.term.cursor_row+1) * ctx.term.FONTHEIGHT), PFB((0), ctx.term.cursor_row * ctx.term.FONTHEIGHT), size);
+        }
     }
 
     unsigned int* pos = (unsigned int*)PFB(0, (ctx.term.HEIGHT-1) * ctx.term.FONTHEIGHT);

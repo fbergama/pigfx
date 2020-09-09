@@ -92,14 +92,6 @@ static const unsigned int xterm_colors[NB_PALETTE_ELE] = {
 FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w, unsigned int vrt_h,
                         unsigned int bpp, void** pp_fb, unsigned int* pfbsize, unsigned int* pPitch )
 {
-#if ENABLED(FRAMEBUFFER_DEBUG)
-    unsigned int getPhysRes_w, getPhysRes_h;
-
-    // Get physical display size
-    if (fb_get_phys_res(&getPhysRes_w, &getPhysRes_h) != 0) return FB_GET_DISPLAY_SIZE_FAIL;
-    cout("Display size: ");cout_d(getPhysRes_w);cout("x");cout_d(getPhysRes_h);cout_endl();
-#endif
-
     // Set up the framebuffer and get one
     // Set display size
     typedef struct
@@ -194,7 +186,7 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
     msg->tag_virt_size.size = sizeof(msg->value_virt_size);
     msg->tag_virt_size.code = 0;
     msg->value_virt_size.request.display_w = vrt_w;
-    msg->value_virt_size.request.display_h = vrt_h;
+    msg->value_virt_size.request.display_h = vrt_h*2;   // our virtual display is double the y size for implementing double buffering
 
     msg->tag_colour_depth.id = MAILBOX_TAG_SET_COLOUR_DEPTH; // Set colour depth
     msg->tag_colour_depth.size = sizeof(msg->value_colour_depth);
@@ -223,23 +215,8 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
     *pp_fb = (void*)mem_vc2arm(msg->value_get_buf.response.bufferaddr);
     *pfbsize = msg->value_get_buf.response.buffersize;
 
-#if ENABLED(FRAMEBUFFER_DEBUG)
-    cout("Set physical display size: ");cout_d(ph_w);cout("x");cout_d(ph_h);cout_endl();
-    cout("Response: ");cout_d(msg->value_phys_size.response.act_display_w);cout("x");cout_d(msg->value_phys_size.response.act_display_h);cout_endl();
-    cout("Set virtual display size: ");cout_d(vrt_w);cout("x");cout_d(vrt_h);cout_endl();
-    cout("Response: ");cout_d(msg->value_virt_size.response.act_display_w);cout("x");cout_d(msg->value_virt_size.response.act_display_h);cout_endl();
-    cout("Set colour depth: ");cout_d(bpp);cout(" bpp");cout_endl();
-    cout("Response: ");cout_d(msg->value_colour_depth.response.act_depth);cout(" bpp");cout_endl();
-    cout("Screen addr: ");cout_h((unsigned int)*pp_fb); cout_endl();
-    cout("Screen size: ");cout_d(*pfbsize); cout_endl();
-#endif
-
     // Get pitch (bytes per line)
     if (fb_get_pitch(pPitch) != 0) return FB_INVALID_PITCH;
-
-#if ENABLED(FRAMEBUFFER_DEBUG)
-    cout("Pitch: "); cout_d(*pPitch); cout_endl();
-#endif
 
     return FB_SUCCESS;
 }
@@ -463,3 +440,40 @@ FB_RETURN_TYPE fb_get_pitch( unsigned int* pPitch )
     return FB_SUCCESS;
 }
 
+FB_RETURN_TYPE fb_switch_framebuffer(unsigned int yOffset)
+{
+    typedef struct {
+        mbox_msgheader_t header;
+        mbox_tagheader_t tag;
+
+        union {
+            struct {
+                uint32_t xOffset;
+                uint32_t yOffset;
+            }
+            request;
+            // No response.
+        }
+        value;
+
+        mbox_msgfooter_t footer;
+    }
+    message_t;
+
+    message_t* msg = (message_t*)MEM_COHERENT_REGION;
+
+    msg->header.size = sizeof(*msg);
+    msg->header.code = 0;
+    msg->tag.id = MAILBOX_TAG_SET_VIRTUAL_OFFSET;
+    msg->tag.size = sizeof(msg->value);
+    msg->tag.code = 0;
+    msg->value.request.xOffset = 0;
+    msg->value.request.yOffset = yOffset;
+    msg->footer.end = 0;
+
+    if (mbox_send(msg) != 0) {
+        return FB_ERROR;
+    }
+
+    return FB_SUCCESS;
+}

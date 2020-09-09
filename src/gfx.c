@@ -75,8 +75,11 @@ typedef struct {
     unsigned int H;						/// Screen pixel height
     unsigned int bpp;					/// Bits depth
     unsigned int Pitch;					/// Number of bytes for one line
-    unsigned int size;					/// Number of bytes in the framebuffer
+    unsigned int size;					/// Number of bytes in the framebuffer (double the screen size)
     unsigned char* pfb;					/// Framebuffer address
+    unsigned char* pFirstFb;			/// First Framebuffer address
+    unsigned char* pSecondFb;		    /// Second Framebuffer address (double buffering)
+    unsigned int fb_yOffset;            /// y-Offset within the framebuffer for double buffering
     DRAWING_MODE mode;					/// Drawing mode: normal, xor, transparent
     unsigned char transparentcolor;		/// For transparent drawing mode
 
@@ -206,6 +209,7 @@ FRAMEBUFFER_CTX ctx;
 // Forward declarations
 void gfx_term_render_cursor();
 void gfx_term_save_cursor_content();
+void gfx_switch_framebuffer();
 
 // Functions from pigfx.c called by some private sequences (set mode, debug tests ...)
 extern void initialize_framebuffer(unsigned int width, unsigned int height, unsigned int bpp);
@@ -300,11 +304,14 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     }
 
     // Store DMA framebuffer infos
-    ctx.pfb = p_framebuffer;
+    ctx.pFirstFb = p_framebuffer;
+    ctx.pSecondFb = p_framebuffer+size/2;
+    //ctx.pfb = ctx.pSecondFb;    // set invisible part of screen to start with
+    ctx.pfb = ctx.pFirstFb;    // set invisible part of screen to start with
     ctx.W = width;
     ctx.H = height;
     ctx.Pitch = pitch;
-    ctx.size = size;
+    ctx.size = size/2;      // screen is only half of the framebuffer with double buffering
     ctx.bpp = bpp;
 
     // store terminal sizes and informations
@@ -2300,4 +2307,24 @@ int state_fun_normaltext( char ch, scn_state *state )
     ++ctx.term.cursor_col;
     gfx_term_render_cursor();
     return 1;
+}
+
+/** This can be used to flip the framebuffer
+    Tests have showed that this is quite slow actually
+    For the moment I'm going to disable this
+**/
+void gfx_switch_framebuffer()
+{
+    // Change FB write pointer
+    unsigned char* showingFb = ctx.pfb;     // this fb is now not showing, but gets changed now to be showing
+    if (ctx.pfb == ctx.pFirstFb) ctx.pfb = ctx.pSecondFb;
+    else ctx.pfb = ctx.pFirstFb;
+
+    // Change y offset of framebuffer to other buffer
+    if (ctx.fb_yOffset == 0) ctx.fb_yOffset = ctx.H;
+    else ctx.fb_yOffset = 0;
+    fb_switch_framebuffer(ctx.fb_yOffset);
+
+    // Copy all data of the now showing framebuffer part to the not showing framebuffer part
+    dma_memcpy_32(showingFb, ctx.pfb, ctx.size);
 }

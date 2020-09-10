@@ -1,7 +1,21 @@
+  //////////////////////////////////////////
+  // PiGFX parallel interface description //
+  //////////////////////////////////////////
+  Based on the datasheet of RA8835
+  See https://www.newhavendisplay.com/app_notes/RA8835.pdf
+  
+  ----------------
+  Hardware Signals
+  ----------------
+  The Pi must use 3.3V high level signals,
+  use a bidirectional level shifter if you use 5v signals.
+  
+  The behaviour of the interface (8080 or 6800 style) is configurable in config.txt.
+  
   8080 Signal  |  6800 Signal  |  Raspberry Pin    |  Description
 --------------------------------------------------------------------------
   /CS          |  /CS          |  GPIO 4 (Pin 7)   |  Chip Select (low active)
-  /RS          |  /RS          |  GPIO 18 (Pin 12) |  Register Select (1 = Data, 0 = command)
+  /RS          |  /RS          |  GPIO 18 (Pin 12) |  Register Select (1 = data, 0 = command)
   /RD          |  E            |  GPIO 25 (Pin 22) |  8080 Read (low active) / 6800 Enable (high active)
   /WR          |  R/W          |  GPIO 8 (Pin 24)  |  8080 Write (low active) Input latched at rising edge / 6800 1=read 0=write  Input latched at falling edge of E
   D0           |  D0           |  GPIO 17 (Pin 11) |  Data Bit 0
@@ -12,3 +26,32 @@
   D5           |  D5           |  GPIO 11 (Pin 23) |  Data Bit 5
   D6           |  D6           |  GPIO 23 (Pin 16) |  Data Bit 6
   D7           |  D7           |  GPIO 24 (Pin 18) |  Data Bit 7
+  
+  ---------------------------------
+  Discription of the 8080 interface
+  ---------------------------------
+  If /CS is low, all data lines are in input / high impedance state.
+  
+  Reading from the Pi:
+  On the falling edge of /RD the Pi starts to set its datalines,
+  considering the state of /RS and /CS. Data is read by the CPU on the
+  rising edge of /RD.
+  
+  Writing to the Pi:
+  On the rising edge of /WR, the Pi latches the state of the databus,
+  considerung the state of /RS and /CS.
+  
+  
+  ---------------------------------
+  Discription of the 6800 interface
+  ---------------------------------
+  If /CS is low, all data lines are in input / high impedance state.
+  
+  Reading from the Pi:
+  On the rising edge of E the Pi starts to set its datalines,
+  considering the state of /RS, /CS and R/W. Data is read by the CPU
+  on the falling edge of E.
+  
+  Writing to the Pi
+  On the falling edfe of E, the Pi latches the state of the databus,
+  considering the state of /RS, /CS and R/W.

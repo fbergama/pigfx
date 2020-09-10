@@ -264,8 +264,7 @@ unsigned char initPS2()
 
     gpio_setedgedetect(PS2CLOCKPIN, GPIO_EDGE_DETECT_FALLING);
 
-    //irq_attach_handler(49, handlePS2ClockEvent, 0);
-    fiq_attach_handler(49, handlePS2ClockEvent);
+    fiq_attach_gpio_handler(PS2CLOCKPIN, handlePS2ClockEvent);
 
     inout.readPos = 0;
     inout.writePos = 0;
@@ -355,8 +354,6 @@ void sendPS2Byte(unsigned char sendVal)
 void handlePS2ClockEvent()
 {
     unsigned char data_state;
-
-    gpio_clear_irq(PS2CLOCKPIN);
 
     inout.bit_cnt++;
 

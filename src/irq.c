@@ -10,6 +10,7 @@
 #include "irq.h"
 #include "ee_printf.h"
 #include "utils.h"
+#include "gpio.h"
 #include "synchronize.h"
 #include "exception.h"
 
@@ -37,9 +38,20 @@ typedef struct TAbortFrame
 }
 TAbortFrame;
 
-FiqHandler* _fiq_handler = 0;
+typedef struct
+{
+    unsigned int gpio;
+    unsigned int reg;
+    unsigned int bit;
+    unsigned int regIdx;
+    unsigned int resetReg;
+    GpioHandler* handler;
+} tGpioHandler;
+
+tGpioHandler gpio_handlers[MAX_GPIO_HANDLER] = {0};
 IntHandler* (_irq_handlers[NBROFIRQ]) = {0};
 void* (_irq_handlers_data[NBROFIRQ]) = {0};
+unsigned char nbrOfGpioHandlers = 0;
 
 
 void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata )
@@ -56,18 +68,28 @@ void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata )
     EnableIRQs();
 }
 
-void fiq_attach_handler( unsigned int fiq, FiqHandler* phandler )
+void enable_gpio_fiq()
 {
-    if (fiq >= NBROFIRQ) return;
-    _fiq_handler = phandler;
 #if RPI<4
-    W32(INTERRUPT_FIQ_CONTROL, fiq | (1<<7));   // Bit 7 is the enable bit
+    W32(INTERRUPT_FIQ_CONTROL, IRQ_GPIO_0 | (1<<7));   // Bit 7 is the enable bit
 #else
-    unsigned int enableReg = INTERRUPT_ENABLE_FIQs0 + fiq / 32 * 4;
-    unsigned int bit = fiq % 32;
+    unsigned int enableReg = INTERRUPT_ENABLE_FIQs0 + IRQ_GPIO_0 / 32 * 4;
+    unsigned int bit = IRQ_GPIO_0 % 32;
     W32(enableReg, (1 << bit));
 #endif // RPI
     EnableFIQs();
+}
+
+void fiq_attach_gpio_handler(unsigned int gpio, GpioHandler* gpiohandler)
+{
+    if (gpio >= MAX_GPIO_HANDLER) return;
+    gpio_handlers[nbrOfGpioHandlers].gpio = gpio;
+    gpio_handlers[nbrOfGpioHandlers].bit = (1 << (gpio % 32));
+    gpio_handlers[nbrOfGpioHandlers].regIdx = gpio / 32 * 4;
+    gpio_handlers[nbrOfGpioHandlers].handler = gpiohandler;
+    gpio_handlers[nbrOfGpioHandlers].resetReg = GPIO_GPEDS0 + gpio_handlers[nbrOfGpioHandlers].regIdx * 4;
+    nbrOfGpioHandlers++;
+    enable_gpio_fiq();
 }
 
 void __attribute__((interrupt("IRQ"))) irq_handler_(void)
@@ -112,20 +134,33 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
             // freeze
         }
     }
-
 }
 
 void __attribute__((interrupt("FIQ"))) fiq_handler_(void)
 {
     // only one FIQ possible, choose wisely
-    if (_fiq_handler) _fiq_handler();
-    else
+    // our FIQ handler handles all GPIO interrupts
+    // we need to find out, which one triggered the interrupt
+    unsigned int triggeredGPIO[2];
+    triggeredGPIO[0] = R32(GPIO_GPEDS0);
+    triggeredGPIO[1] = R32(GPIO_GPEDS1);
+
+    for (int i=0; i<nbrOfGpioHandlers; i++)
     {
-        ee_printf("ERROR: unhandled fast interrupt - > STOP\n");
-        while (1)
+        if (triggeredGPIO[gpio_handlers[i].regIdx] & gpio_handlers[i].bit)
         {
-            // freeze
+            // reset interrupt
+            W32(gpio_handlers[i].resetReg, gpio_handlers[i].bit);
+            DataMemBarrier();
+            // call handler
+            gpio_handlers[i].handler();
+            return;
         }
+    }
+    ee_printf("FIQ ERROR: GPIO not handled, GPEDS0:%08x, GPEDS1:%08x - > STOP\n", triggeredGPIO, R32(GPIO_GPEDS1));
+    while (1)
+    {
+        // freeze
     }
 }
 

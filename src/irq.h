@@ -47,10 +47,14 @@
 #define NBROFIRQ    80
 #endif
 
+#define IRQ_GPIO_0 49
+
+#define MAX_GPIO_HANDLER    64
+
 typedef void IntHandler( void *data );
 void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata );
-typedef void FiqHandler();
-void fiq_attach_handler( unsigned int fiq, FiqHandler *phandler );
+typedef void GpioHandler();
+void fiq_attach_gpio_handler(unsigned int gpio, GpioHandler* gpiohandler);
 
 #endif
 

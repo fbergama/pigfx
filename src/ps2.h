@@ -33,7 +33,8 @@ typedef struct keyboard_inout_t
 } keyboard_inout_t;
 
 unsigned char initPS2();
-void handlePS2ClockEvent(__attribute__((unused)) void* data);
+//void handlePS2ClockEvent(__attribute__((unused)) void* data);
+void handlePS2ClockEvent();
 unsigned char getPS2char(unsigned char *fromKbd);
 void sendPS2Byte(unsigned char sendVal);
 void PS2KeyboardHandler();

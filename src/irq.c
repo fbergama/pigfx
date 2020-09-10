@@ -1,6 +1,6 @@
 //
 // irq.c
-// IRQ and exception handling
+// IRQ, FIQ and exception handling
 //
 // PiGFX is a bare metal kernel for the Raspberry Pi
 // that implements a basic ANSI terminal emulator with
@@ -10,6 +10,7 @@
 #include "irq.h"
 #include "ee_printf.h"
 #include "utils.h"
+#include "synchronize.h"
 #include "exception.h"
 
 typedef struct TAbortFrame
@@ -36,10 +37,7 @@ typedef struct TAbortFrame
 }
 TAbortFrame;
 
-
-rpi_irq_controller_t* pIRQController =  (rpi_irq_controller_t*)INTERRUPT_BASE;
-
-
+FiqHandler* _fiq_handler = 0;
 IntHandler* (_irq_handlers[NBROFIRQ]) = {0};
 void* (_irq_handlers_data[NBROFIRQ]) = {0};
 
@@ -51,32 +49,49 @@ void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata )
         _irq_handlers[ irq ] = phandler;
         _irq_handlers_data[ irq ] = pdata;
 
-        unsigned enableReg = irq / 32;
-        unsigned bit = irq % 32;
-        pIRQController->Enable_IRQs[enableReg] = (1 << bit);
+        unsigned int enableReg = INTERRUPT_ENABLE_IRQs0 + irq / 32 * 4;
+        unsigned int bit = irq % 32;
+        W32(enableReg, (1 << bit));
     }
-    enable_irq();
+    EnableIRQs();
+}
+
+void fiq_attach_handler( unsigned int fiq, FiqHandler* phandler )
+{
+    if (fiq >= NBROFIRQ) return;
+    _fiq_handler = phandler;
+#if RPI<4
+    W32(INTERRUPT_FIQ_CONTROL, fiq | (1<<7));   // Bit 7 is the enable bit
+#else
+    unsigned int enableReg = INTERRUPT_ENABLE_FIQs0 + fiq / 32 * 4;
+    unsigned int bit = fiq % 32;
+    W32(enableReg, (1 << bit));
+#endif // RPI
+    EnableFIQs();
 }
 
 void __attribute__((interrupt("IRQ"))) irq_handler_(void)
 {
-    // Bit 17 on pending 2 means IRQ 49 is pending.
-    if (pIRQController->IRQ_pending[1] & RPI_GPIO0_INTERRUPT_IRQ && _irq_handlers[49])
+    // Bit 17 on pending 1 means IRQ 49 is pending.
+    // IRQ 49 is the GPIO0..31 interrupt
+    if ( R32(INTERRUPT_IRQ_PENDING_1) & RPI_GPIO0_INTERRUPT_IRQ && _irq_handlers[49])
     {
         // IRQ 49
         IntHandler* hnd = _irq_handlers[49];
         hnd( _irq_handlers_data[49] );
     }
-    // Bit 19 on basic means IRQ 57 is pending. This would actually be bit 25 in IRQ_pending_2
-    else if( pIRQController->IRQ_pending[1] & RPI_UART_INTERRUPT_IRQ && _irq_handlers[57] )
+    // Bit 25 on pending 1 means IRQ 57 is pending
+    // IRQ 57 is the UART interrupt
+    else if( R32(INTERRUPT_IRQ_PENDING_1) & RPI_UART_INTERRUPT_IRQ && _irq_handlers[57] )
     {
         // IRQ 57
         IntHandler* hnd = _irq_handlers[57];
         hnd( _irq_handlers_data[57] );
 
     }
-    // Bit 11 in Basic means IRQ 9
-    else if( pIRQController->IRQ_pending[0] & RPI_USB_IRQ && _irq_handlers[9] )
+    // Bit 9 in pending 0 means IRQ 9
+    // IRQ 9 is the USB interrupt
+    else if( R32(INTERRUPT_IRQ_PENDING_0) & RPI_USB_IRQ && _irq_handlers[9] )
     {
         // IRQ 9
         IntHandler* hnd = _irq_handlers[9];
@@ -88,9 +103,9 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
         unsigned int lr;
         asm volatile ("MOV %0, LR\n" : "=r" (lr) );
 #if RPI<4
-        ee_printf("ERROR: unhandled interrupt basic:%08x, pend1:%08x, pend2:%08x, LR:%08x\n", pIRQController->IRQ_basic_pending, pIRQController->IRQ_pending[0], pIRQController->IRQ_pending[1], lr);
+        ee_printf("ERROR: unhandled interrupt basic:%08x, pend1:%08x, pend2:%08x, LR:%08x\n", R32(INTERRUPT_IRQ_BASIC_PENDING), R32(INTERRUPT_IRQ_PENDING_0), R32(INTERRUPT_IRQ_PENDING_1), lr);
 #else
-        ee_printf("ERROR: unhandled interrupt pend0:%08x, pend1:%08x, pend2:%08x, LR:%08x\n", pIRQController->IRQ_pending[0], pIRQController->IRQ_pending[1], pIRQController->IRQ_pending[2], lr);
+        ee_printf("ERROR: unhandled interrupt pend0:%08x, pend1:%08x, pend2:%08x, LR:%08x\n", R32(INTERRUPT_IRQ_PENDING_0), R32(INTERRUPT_IRQ_PENDING_1), R32(INTERRUPT_IRQ_PENDING_2), lr);
 #endif
         while (1)
         {
@@ -98,6 +113,20 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
         }
     }
 
+}
+
+void __attribute__((interrupt("FIQ"))) fiq_handler_(void)
+{
+    // only one FIQ possible, choose wisely
+    if (_fiq_handler) _fiq_handler();
+    else
+    {
+        ee_printf("ERROR: unhandled fast interrupt - > STOP\n");
+        while (1)
+        {
+            // freeze
+        }
+    }
 }
 
 // Concept adapted from USPI

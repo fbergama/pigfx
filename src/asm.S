@@ -22,7 +22,7 @@ _reset_h:                        .word   _reset_
     _data_abort_h:               .word   DataAbortStub
     _unused_handler_h:           .word   hang
     _interrupt_h:                .word   irq_handler_
-    _fast_interrupt_h:           .word   hang
+    _fast_interrupt_h:           .word   fiq_handler_
 
 /* The bootloader starts, loads are executable, and enters */
 /* execution at 0x8000 with the following values set.      */

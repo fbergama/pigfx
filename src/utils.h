@@ -4,9 +4,6 @@
 #include <stdint.h>
 #include "block.h"
 
-extern void enable_irq();
-extern void disable_irq();
-
 extern void W32( unsigned int addr, unsigned int data );
 extern unsigned int R32( unsigned int addr );
 

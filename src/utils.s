@@ -1,34 +1,18 @@
 
-.global enable_irq
-enable_irq:
-    mrs r0,cpsr
-    bic r0,r0,#0x80
-    msr cpsr_c,r0
-    bx lr
-    ;@cpsie i
-    ;@mov pc, lr
-
-.global disable_irq
-disable_irq:
-        cpsid i
-        mov pc, lr
-
-
-
-;@ W32( address, data ) 
+;@ W32( address, data )
 ;@  write one word at the specified memory address
 .global W32
 W32:    str  r1, [r0]
-        bx lr        
+        bx lr
 
 
-;@ R32( address ) 
+;@ R32( address )
 ;@  read one word from the specified memory address
 .global R32
 R32:    ldr  r0, [r0]
-        bx lr    
-        
-        
+        bx lr
+
+
 .global quick_memcpy
 quick_memcpy:
 	push 	{r4-r9}
@@ -86,13 +70,13 @@ byte2hexstr:
 1:  add r2,r3
     strb r2,[r1]
     add r1, #1
-    
+
     cmp r4,r1
     beq 1f
     and r2, r0, #0xF
     b   3b
 
-1:  
+1:
     pop {r0,r1,r2,r3,r4}
     bx lr
 
@@ -133,8 +117,8 @@ word2hexstr:
 
 
 
-;@  r0: input char and output nibble 
-;@      if r0 is not in range 
+;@  r0: input char and output nibble
+;@      if r0 is not in range
 ;@      0..9, A..F or a..f, F0 is returned.
 .global hex2nibble
 hex2nibble:
@@ -142,7 +126,7 @@ hex2nibble:
     push {r2}
     and r2, r0, #0xFF   ;@ take the rightmost byte
     mov r0, #0xF0
-    
+
     cmp r2, #47
     ble 1f   ;@ invalid character if less than '0'
     cmp r2, #103
@@ -163,28 +147,28 @@ hex2nibble:
 isnum:
     sub r0, r2, #48
     b   1f
-    
+
 isAF:
     sub r0, r2, #55
     b   1f
 
 isaf:
     sub r0, r2, #87
-    b   1f    
+    b   1f
 
-1:  
+1:
     pop {r2}
     bx lr;
 
 
 ;@  r0: input hex 2-char string addr
 ;@  r0: output byte (a number >255 if conversion
-;@      was not successful) 
+;@      was not successful)
 .global hex2byte
 hex2byte:
     push {r1,r2,lr}
 
-    mov r1, #0;    
+    mov r1, #0;
     mov r2, r0  ;@ r2=string address
 
     ldrb    r0, [r2]

@@ -27,8 +27,13 @@
 //
 // Interrupt control
 //
-#define	EnableInterrupts()	__asm volatile ("cpsie i")
-#define	DisableInterrupts()	__asm volatile ("cpsid i")
+#define	EnableIRQs()		asm volatile ("cpsie i")
+#define	DisableIRQs()		asm volatile ("cpsid i")
+#define	EnableInterrupts()	EnableIRQs()			// deprecated
+#define	DisableInterrupts()	DisableIRQs()			// deprecated
+
+#define	EnableFIQs()		asm volatile ("cpsie f")
+#define	DisableFIQs()		asm volatile ("cpsid f")
 
 #if RPI == 1
 

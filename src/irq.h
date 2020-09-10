@@ -19,24 +19,6 @@
  *                 to the first addressable register for the interrupt controller, so offset the
  *                         base to the first register */
 
-/** @brief The interrupt controller memory mapped register set */
-typedef struct {
-#if RPI<4
-    volatile unsigned int IRQ_basic_pending;
-    volatile unsigned int IRQ_pending[2];
-    volatile unsigned int FIQ_control;
-    volatile unsigned int Enable_IRQs[2];
-    volatile unsigned int Enable_Base_IRQs;
-    volatile unsigned int Disable_IRQs[2];
-    volatile unsigned int Disable_Base_IRQs;
-#else
-    volatile unsigned int IRQ_pending[3];    // IRQ0..31 // IRQ32..63 // IRQ64..79
-    volatile unsigned int dummy;
-    volatile unsigned int Enable_IRQs[3];
-    volatile unsigned int dummy1;
-    volatile unsigned int Disable_IRQs[3];
-#endif
-} rpi_irq_controller_t;
 
 /** @brief Bits in the Enable_Basic_IRQs register to enable various interrupts.
  *         See the BCM2835 ARM Peripherals manual, section 7.5 */
@@ -65,12 +47,10 @@ typedef struct {
 #define NBROFIRQ    80
 #endif
 
-/** @brief The BCM2835 Interupt controller peripheral at it's base address */
-extern rpi_irq_controller_t* pIRQController;
-
-
 typedef void IntHandler( void *data );
 void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata );
+typedef void FiqHandler();
+void fiq_attach_handler( unsigned int fiq, FiqHandler *phandler );
 
 #endif
 

@@ -14,6 +14,7 @@
 #include "peri.h"
 #include "utils.h"
 #include "ee_printf.h"
+#include "synchronize.h"
 
 void gpio_select(const unsigned pin, const gpio_function_t mode) {
   // The register index starting at GPFSEL0.
@@ -69,6 +70,11 @@ unsigned char gpio_get(const unsigned pin)
     }
 
     return ((gpio_state & bit) != 0);
+}
+
+unsigned int gpio_get0to31()
+{
+    return R32(GPIO_GPLEV0);
 }
 
 void gpio_setpull(const unsigned pin, const gpio_pull_t pull) {
@@ -131,6 +137,7 @@ void gpio_clear_irq(const unsigned pin)
   regVal = R32(GPEDS);
   regVal = regVal | bit;
   W32(GPEDS, regVal);
+  DataMemBarrier();
 }
 
 void gpio_setedgedetect(const unsigned pin, const unsigned char edgedetect)

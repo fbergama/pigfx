@@ -193,18 +193,18 @@ There's a [example](shapes/sample/anim_dinos.txt) for a moving dinosaur (after f
 
 ## Graphics performance
 
-If you want to do graphics, get a Pi Zero. Multi core Pi's like the models 2 - 4 are much slower if only one core is used like PiGFX does.
+Since we have cache enabled now on the Pi, the speed is more or less the same on every model. In most cases it's probably faster to not enable DMA.
 
-Graphics which are drawn on a multiple of 4 pixels x-position draw much faster than on a multiple of 2 or 1. You will also get more speed if your image has a width of a multiple of 4. Drawing solid is faster than drawing transparent.
+Graphics which are drawn on a multiple of 4 pixels x-position draw faster than on a multiple of 2 or 1. You will also get more speed if your image has a width of a multiple of 4. Drawing solid is faster than drawing transparent.
 
-This is a table that shows the time for drawing a 400x300 pixel image on different x-positions.
+This is a table that shows the time for drawing a 400x300 pixel image on different x-positions. This is an example for getting an idea.
 
 |Pi Gen.  |Aligned 4 px |Aligned 2 px |unaligned |DMA enabled
 |-------  |------------ |------------ |--------- |-----------
-|1 (zero) |20.8ms       |40.4ms       |53.0ms    |12.5ms
-|2        |46.9ms       |90.8ms       |114.5ms   |14.2ms
-|3        |50.1ms       |93.9ms       |122.1ms   |14.1ms
-|4        |33.4ms       |64.9ms       |144.4ms   |5.4ms
+|1 (zero) |4.7ms        |9.3ms        |10.5ms    |3.9ms
+|2        |1.9ms        |2.1ms        |2.6ms     |5.2ms
+|3        |2.2ms        |2.7ms        |3.8ms     |5.2ms
+|4        |0.9ms        |1.6ms        |3.3ms     |4.9ms
 
 ## Collision detection
 
@@ -212,7 +212,7 @@ At the time a sprite is defined, the borders of the sprite are used for detectin
 
 Collision detection takes place at the time a sprite is defined or moved. This sprite is checked against all other active sprites. All detected collisions are reported.
 
-A collision is reported as a keyboard input with this syntax: \ESC[#<idx1>;<idx2>c where idx1 is the sprite index you just defined or moved and idx2 is the sprite it collides with.
+A collision is reported as a keyboard input with this syntax: \ESC[#-idx1-;-idx2-c where -idx1- is the sprite index you just defined or moved and -idx2- is the sprite it collides with.
 
 ## Compiling on Mac / Linux
 

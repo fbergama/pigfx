@@ -4,9 +4,6 @@
 #include <stdint.h>
 #include "block.h"
 
-extern void enable_irq();
-extern void disable_irq();
-
 extern void W32( unsigned int addr, unsigned int data );
 extern unsigned int R32( unsigned int addr );
 
@@ -19,28 +16,6 @@ extern unsigned int hex2byte( unsigned char* addr );
 extern void byte2hexstr( unsigned char byte, char* outstr );
 extern void word2hexstr( unsigned int word, char* outstr );
 extern void dummy ( unsigned int );
-
-/*
- *   Data memory barrier
- *   No memory access after the DMB can run until all memory accesses before it
- *    have completed
- *    
- */
-#if RPI==1
-#define dmb() asm volatile ("mcr p15, 0, %0, c7, c10, 5" : : "r" (0) : "memory")
-#else
-#define dmb() asm volatile ("dmb" ::: "memory")
-#endif
-
-
-/*
- *  Data synchronisation barrier
- *  No instruction after the DSB can run until all instructions before it have
- *  completed
- */
-#define dsb() asm volatile \
-                ("mcr p15, #0, %[zero], c7, c10, #4" : : [zero] "r" (0) )
-
 
 /*
  * Clean and invalidate entire cache

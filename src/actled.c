@@ -46,7 +46,7 @@ static void set_130(const int on) {
 
   msg->header.size = sizeof(*msg);
   msg->header.code = 0;
-  msg->tag.id = UINT32_C(0x00038041);
+  msg->tag.id = MAILBOX_TAG_SET_GPIO_STATE;
   msg->tag.size = sizeof(msg->value);
   msg->tag.code = 0;
   msg->value.request.pin = 130;

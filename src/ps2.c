@@ -16,6 +16,7 @@
 #include "timer.h"
 #include "utils.h"
 #include "keyboard.h"
+#include "synchronize.h"
 #include "ps2.h"
 
 // PS/2 Data
@@ -263,7 +264,7 @@ unsigned char initPS2()
 
     gpio_setedgedetect(PS2CLOCKPIN, GPIO_EDGE_DETECT_FALLING);
 
-    irq_attach_handler(49, handlePS2ClockEvent, 0);
+    fiq_attach_gpio_handler(PS2CLOCKPIN, handlePS2ClockEvent);
 
     inout.readPos = 0;
     inout.writePos = 0;
@@ -349,7 +350,8 @@ void sendPS2Byte(unsigned char sendVal)
 }
 
 
-void handlePS2ClockEvent(__attribute__((unused)) void* data)
+//void handlePS2ClockEvent(__attribute__((unused)) void* data)
+void handlePS2ClockEvent()
 {
     unsigned char data_state;
 
@@ -424,8 +426,6 @@ void handlePS2ClockEvent(__attribute__((unused)) void* data)
             inout.bit_cnt = 0;
         }
     }
-
-    gpio_clear_irq(PS2CLOCKPIN);
 }
 
 unsigned char getPS2char(unsigned char *fromKbd)

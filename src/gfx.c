@@ -20,6 +20,7 @@
 #include "ee_printf.h"
 #include "mbox.h"
 #include "config.h"
+#include "synchronize.h"
 
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
@@ -74,8 +75,11 @@ typedef struct {
     unsigned int H;						/// Screen pixel height
     unsigned int bpp;					/// Bits depth
     unsigned int Pitch;					/// Number of bytes for one line
-    unsigned int size;					/// Number of bytes in the framebuffer
+    unsigned int size;					/// Number of bytes in the framebuffer (double the screen size)
     unsigned char* pfb;					/// Framebuffer address
+    unsigned char* pFirstFb;			/// First Framebuffer address
+    unsigned char* pSecondFb;		    /// Second Framebuffer address (double buffering)
+    unsigned int fb_yOffset;            /// y-Offset within the framebuffer for double buffering
     DRAWING_MODE mode;					/// Drawing mode: normal, xor, transparent
     unsigned char transparentcolor;		/// For transparent drawing mode
 
@@ -119,6 +123,8 @@ typedef struct {
         unsigned int cursor_col;		/// Current column position (0-based)
         unsigned int saved_cursor[2];	/// Saved cursor position
         char cursor_visible;			/// 0 if no visible cursor
+        char cursor_blink;	     		/// 0 if not blinking
+        unsigned int blink_timer_hnd;   /// timer handle for cursor blink
 
         scn_state state;				/// Current scan state
     } term;
@@ -205,6 +211,7 @@ FRAMEBUFFER_CTX ctx;
 // Forward declarations
 void gfx_term_render_cursor();
 void gfx_term_save_cursor_content();
+void gfx_switch_framebuffer();
 
 // Functions from pigfx.c called by some private sequences (set mode, debug tests ...)
 extern void initialize_framebuffer(unsigned int width, unsigned int height, unsigned int bpp);
@@ -299,11 +306,14 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     }
 
     // Store DMA framebuffer infos
-    ctx.pfb = p_framebuffer;
+    ctx.pFirstFb = p_framebuffer;
+    ctx.pSecondFb = p_framebuffer+size/2;
+    //ctx.pfb = ctx.pSecondFb;    // set invisible part of screen to start with
+    ctx.pfb = ctx.pFirstFb;    // set invisible part of screen to start with
     ctx.W = width;
     ctx.H = height;
     ctx.Pitch = pitch;
-    ctx.size = size;
+    ctx.size = size/2;      // screen is only half of the framebuffer with double buffering
     ctx.bpp = bpp;
 
     // store terminal sizes and informations
@@ -1187,23 +1197,51 @@ void gfx_term_render_cursor()
 /** shifts content from cursor 1 character to the right */
 void gfx_term_shift_right()
 {
-    dma_enqueue_operation( PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
-                        PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
-                        (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col-1)*ctx.term.FONTWIDTH & 0xFFFF ),
-                        ((((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | (((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
-                        DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
-    dma_execute_queue();
+    if (PiGfxConfig.disableGfxDMA)
+    {
+        for (unsigned int i=0; i<ctx.term.FONTHEIGHT; i++)
+        {
+            unsigned int* src = (unsigned int*)PFB(ctx.W-4-ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i);
+            unsigned int* dst = (unsigned int*)PFB(ctx.W-4, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i);
+            unsigned int* end = (unsigned int*)PFB(ctx.term.cursor_col * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i);
+            while (src >= end)
+            {
+                *dst-- = *src--;
+            }
+        }
+    }
+    else
+    {
+        dma_enqueue_operation( PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                            PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                            (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col-1)*ctx.term.FONTWIDTH & 0xFFFF ),
+                            ((((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | (((ctx.term.cursor_col+1)*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                            DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+        dma_execute_queue();
+    }
 }
 
 /** shifts content right of cursor 1 character to the left */
 void gfx_term_shift_left()
 {
-    dma_enqueue_operation( PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
-                        PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
-                        (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col)*ctx.term.FONTWIDTH & 0xFFFF ),
-                        (((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | ((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
-                        DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
-    dma_execute_queue();
+    if (PiGfxConfig.disableGfxDMA)
+    {
+        for (unsigned int i=0; i<ctx.term.FONTHEIGHT; i++)
+        {
+            veryfastmemcpy(PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i),
+                           PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT + i),
+                           (ctx.term.WIDTH-ctx.term.cursor_col)*ctx.term.FONTWIDTH);
+        }
+    }
+    else
+    {
+        dma_enqueue_operation( PFB((ctx.term.cursor_col+1) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                            PFB((ctx.term.cursor_col) * ctx.term.FONTWIDTH, ctx.term.cursor_row * ctx.term.FONTHEIGHT),
+                            (((ctx.term.FONTHEIGHT-1) & 0xFFFF )<<16) | ((ctx.term.WIDTH-ctx.term.cursor_col)*ctx.term.FONTWIDTH & 0xFFFF ),
+                            (((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)<<16 | ((ctx.term.cursor_col*ctx.term.FONTWIDTH) & 0xFFFF)), /* bits 31:16 destination stride, 15:0 source stride */
+                            DMA_TI_DEST_INC | DMA_TI_2DMODE | DMA_TI_SRC_INC );
+        dma_execute_queue();
+    }
 }
 
 /** restore cursor content
@@ -1240,7 +1278,14 @@ void gfx_term_insert_line()
 
     for(int i=ctx.term.HEIGHT-2;i>=(int)ctx.term.cursor_row; i--)
     {
-        dma_memcpy_32(PFB((0), i * ctx.term.FONTHEIGHT), PFB((0), (i+1) * ctx.term.FONTHEIGHT), size);
+        if (PiGfxConfig.disableGfxDMA)
+        {
+            veryfastmemcpy(PFB((0), (i+1) * ctx.term.FONTHEIGHT), PFB((0), i * ctx.term.FONTHEIGHT), size);
+        }
+        else
+        {
+            dma_memcpy_32(PFB((0), i * ctx.term.FONTHEIGHT), PFB((0), (i+1) * ctx.term.FONTHEIGHT), size);
+        }
     }
 
     unsigned int* pos = (unsigned int*)PFB(0, ctx.term.cursor_row * ctx.term.FONTHEIGHT);
@@ -1260,7 +1305,14 @@ void gfx_term_delete_line()
     if (ctx.term.cursor_row < ctx.term.HEIGHT-2)
     {
         size = ctx.term.WIDTH*ctx.term.FONTWIDTH*ctx.term.FONTHEIGHT*(ctx.term.HEIGHT-1-ctx.term.cursor_row);
-        dma_memcpy_32(PFB((0), (ctx.term.cursor_row+1) * ctx.term.FONTHEIGHT), PFB((0), ctx.term.cursor_row * ctx.term.FONTHEIGHT), size);
+        if (PiGfxConfig.disableGfxDMA)
+        {
+            veryfastmemcpy(PFB((0), ctx.term.cursor_row * ctx.term.FONTHEIGHT), PFB((0), (ctx.term.cursor_row+1) * ctx.term.FONTHEIGHT), size);
+        }
+        else
+        {
+            dma_memcpy_32(PFB((0), (ctx.term.cursor_row+1) * ctx.term.FONTHEIGHT), PFB((0), ctx.term.cursor_row * ctx.term.FONTHEIGHT), size);
+        }
     }
 
     unsigned int* pos = (unsigned int*)PFB(0, (ctx.term.HEIGHT-1) * ctx.term.FONTHEIGHT);
@@ -1357,6 +1409,11 @@ void gfx_term_load_bitmap(char pixel)
                 {
                     // finished
                     ctx.bitmaploader.loading = 0;
+#if RPI == 1
+                    CleanDataCache();
+#else
+                    CleanDataCacheRange((unsigned int)ctx.bitmap[ctx.bitmaploader.index], ctx.bitmaploader.pixels+8);
+#endif
                     break;
                 }
             }
@@ -1371,6 +1428,11 @@ void gfx_term_load_bitmap(char pixel)
         {
             // finished
             ctx.bitmaploader.loading = 0;
+#if RPI == 1
+            CleanDataCache();
+#else
+            CleanDataCacheRange((unsigned int)ctx.bitmap[ctx.bitmaploader.index], ctx.bitmaploader.pixels+8);
+#endif
         }
     }
 }
@@ -1452,6 +1514,33 @@ void gfx_term_putstring( const char* str )
 void gfx_term_set_cursor_visibility( unsigned char visible )
 {
     ctx.term.cursor_visible = visible;
+}
+
+void gfx_term_switch_cursor_vis( __attribute__((unused)) unsigned hnd,
+                                      __attribute__((unused)) void* pParam,
+                                      __attribute__((unused)) void *pContext )
+{
+    if (ctx.term.cursor_visible)
+    {
+        gfx_term_set_cursor_visibility(0);
+        gfx_restore_cursor_content();
+    }
+    else
+    {
+        gfx_term_set_cursor_visibility(1);
+        gfx_term_render_cursor();
+    }
+    ctx.term.blink_timer_hnd = attach_timer_handler(2, &gfx_term_switch_cursor_vis, 0, 0);
+}
+
+void gfx_term_set_cursor_blinking( unsigned char blink )
+{
+    ctx.term.cursor_blink = blink;
+    remove_timer(ctx.term.blink_timer_hnd);     // it's okay to be 0
+    if (blink)
+    {
+        ctx.term.blink_timer_hnd = attach_timer_handler(2, &gfx_term_switch_cursor_vis, 0, 0);
+    }
 }
 
 
@@ -1969,8 +2058,22 @@ int state_fun_final_letter( char ch, scn_state *state )
                 state->cmd_params_size == 1 &&
                 state->cmd_params[0] == 25 )
             {
-                gfx_term_set_cursor_visibility(0);
-                gfx_restore_cursor_content();
+                gfx_term_set_cursor_blinking(0);
+                if (ctx.term.cursor_visible)
+                {
+                    gfx_term_set_cursor_visibility(0);
+                    gfx_restore_cursor_content();
+                }
+            }
+            goto back_to_normal;
+            break;
+
+        case 'b':
+            if( state->private_mode_char == '?' &&
+                state->cmd_params_size == 1 &&
+                state->cmd_params[0] == 25 )
+            {
+                gfx_term_set_cursor_blinking(1);
             }
             goto back_to_normal;
             break;
@@ -1980,8 +2083,12 @@ int state_fun_final_letter( char ch, scn_state *state )
                 state->cmd_params_size == 1 &&
                 state->cmd_params[0] == 25 )
             {
-                gfx_term_set_cursor_visibility(1);
-                gfx_term_render_cursor();
+                gfx_term_set_cursor_blinking(0);
+                if (ctx.term.cursor_visible == 0)
+                {
+                    gfx_term_set_cursor_visibility(1);
+                    gfx_term_render_cursor();
+                }
             }
             goto back_to_normal;
             break;
@@ -2289,4 +2396,24 @@ int state_fun_normaltext( char ch, scn_state *state )
     ++ctx.term.cursor_col;
     gfx_term_render_cursor();
     return 1;
+}
+
+/** This can be used to flip the framebuffer
+    Tests have showed that this is quite slow actually
+    For the moment I'm going to disable this
+**/
+void gfx_switch_framebuffer()
+{
+    // Change FB write pointer
+    unsigned char* showingFb = ctx.pfb;     // this fb is now not showing, but gets changed now to be showing
+    if (ctx.pfb == ctx.pFirstFb) ctx.pfb = ctx.pSecondFb;
+    else ctx.pfb = ctx.pFirstFb;
+
+    // Change y offset of framebuffer to other buffer
+    if (ctx.fb_yOffset == 0) ctx.fb_yOffset = ctx.H;
+    else ctx.fb_yOffset = 0;
+    fb_switch_framebuffer(ctx.fb_yOffset);
+
+    // Copy all data of the now showing framebuffer part to the not showing framebuffer part
+    dma_memcpy_32(showingFb, ctx.pfb, ctx.size);
 }

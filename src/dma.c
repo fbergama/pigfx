@@ -11,6 +11,7 @@
 #include "utils.h"
 #include "mbox.h"
 #include "console.h"
+#include "memory.h"
 
 
 #define DMA_CS_OFFSET        0x00
@@ -32,13 +33,17 @@ typedef struct _DMA_Ctrl_Block
 } DMA_Control_Block;
 
 
-DMA_Control_Block __attribute__((aligned(0x100))) ctr_blocks[16];
+// DMA Control block needs to be in a coherent section. We choose Coherent start + 2048 bytes
+// Coherent start is already used by the mailbox
+// control block needs to be aligned 256
+DMA_Control_Block* ctr_blocks;
 unsigned int curr_blk;
 
 unsigned int channel;
 
 void dma_init()
 {
+    ctr_blocks = (DMA_Control_Block*)(MEM_COHERENT_REGION+0x800);
     curr_blk = 0;
     channel = 0;
     // Enable DMA on used channel

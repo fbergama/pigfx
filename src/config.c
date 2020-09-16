@@ -93,7 +93,7 @@ void setDefaultConfig()
     PiGfxConfig.skipBackspaceEcho = 0;
     PiGfxConfig.swapDelWithBackspace = 1;
     PiGfxConfig.showRC2014Logo = 0;
-    PiGfxConfig.disableGfxDMA = 0;
+    PiGfxConfig.disableGfxDMA = 1;
     PiGfxConfig.disableCollision = 0;
     pigfx_strcpy(PiGfxConfig.keyboardLayout, "us");
 }

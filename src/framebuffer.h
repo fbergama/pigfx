@@ -31,6 +31,7 @@ FB_RETURN_TYPE fb_get_phys_res(unsigned int* pRes_w, unsigned int* pRes_h);
 extern FB_RETURN_TYPE fb_set_grayscale_palette();
 extern FB_RETURN_TYPE fb_set_xterm_palette();
 FB_RETURN_TYPE fb_get_pitch( unsigned int* pPitch );
+FB_RETURN_TYPE fb_switch_framebuffer(unsigned int yOffset);
 
 
 #endif

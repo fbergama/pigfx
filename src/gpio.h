@@ -48,5 +48,6 @@ unsigned char gpio_get(const unsigned pin);
 void gpio_setpull(const unsigned pin, const gpio_pull_t pull);
 void gpio_clear_irq(const unsigned pin);
 void gpio_setedgedetect(const unsigned pin, const unsigned char edgedetect);
+unsigned int gpio_get0to31();
 
 #endif /* GPIO_H__ */

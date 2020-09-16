@@ -123,6 +123,8 @@ typedef struct {
         unsigned int cursor_col;		/// Current column position (0-based)
         unsigned int saved_cursor[2];	/// Saved cursor position
         char cursor_visible;			/// 0 if no visible cursor
+        char cursor_blink;	     		/// 0 if not blinking
+        unsigned int blink_timer_hnd;   /// timer handle for cursor blink
 
         scn_state state;				/// Current scan state
     } term;
@@ -1514,6 +1516,33 @@ void gfx_term_set_cursor_visibility( unsigned char visible )
     ctx.term.cursor_visible = visible;
 }
 
+void gfx_term_switch_cursor_vis( __attribute__((unused)) unsigned hnd,
+                                      __attribute__((unused)) void* pParam,
+                                      __attribute__((unused)) void *pContext )
+{
+    if (ctx.term.cursor_visible)
+    {
+        gfx_term_set_cursor_visibility(0);
+        gfx_restore_cursor_content();
+    }
+    else
+    {
+        gfx_term_set_cursor_visibility(1);
+        gfx_term_render_cursor();
+    }
+    ctx.term.blink_timer_hnd = attach_timer_handler(2, &gfx_term_switch_cursor_vis, 0, 0);
+}
+
+void gfx_term_set_cursor_blinking( unsigned char blink )
+{
+    ctx.term.cursor_blink = blink;
+    remove_timer(ctx.term.blink_timer_hnd);     // it's okay to be 0
+    if (blink)
+    {
+        ctx.term.blink_timer_hnd = attach_timer_handler(2, &gfx_term_switch_cursor_vis, 0, 0);
+    }
+}
+
 
 void gfx_term_move_cursor( unsigned int row, unsigned int col )
 {
@@ -2029,8 +2058,22 @@ int state_fun_final_letter( char ch, scn_state *state )
                 state->cmd_params_size == 1 &&
                 state->cmd_params[0] == 25 )
             {
-                gfx_term_set_cursor_visibility(0);
-                gfx_restore_cursor_content();
+                gfx_term_set_cursor_blinking(0);
+                if (ctx.term.cursor_visible)
+                {
+                    gfx_term_set_cursor_visibility(0);
+                    gfx_restore_cursor_content();
+                }
+            }
+            goto back_to_normal;
+            break;
+
+        case 'b':
+            if( state->private_mode_char == '?' &&
+                state->cmd_params_size == 1 &&
+                state->cmd_params[0] == 25 )
+            {
+                gfx_term_set_cursor_blinking(1);
             }
             goto back_to_normal;
             break;
@@ -2040,8 +2083,12 @@ int state_fun_final_letter( char ch, scn_state *state )
                 state->cmd_params_size == 1 &&
                 state->cmd_params[0] == 25 )
             {
-                gfx_term_set_cursor_visibility(1);
-                gfx_term_render_cursor();
+                gfx_term_set_cursor_blinking(0);
+                if (ctx.term.cursor_visible == 0)
+                {
+                    gfx_term_set_cursor_visibility(1);
+                    gfx_term_render_cursor();
+                }
             }
             goto back_to_normal;
             break;

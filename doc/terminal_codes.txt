@@ -1,6 +1,7 @@
 Cursor Control
 
 <ESC>[?25l          Cursor invisible
+<ESC>[?25b          Cursor blinking
 <ESC>[?25h          Cursor visible
 <ESC>[H             Move to 0-0
 <ESC>[f             Move to 0-0

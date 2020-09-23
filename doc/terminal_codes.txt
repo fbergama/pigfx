@@ -54,6 +54,13 @@ Graphics
 <ESC>[#<idx>;<ref>;<x>;<y>s              Draw a sprite with index 0-255 from bitmap <ref> at position <x>, <y>.
 <ESC>[#<idx>;x                           Remove sprite with index 0-255, restore background.
 <ESC>[#<idx>;<x>;<y>m                    Move sprite with index 0-255 to x,y, restore background.
+
+Scrolling
+
+<ESC>[#<n>"         Scroll up by <n> pixels, fill with background color.
+<ESC>[#<n>_         Scroll down by <n> pixels, fill with background color.
+<ESC>[#<n><         Scroll left by <n> pixels, fill with background color.
+<ESC>[#<n>>         Scroll right by <n> pixels, fill with background color.
  
 Settings
 

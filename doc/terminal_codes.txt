@@ -52,7 +52,7 @@ Graphics
 <ESC>[#<idx>;<x>;<y>B                    Load RLE compressed bitmap to index 0-127 with width x and height y pixels. Expects RLE compressed binary pixel data after this command, e.g. 0x10 0x20 draws color 16 for the next 32 pixels.
 <ESC>[#<idx>;<x>;<y>d                    Draw bitmap with index 0-127 at position x, y.
 <ESC>[#<idx>;<ref>;<x>;<y>s              Draw a sprite with index 0-255 from bitmap <ref> at position <x>, <y>.
-<ESC>[#<idx>;x                           Remove sprite with index 0-255, restore background.
+<ESC>[#<idx>x                            Remove sprite with index 0-255, restore background.
 <ESC>[#<idx>;<x>;<y>m                    Move sprite with index 0-255 to x,y, restore background.
 
 Scrolling

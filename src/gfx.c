@@ -2154,6 +2154,16 @@ int state_fun_final_letter( char ch, scn_state *state )
         	goto back_to_normal;
         	break;
 
+
+        case 'p':
+            // ESC=xp Set palette
+            if( state->cmd_params_size == 1 )
+            {
+                fb_set_palette(state->cmd_params[0]);
+            }
+            goto back_to_normal;
+            break;
+
     	} // switch last letter after '=' and parameters
     } // private mode = '='
 

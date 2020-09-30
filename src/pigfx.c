@@ -142,7 +142,7 @@ void initialize_framebuffer(unsigned int width, unsigned int height, unsigned in
              &fbsize,
              &pitch );
 
-    if (fb_set_xterm_palette() != 0)
+    if (fb_set_palette(0) != 0)
     {
 #if ENABLED(FRAMEBUFFER_DEBUG)
         cout("Set Palette failed"); cout_endl();

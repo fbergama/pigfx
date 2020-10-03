@@ -78,6 +78,10 @@ Settings
 <ESC>[=<n>h         Change to display mode <n> (legacy PC ANSI.SYS)
                     This is actually only approximate resolutions (check README_ADD)
 <ESC>[=<n>p         Load color palette <n>, where 0=XTerm (default), 1=VGA, 2=custom, 3=C64
+<ESC>[=<b>;<n>p     Set custom palette, with <n> as the number of colors to follow (1-256) and <b> as the base (10 for decimal or 16 for hex).
+                    <n> colors need to follow this command. Color information is always 8bit RGB, e.g. 000000 for black or FFFFFF for white.
+                    A semicolon after the last color needs to be sent.
+                    Here's an example for color 0:red, 1:green, 2:blue -> <ESC>[=16;3pFF0000;FF00;FF;
                     
 Commands from PiGFX to the controller
 

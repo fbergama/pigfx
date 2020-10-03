@@ -17,8 +17,8 @@ typedef enum
 {
     pal_xterm,
     pal_vga,
-    pal_c64,
-    pal_custom
+    pal_custom,
+    pal_c64
 } tenPalette;
 
 unsigned int palette[NB_PALETTES][NB_PALETTE_ELE] =

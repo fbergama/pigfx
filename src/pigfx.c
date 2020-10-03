@@ -329,6 +329,10 @@ void term_main_loop()
             {
                 gfx_term_load_bitmap(strb[0]);
             }
+            else if (gfx_term_loading_palette())
+            {
+                gfx_term_load_palette(strb[0]);
+            }
             else
             {
                 if (PiGfxConfig.skipBackspaceEcho)

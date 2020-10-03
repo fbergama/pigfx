@@ -361,3 +361,8 @@ FB_RETURN_TYPE fb_switch_framebuffer(unsigned int yOffset)
 
     return FB_SUCCESS;
 }
+
+unsigned int* fb_get_cust_pal_p()
+{
+    return &palette[pal_custom][0];
+}

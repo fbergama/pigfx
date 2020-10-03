@@ -98,6 +98,17 @@ typedef struct {
         unsigned int   actPos;
     } bitmaploader;
 
+    // palette handling
+    struct
+    {
+        unsigned char loading;
+        unsigned char asciiBase;
+        unsigned char colorIdx;
+        unsigned int  color;
+        unsigned char nbColors;
+        unsigned int* pCustPal;
+    } paletteloader;
+
     unsigned char* bitmap[MAXBITMAPS];
 
     unsigned int lastUsedSprite;
@@ -326,6 +337,8 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     // set default colors
     gfx_set_fg(15);
     gfx_set_bg(0);
+
+    ctx.paletteloader.pCustPal = fb_get_cust_pal_p();
 
     gfx_term_render_cursor();
 }
@@ -1502,6 +1515,47 @@ void gfx_term_load_bitmap(char pixel)
     }
 }
 
+// check if loading palette
+unsigned char gfx_term_loading_palette()
+{
+    return ctx.paletteloader.loading;
+}
+
+// load palette data from serial
+void gfx_term_load_palette(char rgb)
+{
+    if (rgb == ';')
+    {
+        ctx.paletteloader.pCustPal[ctx.paletteloader.colorIdx++] = ctx.paletteloader.color;
+        ctx.paletteloader.color = 0;
+        if (ctx.paletteloader.colorIdx >= ctx.paletteloader.nbColors)
+        {
+            // finished
+            ctx.paletteloader.loading = 0;
+        }
+    }
+    else if ((ctx.paletteloader.asciiBase == 10) && (rgb >= '0') && (rgb <= '9'))
+    {
+        ctx.paletteloader.color = ctx.paletteloader.color * 10 + rgb - '0';
+    }
+    else if (ctx.paletteloader.asciiBase == 16)
+    {
+        if ((rgb >= '0') && (rgb <= '9')) ctx.paletteloader.color = ctx.paletteloader.color * 16 + rgb - '0';
+        else if ((rgb >= 'A') && (rgb <= 'F')) ctx.paletteloader.color = ctx.paletteloader.color * 16 + rgb - 'A' + 10;
+        else if ((rgb >= 'a') && (rgb <= 'f')) ctx.paletteloader.color = ctx.paletteloader.color * 16 + rgb - 'a' + 10;
+        else
+        {
+            // syntax error
+            ctx.paletteloader.loading = 0;
+        }
+    }
+    else
+    {
+        // syntax error
+        ctx.paletteloader.loading = 0;
+    }
+}
+
 /** Draws a character string and handle control characters. */
 void gfx_term_putstring( const char* str )
 {
@@ -2160,6 +2214,20 @@ int state_fun_final_letter( char ch, scn_state *state )
             if( state->cmd_params_size == 1 )
             {
                 fb_set_palette(state->cmd_params[0]);
+            }
+            else if ( state->cmd_params_size == 2 )
+            {
+                // 0=base, 1=nbrOfColors
+                if (((state->cmd_params[0] == 10) || (state->cmd_params[0] == 16))
+                    && (state->cmd_params[1] > 0)
+                    && (state->cmd_params[1] <= 256))
+                {
+                    ctx.paletteloader.loading = 1;
+                    ctx.paletteloader.asciiBase = state->cmd_params[0];
+                    ctx.paletteloader.colorIdx = 0;
+                    ctx.paletteloader.color = 0;
+                    ctx.paletteloader.nbColors = state->cmd_params[1];
+                }
             }
             goto back_to_normal;
             break;

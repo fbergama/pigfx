@@ -44,7 +44,7 @@ typedef enum
 typedef void draw_putc_fun( unsigned int row, unsigned int col, unsigned char c );
 
 // Function type for the functions drawing a sprite in each mode (normal, xor, transparent)
-typedef void draw_putsprite_fun( unsigned char* p_sprite, unsigned int x, unsigned int y );
+typedef void draw_putsprite_fun( unsigned char* p_sprite, int x, int y );
 
 
 

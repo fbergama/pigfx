@@ -86,4 +86,8 @@ extern void gfx_term_set_tabulation(int width);
 extern unsigned char gfx_term_loading_bitmap();
 extern void gfx_term_load_bitmap(char pixel);
 
+// palette handling
+extern unsigned char gfx_term_loading_palette();
+extern void gfx_term_load_palette(char rgb);
+
 #endif

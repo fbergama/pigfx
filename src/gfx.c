@@ -58,8 +58,8 @@ typedef struct
     unsigned int   height;
     unsigned char  transparentcolor;
     DRAWING_MODE   mode;
-    unsigned int   x;
-    unsigned int   y;
+    int            x;
+    int            y;
     tAABB          colDetRect;
     unsigned char* pBackground;
 } tSprite;
@@ -97,6 +97,17 @@ typedef struct {
         unsigned int   pixels;
         unsigned int   actPos;
     } bitmaploader;
+
+    // palette handling
+    struct
+    {
+        unsigned char loading;
+        unsigned char asciiBase;
+        unsigned char colorIdx;
+        unsigned int  color;
+        unsigned char nbColors;
+        unsigned int* pCustPal;
+    } paletteloader;
 
     unsigned char* bitmap[MAXBITMAPS];
 
@@ -327,6 +338,8 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     gfx_set_fg(15);
     gfx_set_bg(0);
 
+    ctx.paletteloader.pCustPal = fb_get_cust_pal_p();
+
     gfx_term_render_cursor();
 }
 
@@ -402,12 +415,13 @@ void gfx_check_collision(unsigned char own)
  * The sprite pixels overwrite the existing background.
  * NB: Foreground and background color are not used by sprites.
  */
-void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned int y )
+void gfx_put_sprite_NORMAL( unsigned char* p_sprite, int x, int y )
 {
     // Check Nul pointer
     if (p_sprite == 0) return;
     // Check start
-    if (x >= ctx.W || y >= ctx.H) return;
+    if (x >= (int)ctx.W || y >= (int)ctx.H) return;
+    if (x<0 || y<0) return;
 
     //unsigned int tact = time_microsec();
 
@@ -451,12 +465,13 @@ void gfx_put_sprite_NORMAL( unsigned char* p_sprite, unsigned int x, unsigned in
  * - sprite color 0 pixel doesn't modify the existing background
  * NB: Foreground and background color are not used by sprites.
  */
-void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y )
+void gfx_put_sprite_XOR( unsigned char* p_sprite, int x, int y )
 {
     // Check Nul pointer
     if (p_sprite == 0) return;
     // Check start
-    if (x >= ctx.W || y >= ctx.H) return;
+    if (x >= (int)ctx.W || y >= (int)ctx.H) return;
+    if (x<0 || y<0) return;
 
     //unsigned int tact = time_microsec();
 
@@ -489,12 +504,13 @@ void gfx_put_sprite_XOR( unsigned char* p_sprite, unsigned int x, unsigned int y
 /** Draw a transparent sprite. Pixels with the transparent color are not drawn,
  * leaving the existing background visible. By default, 00 is the transparent color.
  */
-void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, unsigned int x, unsigned int y )
+void gfx_put_sprite_TRANSPARENT( unsigned char* p_sprite, int x, int y )
 {
     // Check Nul pointer
     if (p_sprite == 0) return;
     // Check start
-    if (x >= ctx.W || y >= ctx.H) return;
+    if (x >= (int)ctx.W || y >= (int)ctx.H) return;
+    if (x<0 || y<0) return;
 
     //unsigned int tact = time_microsec();
 
@@ -602,9 +618,26 @@ void gfx_save_background(tSprite* pSprite, unsigned char* pBitmap, unsigned int 
     //cout("gfx_save_background took ");cout_d(time_microsec()- tact);cout(" DisableDMA=");cout_d(PiGfxConfig.disableGfxDMA);cout_endl();
 }
 
-/** Draw a sprite inthe current drawing mode.
+/** Draw a sprite in the current drawing mode.
  */
 draw_putsprite_fun (*gfx_put_sprite) = gfx_put_sprite_NORMAL;
+
+/** Correct sprite positions if screen is moved */
+void gfx_corr_sprite_pos(int dx, int dy)
+{
+    for (unsigned int i=0; i<=ctx.lastUsedSprite; i++)
+    {
+        if (ctx.sprite[i].active)
+        {
+            ctx.sprite[i].x += dx;
+            ctx.sprite[i].y += dy;
+            ctx.sprite[i].colDetRect.min.x += dx;
+            ctx.sprite[i].colDetRect.min.y += dy;
+            ctx.sprite[i].colDetRect.max.x += dx;
+            ctx.sprite[i].colDetRect.max.y += dy;
+        }
+    }
+}
 
 /** Sets the whole display to background color. */
 void gfx_clear()
@@ -647,7 +680,7 @@ void gfx_clear()
     }
 }
 
-/** TODO: */
+/** move screen up, new bg pixels on bottom */
 void gfx_scroll_down( unsigned int npixels )
 {
     unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.Pitch*npixels);
@@ -671,9 +704,10 @@ void gfx_scroll_down( unsigned int npixels )
     // Fill with bg at the bottom
     while( pf_dst < pfb_end )
         *pf_dst++ = ctx.bg32;
+    gfx_corr_sprite_pos(0, -npixels);
 }
 
-/** TODO: comments */
+/** move screen down, new bg pixels on top */
 void gfx_scroll_up( unsigned int npixels )
 {
     unsigned int* pf_dst = (unsigned int*)( ctx.pfb + ctx.size ) -1;
@@ -686,9 +720,53 @@ void gfx_scroll_up( unsigned int npixels )
     // Fill with bg at the top
     while( pf_dst >= pfb_end )
         *pf_dst-- = ctx.bg32;
+    gfx_corr_sprite_pos(0, npixels);
 }
 
-/** TODO: */
+/** move screen to the right, new bg pixels on the left */
+void gfx_scroll_left( unsigned int npixels )
+{
+    if (npixels >= ctx.W) return;
+    if (npixels == 0) return;
+
+    unsigned char* pfb_dst;
+    unsigned char* pfb_src;
+    unsigned char* pfb_end;
+    for (unsigned int i=0; i<ctx.H; i++)
+    {
+        // for all lines
+        pfb_end = PFB(0, i);
+        pfb_dst = PFB(ctx.W-1, i);
+        pfb_src = PFB(ctx.W-1-npixels, i);
+        while (pfb_src >= pfb_end)
+            *pfb_dst-- = *pfb_src--;
+        for (unsigned int k=0; k<npixels; k++)
+            *pfb_end++ = ctx.bg;
+    }
+    gfx_corr_sprite_pos(npixels, 0);
+}
+
+/** move screen to the left, new bg pixels on the right */
+void gfx_scroll_right( unsigned int npixels )
+{
+    if (npixels >= ctx.W) return;
+    if (npixels == 0) return;
+
+    unsigned int cpPixels = ctx.W-npixels;
+    for (unsigned int i=0; i<ctx.H; i++)
+    {
+        // for all lines
+        veryfastmemcpy(PFB(0,i), PFB(npixels,i), cpPixels);
+        unsigned char* pfb_bg = PFB(cpPixels, i);
+        for (unsigned int j=cpPixels; j<ctx.W; j++)
+        {
+            *pfb_bg++ = ctx.bg;
+        }
+    }
+    gfx_corr_sprite_pos(-npixels, 0);
+}
+
+/** draw a bg filled rectangle: */
 void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
     if( x >= ctx.W || y >= ctx.H )
@@ -1437,6 +1515,47 @@ void gfx_term_load_bitmap(char pixel)
     }
 }
 
+// check if loading palette
+unsigned char gfx_term_loading_palette()
+{
+    return ctx.paletteloader.loading;
+}
+
+// load palette data from serial
+void gfx_term_load_palette(char rgb)
+{
+    if (rgb == ';')
+    {
+        ctx.paletteloader.pCustPal[ctx.paletteloader.colorIdx++] = ctx.paletteloader.color;
+        ctx.paletteloader.color = 0;
+        if (ctx.paletteloader.colorIdx >= ctx.paletteloader.nbColors)
+        {
+            // finished
+            ctx.paletteloader.loading = 0;
+        }
+    }
+    else if ((ctx.paletteloader.asciiBase == 10) && (rgb >= '0') && (rgb <= '9'))
+    {
+        ctx.paletteloader.color = ctx.paletteloader.color * 10 + rgb - '0';
+    }
+    else if (ctx.paletteloader.asciiBase == 16)
+    {
+        if ((rgb >= '0') && (rgb <= '9')) ctx.paletteloader.color = ctx.paletteloader.color * 16 + rgb - '0';
+        else if ((rgb >= 'A') && (rgb <= 'F')) ctx.paletteloader.color = ctx.paletteloader.color * 16 + rgb - 'A' + 10;
+        else if ((rgb >= 'a') && (rgb <= 'f')) ctx.paletteloader.color = ctx.paletteloader.color * 16 + rgb - 'a' + 10;
+        else
+        {
+            // syntax error
+            ctx.paletteloader.loading = 0;
+        }
+    }
+    else
+    {
+        // syntax error
+        ctx.paletteloader.loading = 0;
+    }
+}
+
 /** Draws a character string and handle control characters. */
 void gfx_term_putstring( const char* str )
 {
@@ -1947,6 +2066,8 @@ int state_fun_final_letter( char ch, scn_state *state )
                         ctx.sprite[state->cmd_params[0]].width = *pW;
                         ctx.sprite[state->cmd_params[0]].height = *pH;
 
+                        if (state->cmd_params[0] > ctx.lastUsedSprite) ctx.lastUsedSprite = state->cmd_params[0];
+
                         // Set collision detection rectangle
                         ctx.sprite[state->cmd_params[0]].colDetRect.min.x = ctx.sprite[state->cmd_params[0]].x;
                         ctx.sprite[state->cmd_params[0]].colDetRect.min.y = ctx.sprite[state->cmd_params[0]].y;
@@ -1955,6 +2076,46 @@ int state_fun_final_letter( char ch, scn_state *state )
 
                         gfx_check_collision(state->cmd_params[0]);
                     }
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+
+            case '"':
+                /* scroll up */
+                if (state->cmd_params_size == 1)
+                {
+                    gfx_scroll_up(state->cmd_params[0]);
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+
+            case '_':
+                /* scroll down */
+                if (state->cmd_params_size == 1)
+                {
+                    gfx_scroll_down(state->cmd_params[0]);
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+
+            case '>':
+                /* scroll right */
+                if (state->cmd_params_size == 1)
+                {
+                    gfx_scroll_right(state->cmd_params[0]);
+                }
+                retval = 0;
+            goto back_to_normal;
+            break;
+
+            case '<':
+                /* scroll left */
+                if (state->cmd_params_size == 1)
+                {
+                    gfx_scroll_left(state->cmd_params[0]);
                 }
                 retval = 0;
             goto back_to_normal;
@@ -2046,6 +2207,30 @@ int state_fun_final_letter( char ch, scn_state *state )
         	}
         	goto back_to_normal;
         	break;
+
+
+        case 'p':
+            // ESC=xp Set palette
+            if( state->cmd_params_size == 1 )
+            {
+                fb_set_palette(state->cmd_params[0]);
+            }
+            else if ( state->cmd_params_size == 2 )
+            {
+                // 0=base, 1=nbrOfColors
+                if (((state->cmd_params[0] == 10) || (state->cmd_params[0] == 16))
+                    && (state->cmd_params[1] > 0)
+                    && (state->cmd_params[1] <= 256))
+                {
+                    ctx.paletteloader.loading = 1;
+                    ctx.paletteloader.asciiBase = state->cmd_params[0];
+                    ctx.paletteloader.colorIdx = 0;
+                    ctx.paletteloader.color = 0;
+                    ctx.paletteloader.nbColors = state->cmd_params[1];
+                }
+            }
+            goto back_to_normal;
+            break;
 
     	} // switch last letter after '=' and parameters
     } // private mode = '='

@@ -108,7 +108,7 @@ void initialize_uart_irq()
     pUART0_ICR = (volatile unsigned int*)UART0_ICR;
     pUART0_FR   = (volatile unsigned int*)UART0_FR;
 
-    *pUART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
+    *pUART0_IMSC = (1<<4); // Masked interrupts: RXIM (See pag 188 of BCM2835 datasheet)
     *pUART0_ICR = 0xFFFFFFFF; // Clear UART0 interrupts
 
     irq_attach_handler( 57, uart_fill_queue, 0 );
@@ -142,7 +142,7 @@ void initialize_framebuffer(unsigned int width, unsigned int height, unsigned in
              &fbsize,
              &pitch );
 
-    if (fb_set_xterm_palette() != 0)
+    if (fb_set_palette(0) != 0)
     {
 #if ENABLED(FRAMEBUFFER_DEBUG)
         cout("Set Palette failed"); cout_endl();
@@ -328,6 +328,10 @@ void term_main_loop()
             if (gfx_term_loading_bitmap())
             {
                 gfx_term_load_bitmap(strb[0]);
+            }
+            else if (gfx_term_loading_palette())
+            {
+                gfx_term_load_palette(strb[0]);
             }
             else
             {

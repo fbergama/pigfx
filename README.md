@@ -164,9 +164,20 @@ Code                              | Command
 
 See [terminal_codes](doc/terminal_codes.txt) for a complete list of supported commands.
 
+## Color palette
 
 See [Here](https://en.wikipedia.org/wiki/File:Xterm_256color_chart.svg) for a
-reference of the provided xterm color palette.
+reference of the provided xterm color palette. This is the default palette used by PiGFX.
+
+A RGB pixel can be converted to this palette by the following formula:
+
+Pixel = 16 + (round(R / 255 * 5) * 36) + (round(G / 255 * 5) * 6) + round(B / 255 * 5)
+
+Using a different color palette is possible. It can be switched with a control code, see [terminal_codes](doc/terminal_codes.txt).
+
+Possible palettes are Xterm, VGA and C64. PiGFX always uses 256 colors, so the unused colors in a palette remain black.
+
+It's also possible to load a custom color palette with a specific control code.
 
 ## Bitmap handling
 A maximum of 128 bitmaps can be loaded to the PiGFX, either as list of binary pixels, list of ASCII decimal encoded pixels or list of ASCII hex encoded pixels. All of these can be RLE compressed. Loaded bitmaps can then be put onto the background. A transparent color can be specified before drawing a bitmap, these pixels won't be drawn in transparent mode. RLE compression expects a list of 2 values: first one is the pixel color, second one is the number of pixels to draw with this color.
@@ -174,10 +185,6 @@ A maximum of 128 bitmaps can be loaded to the PiGFX, either as list of binary pi
 See [terminal_codes](doc/terminal_codes.txt) for the specific commands.
 
 There are a few examples in [this directory](sprite/sample). 
-
-The Xterm palette is used. A RGB pixel can be converted to this palette by the following formula:
-
-Pixel = 16 + (round(R / 255 * 5) * 36) + (round(G / 255 * 5) * 6) + round(B / 255 * 5)
 
 ## Sprite handling
 

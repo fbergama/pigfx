@@ -65,6 +65,11 @@ Scrolling
 Settings
 
 <ESC>[m             Reset color attributes (white on black)
+<ESC>[<a>;<b>;<c>m  Set display attributes (1 to 3 params, so <b> and <c> are optional)
+                    0 = Reset all attributes
+                    7 = Reverse colors
+                    30 ... 37 set foreground color to palette color 0 ... 7
+                    40 ... 47 set background color to palette color 0 ... 7
 <ESC>[38;5;<n>m     Set foreground color to <n> (0-255)
 <ESC>[48;5;<n>m     Set background color to <n> (0-255)
 <ESC>[58;5;<n>m     Set transparent color to <n> (0-255)

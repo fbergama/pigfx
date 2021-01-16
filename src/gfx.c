@@ -335,8 +335,8 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     ctx.term.state.next = state_fun_normaltext;
 
     // set default colors
-    gfx_set_fg(15);
-    gfx_set_bg(0);
+    gfx_set_fg(GRAY);
+    gfx_set_bg(BLACK);
 
     ctx.paletteloader.pCustPal = fb_get_cust_pal_p();
 
@@ -2358,31 +2358,64 @@ int state_fun_final_letter( char ch, scn_state *state )
             break;
 
         case 'm':
-            if( state->cmd_params_size == 1 && state->cmd_params[0]==0 )
-            {
-                gfx_set_bg(0);
-                gfx_set_fg(15);
-                goto back_to_normal;
-            }
             if( state->cmd_params_size == 3 &&
                 state->cmd_params[0]==38    &&
                 state->cmd_params[1]==5 )
             {
+                // esc[38;5;colm
                 gfx_set_fg( state->cmd_params[2] );
                 goto back_to_normal;
             }
-            if( state->cmd_params_size == 3 &&
+            else if( state->cmd_params_size == 3 &&
                 state->cmd_params[0]==48    &&
                 state->cmd_params[1]==5 )
             {
+                // esc[48;5;colm
                 gfx_set_bg( state->cmd_params[2] );
                 goto back_to_normal;
             }
-            if( state->cmd_params_size == 3 &&
+            else if( state->cmd_params_size == 3 &&
                 state->cmd_params[0]==58    &&
                 state->cmd_params[1]==5 )
             {
+                // esc[58;5;colm
                 gfx_set_transparent_color( state->cmd_params[2] );
+                goto back_to_normal;
+            }
+            else if (state->cmd_params_size == 0)
+            {
+                // esc[m
+                gfx_set_bg(BLACK);
+                gfx_set_fg(GRAY);
+                goto back_to_normal;
+            }
+            else
+            {
+                // esc[par1;par2;par3m  (actually one to 3 params)
+                if (state->cmd_params_size > 3) state->cmd_params_size = 3;     // limit to 3
+                for (unsigned int i=0; i<state->cmd_params_size; i++)
+                {
+                    switch (state->cmd_params[i])
+                    {
+                        case 0:
+                            // reset
+                            gfx_set_bg(BLACK);
+                            gfx_set_fg(GRAY);
+                            break;
+                        case 7:
+                            // reverse
+                            gfx_swap_fg_bg();
+                            break;
+                        case 30 ... 37:
+                            // fg color
+                            gfx_set_fg(state->cmd_params[i]-30);
+                            break;
+                        case 40 ... 47:
+                            // bg color
+                            gfx_set_bg(state->cmd_params[i]-40);
+                            break;
+                    }
+                }
                 goto back_to_normal;
             }
             goto back_to_normal;

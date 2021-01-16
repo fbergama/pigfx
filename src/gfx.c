@@ -140,6 +140,8 @@ typedef struct {
         scn_state state;				/// Current scan state
     } term;
 
+    GFX_COL default_bg;					/// Default background characters color
+    GFX_COL default_fg;					/// Default foreground characters color
     GFX_COL bg;							/// Background characters color
     GFX_COL fg;							/// Foreground characters color
     unsigned int bg32;					/// Computed ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
@@ -335,12 +337,26 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     ctx.term.state.next = state_fun_normaltext;
 
     // set default colors
-    gfx_set_fg(GRAY);
-    gfx_set_bg(BLACK);
+    gfx_set_default_fg(GRAY);
+    gfx_set_default_bg(BLACK);
+
+    // set colors
+    gfx_set_fg(ctx.default_fg);
+    gfx_set_bg(ctx.default_bg);
 
     ctx.paletteloader.pCustPal = fb_get_cust_pal_p();
 
     gfx_term_render_cursor();
+}
+
+void gfx_set_default_bg( GFX_COL col )
+{
+    ctx.default_bg = col;
+}
+
+void gfx_set_default_fg( GFX_COL col )
+{
+    ctx.default_fg = col;
 }
 
 /** Sets the background color. */
@@ -2359,19 +2375,36 @@ int state_fun_final_letter( char ch, scn_state *state )
 
         case 'm':
             if( state->cmd_params_size == 3 &&
-                state->cmd_params[0]==38    &&
-                state->cmd_params[1]==5 )
+                state->cmd_params[0]==38 )
             {
-                // esc[38;5;colm
-                gfx_set_fg( state->cmd_params[2] );
+                if (state->cmd_params[1]==5)
+                {
+                    // esc[38;5;colm
+                    gfx_set_fg( state->cmd_params[2] );
+
+                }
+                else if (state->cmd_params[1]==6)
+                {
+                    // esc[38;6;colm
+                    gfx_set_fg( state->cmd_params[2] );
+                    gfx_set_default_fg(state->cmd_params[2]);
+                }
                 goto back_to_normal;
             }
             else if( state->cmd_params_size == 3 &&
-                state->cmd_params[0]==48    &&
-                state->cmd_params[1]==5 )
+                state->cmd_params[0]==48 )
             {
-                // esc[48;5;colm
-                gfx_set_bg( state->cmd_params[2] );
+                if (state->cmd_params[1]==5)
+                {
+                    // esc[48;5;colm
+                    gfx_set_bg( state->cmd_params[2] );
+                }
+                else if (state->cmd_params[1]==6)
+                {
+                    // esc[48;6;colm
+                    gfx_set_bg( state->cmd_params[2] );
+                    gfx_set_default_bg(state->cmd_params[2]);
+                }
                 goto back_to_normal;
             }
             else if( state->cmd_params_size == 3 &&
@@ -2385,8 +2418,8 @@ int state_fun_final_letter( char ch, scn_state *state )
             else if (state->cmd_params_size == 0)
             {
                 // esc[m
-                gfx_set_bg(BLACK);
-                gfx_set_fg(GRAY);
+                gfx_set_bg(ctx.default_bg);
+                gfx_set_fg(ctx.default_fg);
                 goto back_to_normal;
             }
             else
@@ -2399,8 +2432,8 @@ int state_fun_final_letter( char ch, scn_state *state )
                     {
                         case 0:
                             // reset
-                            gfx_set_bg(BLACK);
-                            gfx_set_fg(GRAY);
+                            gfx_set_bg(ctx.default_bg);
+                            gfx_set_fg(ctx.default_fg);
                             break;
                         case 7:
                             // reverse

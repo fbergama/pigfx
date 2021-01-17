@@ -64,18 +64,20 @@ Scrolling
  
 Settings
 
-<ESC>[m             Reset color attributes (white on black)
+<ESC>[m             Reset color attributes (gray on black)
 <ESC>[<a>;<b>;<c>m  Set display attributes (1 to 3 params, so <b> and <c> are optional)
                     0 = Reset all attributes
                     7 = Reverse colors
                     30 ... 37 set foreground color to palette color 0 ... 7
                     40 ... 47 set background color to palette color 0 ... 7
+                    90 ... 97 set high intensity foreground color (palette color 8 ... 15)
+                    100 ... 107 set high intensity background color (palette color 8 ... 15) 
 <ESC>[38;5;<n>m     Set foreground color to <n> (0-255)
 <ESC>[38;6;<n>m     Set foreground color to <n> (0-255) and save as default
 <ESC>[48;5;<n>m     Set background color to <n> (0-255)
 <ESC>[48;6;<n>m     Set background color to <n> (0-255) and save as default
 <ESC>[58;5;<n>m     Set transparent color to <n> (0-255)
-<ESC>[=0m           Reset color attributes (white on black) and sets normal drawing (sprites and characters)
+<ESC>[=0m           Reset color attributes (gray on black) and sets normal drawing (sprites and characters)
 <ESC>[=1m           Set XOR drawing (sprites and characters)
 <ESC>[=2m           Set transparent drawing (sprites and characters)
 <ESC>[=0f           Set 8x8 font

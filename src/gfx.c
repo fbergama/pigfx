@@ -2453,7 +2453,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                             break;
                         case 100 ... 107:
                             // bright background color 8 to 15
-                            gfx_set_bg(state->cmd_params[i]-82);
+                            gfx_set_bg(state->cmd_params[i]-92);
                             break;
                     }
                 }

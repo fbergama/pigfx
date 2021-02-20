@@ -2453,17 +2453,17 @@ int state_fun_final_letter( char ch, scn_state *state )
                         case 7:
                             // toggle text mode to 'reverse'
                             if (ctx.reverse == 0) {
-				                   gfx_swap_fg_bg();
-				                   ctx.reverse = 1;
-			                          }
+				                                   gfx_swap_fg_bg();
+				                                   ctx.reverse = 1;
+			                                      }
                             break;
 			            case 22:
 		                     // transpose bright fg colors from dim, this is interesting it is meant to be 'normal'
 		                     // but is often implemented as 'bright', this is needed for gorilla.bas compatiblity.
 		                     // function is fliped since the normal terminal color is often 'dim'; in this case it is.
 		                     // TODO: 256 color (how would this have effect?)
-		                if (ctx.fg <= 7) gfx_set_fg(ctx.fg+8);
-		                    break;
+		                     if (ctx.fg <= 7) gfx_set_fg(ctx.fg+8);
+		                     break;
 			            case 27:
 		                     // toggle text mode to 'normal'
 		                     if (ctx.reverse == 1) { 

@@ -67,7 +67,11 @@ Settings
 <ESC>[m             Reset color attributes (gray on black)
 <ESC>[<a>;<b>;<c>m  Set display attributes (1 to 3 params, so <b> and <c> are optional)
                     0 = Reset all attributes
-                    7 = Reverse colors
+                    1 = increase intensity (only in 4 byte mode colors 0..7)
+                    2 = decrease intensity (only in 4 byte mode colors 8..15)
+                    7 = Turn on reverse color
+                    22= shifts color from dim to bright (only in 4 byte mode 0..7)
+                    27= Turn off reverse color 
                     30 ... 37 set foreground color to palette color 0 ... 7
                     40 ... 47 set background color to palette color 0 ... 7
                     90 ... 97 set high intensity foreground color (palette color 8 ... 15)

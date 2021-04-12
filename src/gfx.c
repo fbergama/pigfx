@@ -142,9 +142,9 @@ typedef struct {
 
     GFX_COL default_bg;					/// Default background characters color
     GFX_COL default_fg;					/// Default foreground characters color
-    GFX_COL bg;						/// Background characters color
-    GFX_COL fg;						/// Foreground characters color
-    unsigned int reverse; 				/// reverse status: 0 - normal; 1 -reverse 	
+    GFX_COL bg;					        /// Background characters color
+    GFX_COL fg;						    /// Foreground characters color
+    unsigned int reverse; 				/// reverse status: 0 - normal; 1 -reverse
     unsigned int bg32;					/// Computed ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     unsigned int fg32;					/// Computed ctx.fg<<24 | ctx.fg<<16 | ctx.fg<<8 | ctx.fg;
 
@@ -337,10 +337,10 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     ctx.term.cursor_visible = 1;
     ctx.term.state.next = state_fun_normaltext;
 
-    
+
     // store reverse state to 'normal'
     ctx.reverse = 0;
-    
+
     // set default colors
     gfx_set_default_fg(GRAY);
     gfx_set_default_bg(BLACK);
@@ -2425,7 +2425,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                 // esc[m
                 gfx_set_bg(ctx.default_bg);
                 gfx_set_fg(ctx.default_fg);
-		        ctx.reverse = 0; // sets reverse to 'normal' for the current defaults.    
+		        ctx.reverse = 0; // sets reverse to 'normal' for the current defaults.
                 goto back_to_normal;
             }
             else
@@ -2440,7 +2440,7 @@ int state_fun_final_letter( char ch, scn_state *state )
                             // reset
                             gfx_set_bg(ctx.default_bg);
                             gfx_set_fg(ctx.default_fg);
-		                    ctx.reverse = 0; // sets reverse to 'normal' for the current defaults.		    
+		                    ctx.reverse = 0; // sets reverse to 'normal' for the current defaults.
                             break;
 			            case 1:
 	                        // increase intensity - as 22m for 4byte TODO: 256 Color pal
@@ -2449,28 +2449,30 @@ int state_fun_final_letter( char ch, scn_state *state )
 			            case 2:
 		                   // decrease intensity -transpose dim fg colors from bright TODO 255 color pal
 		                   if (ctx.fg >= 8) gfx_set_fg(ctx.fg-8);
-		                   break;		    
+		                   break;
                         case 7:
                             // toggle text mode to 'reverse'
-                            if (ctx.reverse == 0) {
-				                                   gfx_swap_fg_bg();
-				                                   ctx.reverse = 1;
-			                                      }
+                            if (ctx.reverse == 0)
+                            {
+                                gfx_swap_fg_bg();
+				                ctx.reverse = 1;
+                            }
                             break;
 			            case 22:
-		                     // transpose bright fg colors from dim, this is interesting it is meant to be 'normal'
-		                     // but is often implemented as 'bright', this is needed for gorilla.bas compatiblity.
-		                     // function is fliped since the normal terminal color is often 'dim'; in this case it is.
-		                     // TODO: 256 color (how would this have effect?)
-		                     if (ctx.fg <= 7) gfx_set_fg(ctx.fg+8);
-		                     break;
+		                    // transpose bright fg colors from dim, this is interesting it is meant to be 'normal'
+		                    // but is often implemented as 'bright', this is needed for gorilla.bas compatiblity.
+		                    // function is fliped since the normal terminal color is often 'dim'; in this case it is.
+		                    // TODO: 256 color (how would this have effect?)
+		                    if (ctx.fg <= 7) gfx_set_fg(ctx.fg+8);
+		                    break;
 			            case 27:
-		                     // toggle text mode to 'normal'
-		                     if (ctx.reverse == 1) { 
-				                                    gfx_swap_fg_bg();
-				                                    ctx.reverse = 0;
-			                                       }
-		                break;		    
+		                    // toggle text mode to 'normal'
+		                    if (ctx.reverse == 1)
+                            {
+                                gfx_swap_fg_bg();
+				                ctx.reverse = 0;
+                            }
+		                break;
                         case 30 ... 37:
                             // fg color
                             gfx_set_fg(state->cmd_params[i]-30);

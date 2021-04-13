@@ -1,4 +1,5 @@
 #!/bin/sh 
+mkdir ./build
 for i in 1 2 3
 do
     cd uspi

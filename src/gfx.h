@@ -14,6 +14,8 @@
 
 // gfx functions
 extern void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, unsigned int bpp, unsigned int pitch, unsigned int size );
+extern void gfx_set_default_bg( GFX_COL col );
+extern void gfx_set_default_fg( GFX_COL col );
 extern void gfx_set_bg( GFX_COL col );
 extern void gfx_set_fg( GFX_COL col );
 extern void gfx_swap_fg_bg();

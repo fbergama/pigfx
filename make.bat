@@ -30,6 +30,7 @@ if "%RPI%"=="4" (
 echo Compiling for Pi generation %RPI%
 
 ::Get Repository Version
+md build 2>NUL
 del build\tmp.txt 2>NUL
 git describe --all --long > build\tmp.txt
 set /p GIT_DESCRIBE=<build\tmp.txt

@@ -471,7 +471,7 @@ struct dirent *fat_read_directory(struct fs *fs, char **name)
 		int found = 0;
 		while(cur_dir)
 		{
-            ee_printf("name1: %s, name2: %s\n", *name, cur_dir->name);
+            //ee_printf("name1: %s, name2: %s\n", *name, cur_dir->name);
 			if(!pigfx_strcmp(*name, cur_dir->name))
 			{
 				if(!cur_dir->is_dir)

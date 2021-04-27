@@ -96,6 +96,9 @@ Settings
                     A semicolon after the last color needs to be sent.
                     Here's an example for color 0:red, 1:green, 2:blue -> <ESC>[=16;3pFF0000;FF00;FF;
                     
+File transfer
+<ESC>[!d            List files in "transfer" folder on the SD card
+                    
 Commands from PiGFX to the controller
 
 <ESC>[#<idx1>;<idx2>c                   Collision detected between sprite idx1 and sprite idx2.

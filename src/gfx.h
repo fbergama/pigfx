@@ -92,4 +92,7 @@ extern void gfx_term_load_bitmap(char pixel);
 extern unsigned char gfx_term_loading_palette();
 extern void gfx_term_load_palette(char rgb);
 
+// Filesystem access
+extern struct block_device* mySDcard;
+
 #endif

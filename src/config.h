@@ -10,6 +10,8 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+#include "block.h"
+
 #define CONFIGFILENAME     "pigfx.txt"
 
 #define errOK           0
@@ -42,6 +44,6 @@ extern tPiGfxConfig PiGfxConfig;
 
 
 void setDefaultConfig();
-unsigned char lookForConfigFile();
+unsigned char lookForConfigFile(struct block_device *sd_dev);
 
 #endif

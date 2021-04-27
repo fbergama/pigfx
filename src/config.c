@@ -12,7 +12,6 @@
 #include "mbr.h"
 #include "fat.h"
 #include "ee_printf.h"
-#include "block.h"
 #include "nmalloc.h"
 #include "c_utils.h"
 #include "ini.h"
@@ -98,27 +97,14 @@ void setDefaultConfig()
     pigfx_strcpy(PiGfxConfig.keyboardLayout, "us");
 }
 
-unsigned char lookForConfigFile()
+unsigned char lookForConfigFile(struct block_device *sd_dev)
 {
     int retVal;
-    struct block_device *sd_dev = 0;
-
-    if(sd_card_init(&sd_dev) != 0)
-    {
-        ee_printf("Error initializing SD card\n");
-        return errSDCARDINIT;
-    }
-
-    if ((read_mbr(sd_dev, (void*)0, (void*)0)) != 0)
-    {
-        ee_printf("Error reading MasterBootRecord\n");
-        return errMBR;
-    }
 
     struct fs * filesys = sd_dev->fs;
     if (filesys == 0)
     {
-        ee_printf("Error reading filesystem\n");
+        ee_printf("Error reading file system\n");
         return errFS;
     }
 
@@ -178,5 +164,6 @@ unsigned char lookForConfigFile()
     }
 
     nmalloc_free(cfgfiledata);
+    filesys->fclose(filesys, configfile);
     return errOK;
 }

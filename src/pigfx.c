@@ -32,6 +32,7 @@
 #include "ps2.h"
 #include "memory.h"
 #include "mmu.h"
+#include "block.h"
 #include "../uspi/include/uspi.h"
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
@@ -40,6 +41,7 @@
 unsigned int led_status = 0;
 unsigned char usbKeyboardFound = 0;
 unsigned char ps2KeyboardFound = 0;
+
 volatile unsigned int* pUART0_DR;
 volatile unsigned int* pUART0_ICR;
 volatile unsigned int* pUART0_IMSC;
@@ -51,6 +53,7 @@ volatile char* uart_buffer_end;
 volatile char* uart_buffer_limit;
 
 tPiGfxConfig PiGfxConfig;
+struct block_device* mySDcard = 0;
 
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
@@ -233,6 +236,22 @@ void video_test(int maxloops)
     }
 #endif
 
+}
+
+unsigned int initFileSys(struct block_device **sd_dev)
+{
+    if(sd_card_init(sd_dev) != 0)
+    {
+        ee_printf("Error initializing SD card\n");
+        return errSDCARDINIT;
+    }
+
+    if ((read_mbr(*sd_dev, (void*)0, (void*)0)) != 0)
+    {
+        ee_printf("Error reading MasterBootRecord\n");
+        return errMBR;
+    }
+    return 0;
 }
 
 
@@ -481,8 +500,11 @@ void entry_point(unsigned int r0, unsigned int r1, unsigned int *atags)
     gfx_set_bg(BLACK);
     gfx_set_fg(GRAY);
 
+    // Init file system
+    initFileSys(&mySDcard);
+
     // Try to load a config file
-    lookForConfigFile();
+    lookForConfigFile(mySDcard);
 
     uart_init(PiGfxConfig.uartBaudrate);
     initialize_uart_irq();

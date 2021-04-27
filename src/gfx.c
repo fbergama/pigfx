@@ -21,6 +21,7 @@
 #include "mbox.h"
 #include "config.h"
 #include "synchronize.h"
+#include "fat.h"
 
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
@@ -2256,6 +2257,45 @@ int state_fun_final_letter( char ch, scn_state *state )
     	} // switch last letter after '=' and parameters
     } // private mode = '='
 
+    if ( state->private_mode_char == '!')
+    {
+        // File transfer things
+    	switch( ch )
+    	{
+    	case 'd': // DIR command, list files in transfer dir
+            if (mySDcard)
+            {
+                struct fs * filesys = mySDcard->fs;
+                if (filesys == 0)
+                {
+                    ee_printf("Error reading file system\n");
+                    goto back_to_normal;
+                    break;
+                }
+                // loading transfer dir
+                char* myfilename[2];
+                myfilename[0] = "transfer";
+                myfilename[1] = 0;
+                struct dirent *direntry = filesys->read_directory(filesys, myfilename);
+                if (direntry == 0)
+                {
+                    ee_printf("Error reading transfer directory\n");
+                    goto back_to_normal;
+                    break;
+                }
+                ee_printf("Content of directory 'transfer':\n");
+                while(1)
+                {
+                    ee_printf(direntry->name);
+                    ee_printf("\n");
+                    if (direntry->next) direntry = direntry->next;
+                    else break;
+                }
+            }
+    		goto back_to_normal;
+    		break;
+    	}
+    } // private mode = '!'
     // General 'ESC[' ANSI/VT100 commands
     switch( ch )
     {
@@ -2634,7 +2674,7 @@ int state_fun_selectescape( char ch, scn_state *state )
     }
     else
     {
-        if( ch=='?' || ch=='#' || ch=='=' )
+        if( ch=='?' || ch=='#' || ch=='=' || ch=='!')
         {
             state->private_mode_char = ch;
             // A digit may follow

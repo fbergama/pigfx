@@ -11,6 +11,8 @@
 #ifndef SRC_SCN_STATE_H_
 #define SRC_SCN_STATE_H_
 
+#define FILE_NAME_MAXLEN 13
+
 
 /** Forward declarations needed for function type used in scn_state structure. */
 struct SCN_STATE;
@@ -38,6 +40,8 @@ typedef struct SCN_STATE
     unsigned int cmd_params[20];	// Scanned parameters after escape sequence start
     unsigned int cmd_params_size;	// Number of parameters after escape sequence start
     char private_mode_char;			// Escape private mode character (ESC followed by not '[')
+    char filename[FILE_NAME_MAXLEN];    // Filename
+    int filenamepos;                // write position of filename
 
     /*
      * TODO: Graphic Extension mode (private mode GPH8 or GPH16)

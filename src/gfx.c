@@ -214,6 +214,7 @@ static struct DISPLAY_MODE_DEFINITION ALL_MODES[LAST_MODE_NUMBER + 1] = {
 state_fun state_fun_finalletter;
 state_fun state_fun_read_digit;
 state_fun state_fun_selectescape;
+state_fun state_fun_read_filename;
 state_fun state_fun_waitquarebracket;
 state_fun state_fun_normaltext;
 state_fun state_fun_ignore_digit;
@@ -2263,6 +2264,7 @@ int state_fun_final_letter( char ch, scn_state *state )
     	switch( ch )
     	{
     	case 'd': // DIR command, list files in transfer dir
+    	    state->next = state_fun_normaltext;     // Otherwise first output character gets lost
             if (mySDcard)
             {
                 struct fs * filesys = mySDcard->fs;
@@ -2273,25 +2275,63 @@ int state_fun_final_letter( char ch, scn_state *state )
                     break;
                 }
                 // loading transfer dir
-                char* myfilename[2];
-                myfilename[0] = "transfer";
-                myfilename[1] = 0;
-                struct dirent *direntry = filesys->read_directory(filesys, myfilename);
+                char* mydirname[2];
+                mydirname[0] = "transfer";
+                mydirname[1] = 0;
+                struct dirent *direntry = filesys->read_directory(filesys, mydirname);
                 if (direntry == 0)
                 {
-                    ee_printf("Error reading transfer directory\n");
+                    ee_printf("Transfer directory empty or not found\n");
                     goto back_to_normal;
                     break;
                 }
-                ee_printf("Content of directory 'transfer':\n");
+                ee_printf("Content of directory /transfer:\n");
                 while(1)
                 {
+                    struct dirent *old_dirent = direntry;
                     ee_printf(direntry->name);
                     ee_printf("\n");
-                    if (direntry->next) direntry = direntry->next;
-                    else break;
+                    if (direntry->next)
+                    {
+                        direntry = direntry->next;
+                        nmalloc_free(old_dirent);
+                    }
+                    else
+                    {
+                        nmalloc_free(old_dirent);
+                        break;
+                    }
                 }
             }
+    		goto back_to_normal;
+    		break;
+
+    	case 't': // type text file
+    	    state->next = state_fun_normaltext;     // Otherwise first output character gets lost
+            /*if (mySDcard)
+            {
+                struct fs * filesys = mySDcard->fs;
+                if (filesys == 0)
+                {
+                    ee_printf("Error reading file system\n");
+                    goto back_to_normal;
+                    break;
+                }
+                // loading transfer dir
+                char* mydirname[2];
+                mydirname[0] = "transfer";
+                mydirname[1] = 0;
+                struct dirent *direntry = filesys->read_directory(filesys, mydirname);
+                if (direntry == 0)
+                {
+                    ee_printf("Transfer directory empty or not found\n");
+                    goto back_to_normal;
+                    break;
+                }
+
+            }*/
+            ee_printf(state->filename);
+            ee_printf("\n");
     		goto back_to_normal;
     		break;
     	}
@@ -2661,6 +2701,29 @@ int state_fun_ignore_digit( char ch, scn_state *state )
     return 1;
 }
 
+/** Read a filename for file transfer things */
+int state_fun_read_filename( char ch, scn_state *state)
+{
+    if (( ch>='a' && ch<='z' ) || (ch == '.') || ( ch>='A' && ch<='Z' ))
+    {
+        if (state->filenamepos < FILE_NAME_MAXLEN-1)
+        {
+            state->filename[state->filenamepos++] = ch;
+        }
+        else state->next = state_fun_final_letter;
+        return 1;
+    }
+    // not a filename character, end
+    // we expect a ! here
+    else if (ch=='!')
+    {
+        state->next = state_fun_final_letter;
+        return 1;
+    }
+    state_fun_final_letter( ch, state );
+    return 1;
+}
+
 /** Right after ESC, start a parameter when reading a digit or select the private mode character. */
 int state_fun_selectescape( char ch, scn_state *state )
 {
@@ -2674,12 +2737,22 @@ int state_fun_selectescape( char ch, scn_state *state )
     }
     else
     {
-        if( ch=='?' || ch=='#' || ch=='=' || ch=='!')
+        if( ch=='?' || ch=='#' || ch=='=')
         {
             state->private_mode_char = ch;
             // A digit may follow
             state->cmd_params_size = 0;
             state->next = state_fun_read_digit;
+            return 1;
+        }
+        else if (ch=='!')
+        {
+            state->private_mode_char = ch;
+            // a filename may follow
+            state->cmd_params_size = 1;
+            state->filenamepos = 0;
+            pigfx_memset(state->filename, 0, sizeof(state->filename));
+            state->next = state_fun_read_filename;
             return 1;
         }
     }

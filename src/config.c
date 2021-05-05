@@ -102,7 +102,7 @@ unsigned char lookForConfigFile(struct block_device *sd_dev)
     int retVal;
 
     struct fs * filesys = sd_dev->fs;
-    if (filesys == 0)
+    if ((filesys == 0) || (sd_dev == 0))
     {
         ee_printf("Error reading file system\n");
         return errFS;
@@ -118,21 +118,32 @@ unsigned char lookForConfigFile(struct block_device *sd_dev)
     }
 
     struct dirent * configfileentry = 0;
+    struct dirent* old_dirent = 0;
     while(1)
     {
+        old_dirent = direntry;
         // look for configfile
         if (pigfx_strcmp(CONFIGFILENAME, direntry->name) == 0)
         {
             // File found
             configfileentry = direntry;
+            if (direntry->next) direntry = direntry->next;
+        }
+        else if (direntry->next)
+        {
+            direntry = direntry->next;
+            nmalloc_free(old_dirent);
+        }
+        else
+        {
+            nmalloc_free(old_dirent);
             break;
         }
-        if (direntry->next) direntry = direntry->next;
-        else break;
     }
     if (configfileentry == 0)
     {
         ee_printf("Error locating config file\n");
+        nmalloc_free(old_dirent);
         return errLOCFILE;
     }
 
@@ -141,6 +152,7 @@ unsigned char lookForConfigFile(struct block_device *sd_dev)
     if (configfile == 0)
     {
         ee_printf("Error opening config file\n");
+        nmalloc_free(configfileentry);
         return errOPENFILE;
     }
 
@@ -151,6 +163,7 @@ unsigned char lookForConfigFile(struct block_device *sd_dev)
     {
         ee_printf("Error reading config file\n");
         nmalloc_free(cfgfiledata);
+        nmalloc_free(configfileentry);
         return errREADFILE;
     }
 
@@ -160,10 +173,12 @@ unsigned char lookForConfigFile(struct block_device *sd_dev)
     {
         ee_printf("Syntax error %d interpreting config file\n", retVal);
         nmalloc_free(cfgfiledata);
+        nmalloc_free(configfileentry);
         return errSYNTAX;
     }
 
     nmalloc_free(cfgfiledata);
     filesys->fclose(filesys, configfile);
+    nmalloc_free(configfileentry);
     return errOK;
 }

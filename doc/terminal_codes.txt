@@ -97,7 +97,8 @@ Settings
                     Here's an example for color 0:red, 1:green, 2:blue -> <ESC>[=16;3pFF0000;FF00;FF;
                     
 File transfer
-<ESC>[!d            List files in "transfer" folder on the SD card
+<ESC>[!!d               List files in "transfer" folder on the SD card
+<ESC>[!filename.ext!t   Type file named "filename.ext" to serial port (ASCII)
                     
 Commands from PiGFX to the controller
 

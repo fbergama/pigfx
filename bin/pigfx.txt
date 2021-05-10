@@ -16,3 +16,7 @@ swapDelWithBackspace = 1    ; Substitute DEL (0x7F) with BACKSPACE (0x08)
 showRC2014Logo = 0          ; Show the RC2014 logo at startup
 disableGfxDMA = 1           ; Disable fast DMA memory access for graphics (if 1)
 disableCollision = 0        ; Disable sprite collision detection
+
+[Filetransfer]
+fileSendCharDelay = 10      ; Delay after sending one character [ms]
+fileSendLineDelay = 100     ; Delay after sending one line [ms] (this is triggered by every CR or LF character)

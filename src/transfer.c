@@ -69,7 +69,7 @@ int fLoadFileToRam(struct block_device *sd_dev, struct dirent* direntry, char** 
     if (myFile == 0) return TRANSFER_ERR_OPEN;
 
     *ram = nmalloc_malloc(myFile->len+1);
-    *ram[myFile->len] = 0;  // stringterm
+    (*ram)[myFile->len] = 0;  // stringterm
     if (filesys->fread(filesys, *ram, myFile->len, myFile) != (size_t)myFile->len)
     {
         nmalloc_free(myFile);

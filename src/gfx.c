@@ -12,6 +12,7 @@
 #include "gfx.h"
 #include "framebuffer.h"
 #include "console.h"
+#include "uart.h"
 #include "dma.h"
 #include "utils.h"
 #include "c_utils.h"
@@ -2314,7 +2315,7 @@ int state_fun_final_letter( char ch, scn_state *state )
             }
 
             // Print to serial port
-            cout(pFile);
+            uart_send_ascii_file(pFile);
 
             fFreeDirMem(transferDir);
             nmalloc_free(pFile);

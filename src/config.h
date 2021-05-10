@@ -38,6 +38,8 @@ typedef struct
     unsigned int disableGfxDMA;         // Disable DMA for Gfx if 1
     unsigned int disableCollision;      // Disable collision detection if 1
     char         keyboardLayout[3];     // Keyboard layout (de,uk,us, ...)
+    unsigned int fileSendCharDelay;     // Delay after sending one character [ms]
+    unsigned int fileSendLineDelay;     // Delay after sending one line [ms] (this is triggered by every CR or LF character)
 } tPiGfxConfig;
 
 extern tPiGfxConfig PiGfxConfig;

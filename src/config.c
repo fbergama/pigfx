@@ -77,6 +77,14 @@ int inihandler(void* user, const char* section, const char* name, const char* va
     {
         pigfx_strncpy(PiGfxConfig.keyboardLayout, value, sizeof(PiGfxConfig.keyboardLayout));
     }
+    else if (pigfx_strcmp(name, "fileSendCharDelay") == 0)
+    {
+        PiGfxConfig.fileSendCharDelay = atoi(value);
+    }
+    else if (pigfx_strcmp(name, "fileSendLineDelay") == 0)
+    {
+        PiGfxConfig.fileSendLineDelay = atoi(value);
+    }
     return 0;
 }
 
@@ -95,6 +103,8 @@ void setDefaultConfig()
     PiGfxConfig.disableGfxDMA = 1;
     PiGfxConfig.disableCollision = 0;
     pigfx_strcpy(PiGfxConfig.keyboardLayout, "us");
+    PiGfxConfig.fileSendCharDelay = 10;
+    PiGfxConfig.fileSendLineDelay = 100;
 }
 
 unsigned char lookForConfigFile(struct block_device *sd_dev)

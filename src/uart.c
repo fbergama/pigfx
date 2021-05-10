@@ -15,6 +15,7 @@
 #include "uart.h"
 #include "mbox.h"
 #include "memory.h"
+#include "config.h"
 
 void uart_init(unsigned int baudrate)
 {
@@ -105,6 +106,17 @@ void uart_write_str(const char* data)
 {
     for (unsigned int i=0; data[i] != 0; i++)
         uart_write((unsigned char)data[i]);
+}
+
+void uart_send_ascii_file(char* data)
+{
+    while (*data)
+    {
+        uart_write(*data);
+        if ((*data == 0x0A) || (*data == 0x0D)) usleep(PiGfxConfig.fileSendLineDelay*1000);     // Line delay CR or LF
+        else usleep(PiGfxConfig.fileSendCharDelay*1000);    // char delay
+        data++;
+    }
 }
 
 void byte2hex(char in, char* out)

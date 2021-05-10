@@ -8,8 +8,8 @@
 #define HEARTBEAT_FREQUENCY     1               /* Status led blink frequency in Hz */
 
 #define PIGFX_MAJVERSION        1               /* Major version number */
-#define PIGFX_MINVERSION        8               /* Minor version number */
-#define PIGFX_BUILDVERSION      3               /* Build version. */
+#define PIGFX_MINVERSION        9               /* Minor version number */
+#define PIGFX_BUILDVERSION      0               /* Build version. */
 
 /** Versions:
 	

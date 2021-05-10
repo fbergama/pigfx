@@ -21,7 +21,7 @@
 #include "mbox.h"
 #include "config.h"
 #include "synchronize.h"
-#include "fat.h"
+#include "transfer.h"
 
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
@@ -2260,78 +2260,64 @@ int state_fun_final_letter( char ch, scn_state *state )
 
     if ( state->private_mode_char == '!')
     {
+        struct dirent* transferDir = 0;
+
         // File transfer things
     	switch( ch )
     	{
     	case 'd': // DIR command, list files in transfer dir
     	    state->next = state_fun_normaltext;     // Otherwise first output character gets lost
-            if (mySDcard)
+
+            if (fOpenTransferDir(mySDcard, &transferDir) == 0)
             {
-                struct fs * filesys = mySDcard->fs;
-                if (filesys == 0)
-                {
-                    ee_printf("Error reading file system\n");
-                    goto back_to_normal;
-                    break;
-                }
-                // loading transfer dir
-                char* mydirname[2];
-                mydirname[0] = "transfer";
-                mydirname[1] = 0;
-                struct dirent *direntry = filesys->read_directory(filesys, mydirname);
-                if (direntry == 0)
-                {
-                    ee_printf("Transfer directory empty or not found\n");
-                    goto back_to_normal;
-                    break;
-                }
+                struct dirent* listDir = transferDir;
                 ee_printf("Content of directory /transfer:\n");
                 while(1)
                 {
-                    struct dirent *old_dirent = direntry;
-                    ee_printf(direntry->name);
+                    ee_printf(listDir->name);
                     ee_printf("\n");
-                    if (direntry->next)
-                    {
-                        direntry = direntry->next;
-                        nmalloc_free(old_dirent);
-                    }
-                    else
-                    {
-                        nmalloc_free(old_dirent);
-                        break;
-                    }
+                    if (listDir->next) listDir = listDir->next;
+                    else break;
                 }
+                fFreeDirMem(transferDir);
+            }
+            else
+            {
+                ee_printf("Transfer directory empty or not found\n");
             }
     		goto back_to_normal;
     		break;
 
     	case 't': // type text file
     	    state->next = state_fun_normaltext;     // Otherwise first output character gets lost
-            /*if (mySDcard)
-            {
-                struct fs * filesys = mySDcard->fs;
-                if (filesys == 0)
-                {
-                    ee_printf("Error reading file system\n");
-                    goto back_to_normal;
-                    break;
-                }
-                // loading transfer dir
-                char* mydirname[2];
-                mydirname[0] = "transfer";
-                mydirname[1] = 0;
-                struct dirent *direntry = filesys->read_directory(filesys, mydirname);
-                if (direntry == 0)
-                {
-                    ee_printf("Transfer directory empty or not found\n");
-                    goto back_to_normal;
-                    break;
-                }
 
-            }*/
-            ee_printf(state->filename);
-            ee_printf("\n");
+            if (fOpenTransferDir(mySDcard, &transferDir) != 0)
+            {
+                ee_printf("Transfer directory empty or not found\n");
+                goto back_to_normal;
+            }
+
+            struct dirent* requestedFileEntry = 0;
+            if (fLookForFile(transferDir, state->filename, &requestedFileEntry) != 0)
+            {
+                ee_printf("Requested file %s not found\n", state->filename);
+                fFreeDirMem(transferDir);
+                goto back_to_normal;
+            }
+
+            char* pFile = 0;
+            if (fLoadFileToRam(mySDcard, requestedFileEntry, &pFile) != 0)
+            {
+                ee_printf("Error reading file %s\n", state->filename);
+                fFreeDirMem(transferDir);
+                goto back_to_normal;
+            }
+
+            // Print to serial port
+            cout(pFile);
+
+            fFreeDirMem(transferDir);
+            nmalloc_free(pFile);
     		goto back_to_normal;
     		break;
     	}

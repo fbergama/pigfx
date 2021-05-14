@@ -55,8 +55,13 @@ void usleep(unsigned int us)
 unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam, void* pContext )
 {
     // The value hz is really in unit hz. So 1 hz is 1 second delay.
-    unsigned hnd;
     if (hz == 0) return 0;
+    return attach_timer_handler_usec(1000000/hz, handler, pParam, pContext);
+}
+
+extern unsigned attach_timer_handler_usec( unsigned usec, _TimerHandler* handler, void *pParam, void* pContext )
+{
+    unsigned hnd;
     for( hnd=1; hnd<=N_TIMERS; ++hnd )
     {
         if( timers[hnd].handler == 0 )
@@ -64,14 +69,12 @@ unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam
             timers[hnd].handler = handler;
             timers[hnd].pParam = pParam;
             timers[hnd].pContext = pContext;
-            timers[hnd].microsec_interval = 1000000/hz;
+            timers[hnd].microsec_interval = usec;
             timers[hnd].last_tick = actTicks;
             return hnd;
         }
     }
-
     return 0;
-
 }
 
 void remove_timer(unsigned hnd)

@@ -16,6 +16,7 @@
 #include "mbox.h"
 #include "memory.h"
 #include "config.h"
+#include "nmalloc.h"
 
 void uart_init(unsigned int baudrate)
 {
@@ -108,14 +109,22 @@ void uart_write_str(const char* data)
         uart_write((unsigned char)data[i]);
 }
 
-void uart_send_ascii_file(char* data)
+void uart_send_ascii_file(__attribute__((unused)) unsigned hnd, void* pParam, void *pContext)
 {
-    while (*data)
+    char* data = (char*)pParam;
+    unsigned int delay = 0;
+
+    if (*data)
     {
         uart_write(*data);
-        if ((*data == 0x0A) || (*data == 0x0D)) usleep(PiGfxConfig.fileSendLineDelay*1000);     // Line delay CR or LF
-        else usleep(PiGfxConfig.fileSendCharDelay*1000);    // char delay
-        data++;
+        if ((*data == 0x0A) || (*data == 0x0D)) delay = PiGfxConfig.fileSendLineDelay*1000;     // Line delay CR or LF
+        else delay = PiGfxConfig.fileSendCharDelay*1000;    // char delay
+        attach_timer_handler_usec(delay, &uart_send_ascii_file, ++data, pContext);
+    }
+    else
+    {
+        // finished
+        nmalloc_free(pContext);
     }
 }
 

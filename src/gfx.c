@@ -2315,10 +2315,10 @@ int state_fun_final_letter( char ch, scn_state *state )
             }
 
             // Print to serial port
-            uart_send_ascii_file(pFile);
+            attach_timer_handler_usec(0, &uart_send_ascii_file, pFile, pFile);
 
             fFreeDirMem(transferDir);
-            nmalloc_free(pFile);
+
     		goto back_to_normal;
     		break;
     	}

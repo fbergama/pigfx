@@ -40,6 +40,7 @@ typedef void _TimerHandler(unsigned hTimer, void *pParam, void *pContext);
 
 extern void timers_init();
 extern unsigned attach_timer_handler( unsigned hz, _TimerHandler* handler, void *pParam, void* pContext );
+extern unsigned attach_timer_handler_usec( unsigned usec, _TimerHandler* handler, void *pParam, void* pContext );
 extern void timer_poll();
 extern void remove_timer(unsigned hnd);
 

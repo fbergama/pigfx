@@ -2691,7 +2691,17 @@ int state_fun_ignore_digit( char ch, scn_state *state )
 /** Read a filename for file transfer things */
 int state_fun_read_filename( char ch, scn_state *state)
 {
-    if (( ch>='a' && ch<='z' ) || (ch == '.') || ( ch>='A' && ch<='Z' ))
+    if (( ch>='^' && ch<='{' ) ||
+        ( ch>='@' && ch<='Z' ) ||
+        ( ch>='#' && ch<='&' ) ||
+        ( ch>='0' && ch<='9' ) ||
+        ( ch == '.' ) ||
+        ( ch == '-' ) ||
+        ( ch == '~' ) ||
+        ( ch == '(' ) ||
+        ( ch == ')' ) ||
+        ( ch == ' ' ) ||
+        ( ch == '}' ))
     {
         if (state->filenamepos < FILE_NAME_MAXLEN-1)
         {

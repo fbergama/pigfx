@@ -107,6 +107,8 @@ in the PiGFX root folder.
 UART communication expects the baudrate configured in pigfx.txt, 8 bit data, 1 bit
 stop and no parity.
 
+It is possible to change the baudrate by pressing the "Print Scrn" key on the connected keyboard.
+
 
 ## PS/2 keyboard
 Be aware that USB support is disabled, if a PS/2 keyboard is detected during boot. This increases boot time a lot.

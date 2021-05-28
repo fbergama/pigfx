@@ -106,6 +106,7 @@ typedef enum
 	ActionSelectConsole11,
 	ActionSelectConsole12,
 	ActionShutdown,
+	ActionSetBaudrate,
 	ActionNone
 }
 TSpecialAction;

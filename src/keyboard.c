@@ -15,6 +15,7 @@
 #include "gfx.h"
 #include "timer.h"
 #include "ps2.h"
+#include "ee_printf.h"
 
 // order must match TSpecialKey beginning at KeySpace
 static const char *s_KeyStrings[KeyMaxCode-KeySpace] =
@@ -136,6 +137,9 @@ unsigned short ScancodeToKey (TKeyMap *pThis, unsigned char nPhyCode, unsigned c
     {
         return ActionShutdown;
     }
+
+    if ( nLogCodeNorm == KeyPrintScreen )
+        return ActionSetBaudrate;
 
     if (   (KeyF1 <= nLogCodeNorm && nLogCodeNorm <= KeyF12)
         && (nModifiers & ALT))
@@ -274,6 +278,15 @@ void KeyEvent(unsigned short ucKeyCode, unsigned char ucModifiers)
 
     case ActionShutdown:
         // unused
+        break;
+
+    case ActionSetBaudrate:
+        if (PiGfxConfig.uartBaudrate == 38400) PiGfxConfig.uartBaudrate = 57600;
+        else PiGfxConfig.uartBaudrate *= 2;
+        if (PiGfxConfig.uartBaudrate > 115200) PiGfxConfig.uartBaudrate = 300;
+        gfx_term_putstring( "Baudrate set to: " );
+        ee_printf("%d\n", PiGfxConfig.uartBaudrate); // this is not perfect, as ee_printf could also send to serial if DO_LOG_STRING is set like that (but it's good enough for now)
+        uart_init(PiGfxConfig.uartBaudrate);
         break;
 
     default:

@@ -221,6 +221,30 @@ Collision detection takes place at the time a sprite is defined or moved. This s
 
 A collision is reported as a keyboard input with this syntax: \ESC[#-idx1-;-idx2-c where -idx1- is the sprite index you just defined or moved and -idx2- is the sprite it collides with.
 
+## File transfer
+
+It is possible to transfer text files to the host, just like you would type it on the keyboard.
+
+The files should be placed on the SD card in the directory ```/transfer/```. You should use filenames in the 8.3 DOS format. Longer filenames will be used with their short representation e.g. ```longna~1.txt```.
+
+There are 2 commands from the host for accessing these files:
+
+|Command |Description
+|------- |-----------
+|\ESC[!!d |List files in "transfer" folder on the SD card
+|\ESC[!filename.ext!t |Type file named "filename.ext" to serial port (ASCII)
+
+Here's a how you can load a BASIC program from the SD card from within BASIC.
+In BASIC just type:
+
+10 print chr$(27) + "[!filename.bas!t"
+
+RUN
+
+You have to use a line number which gets overwritten by the loaded file.
+
+It is possible to specify a char delay and a line delay in the pigfx.txt config file. Characters may get lost if it's set too fast. 
+                                                                                                                         
 ## Compiling on Mac / Linux
 
 To compile you will need to install a GNU ARM cross compiler toolchain and

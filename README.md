@@ -116,7 +116,14 @@ This is the male connector at the keyboard cable.
 <img src="doc/ps2.jpg" width="30%" />
 <img src="doc/gpio.png" width="80%" />
 
-Most keyboards seem to work if powered with 3.3V. However if your keyboard does not and needs 5V, make sure you use a bidirectional level shifter between the Raspberry Pi and your keyboard on data and clock. If you bring 5V to the GPIO you will destroy the Pi.
+Most keyboards seem to work if powered with 3.3V. However if your keyboard does not and needs 5V, make sure you use a bidirectional level shifter between the
+Raspberry Pi and your keyboard on data and clock. If you bring 5V to the GPIO you will destroy the Pi.
+
+It may also be necessary to install a .1uF decoupling capacitor between 3.3v and ground, as close to the PS/2 connector where the keyboard plugs in, to stabilize the
+connection to the keyboard. if your keyboard is locking up this may be the issue.  IBM's schematics for the PS/2 Model 30-286 depict a current limiting resistor of
+240ohms on the PS/2 Power pin as well as a decoupling capacitor, though with a modern keyboard this might not be necessary.   It's also important to remember that
+PS/2 is not hot pluggable.  If you are concerned about hardware damage to your keyboard or Pi computer installing a fuse on the 3.3v line is also recommended; the
+original schematics depict a 5amp fuse to prevent damage caused by accidental current spikes in the event the keyboard is accidentally unplugged.
 
 |PS/2 Pin |Pi Pin | Function
 |-------  |-----  |---------
